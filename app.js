@@ -50,40 +50,19 @@ document.addEventListener('DOMContentLoaded', () => {
         'verdict-data-loader',
         'highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader',
         'temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 
-        'rainfallDailyDataLoader', 'uvi-data-loader',
+        'rainfall-daily-data-loader', 'uvi-data-loader',
         'stability-data-loader'
     ];
     const dataContentIds = [
         'verdict-data',
         'highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data',
         'temp-data', 'humidity-data', 'pressure-data',
-        'rainfallDailyData', 'uvi-data',
+        'rainfall-daily-data', 'uvi-data',
         'stability-data'
     ];
 
     // --- ESTADO GLOBAL ---
     let lastUpdateTime = null;
-    let isWindguruLoaded = false; // Bandera para Lazy Loading
-
-    // --- FUNCIÓN: CARGA DIFERIDA DE WINDGURU ---
-    function loadWindguruWidget() {
-        if (isWindguruLoaded) return;
-
-        // CORRECCIÓN: Se ejecuta el script loader de Windguru instantáneamente.
-        const arg = ["s=1312667" ,"m=29","uid=wg_fwdg_1312667_29_1762638808878" ,"wj=knots" ,"tj=c" ,"waj=m" ,"tij=cm" ,"odh=0" ,"doh=24" ,"fhours=240" ,"hrsm=2" ,"vt=forecasts" ,"lng=es" ,"ts=1" ,"p=WINDSPD,GUST,MWINDSPD,SMER,TMPE,FLHGT,CDC,APCP1s,RATING"];
-        const script = document.createElement("script");
-        const tag = document.getElementById("windguru-loader-placeholder"); 
-        script.src = "https://www.windguru.cz/js/widget.php?"+(arg.join("&"));
-        
-        if (tag) {
-            tag.innerHTML = '';
-            tag.appendChild(script);
-        } else {
-            console.error("No se encontró el placeholder de Windguru.");
-        }
-        
-        isWindguruLoaded = true;
-    }
 
     // --- MEJORA UX: Función para mostrar/ocultar Skeletons ---
     function showSkeletons(isLoading) {
@@ -131,23 +110,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
         }
         
-        const MIN_KITE_WIND = 12; 
+        // REGLA: Si la velocidad es menor a 12 nudos, no aplica el índice de estabilidad.
+        const MIN_KITE_WIND = 12; // Mínimo para que el kite sea relevante
         if (speed < MIN_KITE_WIND) {
              return { factor: null, text: 'Viento Insuficiente', color: ['bg-gray-100', 'border-gray-300'] };
         }
 
+        // Si la ráfaga es igual o menor a la velocidad promedio, es un viento MUY estable.
         if (gust <= speed) {
              return { factor: 100, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
         }
 
+        // El factor se calcula como (Velocidad Promedio / Racha) * 100
         const factor = (speed / gust) * 100; 
 
         if (factor >= 85) {
-            return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] };
+            return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; // ¡Excelente para navegar!
         } else if (factor >= 70) {
-            return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] };
+            return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] }; // Cuidado al relanzar.
         } else {
-            return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] };
+            return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; // Peligroso, requiere habilidad.
         }
     }
     
@@ -400,16 +382,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- INICIALIZACIÓN Y EVENTOS ---
     
-    // Listener para la carga diferida de Windguru
-    const windguruDetails = document.getElementById('windguru-details');
-    if (windguruDetails) {
-        windguruDetails.addEventListener('toggle', () => {
-            if (windguruDetails.open) {
-                loadWindguruWidget();
-            }
-        });
-    }
-
     // Cargar datos del clima al iniciar
     fetchWeatherData();
 
