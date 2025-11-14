@@ -15,18 +15,29 @@
 
     <div class="max-w-6xl mx-auto">
         
-        <!-- NUEVO ENCABEZADO PRINCIPAL (TEXTO "LA BAJADA" + LOGO PALMERA) --><div class="flex flex-col items-center mb-8 mt-4 md:mt-8">
-            <!-- Título Principal: "La Bajada" --><h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-2 text-center">
-                La Bajada
-            </h1>
-            <!-- Nuevo Logo de Palmera (TAMAÑO INTERMEDIO) --><a href="https://wa.me/#NUMERO_DE_TELEFONO_PRINCIPAL#?text=Hola%2C%20vi%20el%20reporte%20del%20viento%20en%20La%20Bajada%20y%20me%20gustaria%20contactarlos." target="blank">
+        <!-- NUEVO ENCABEZADO PRINCIPAL (DOBLE LOGO COMPACTO) --><div class="flex flex-col items-center mb-8 mt-4 md:mt-8">
+            
+            <!-- Contenedor Flex para los dos logos centrados (Doble Logo) -->
+            <a href="https://wa.me/#NUMERO_DE_TELEFONO_PRINCIPAL#?text=Hola%2C%20vi%20el%20reporte%20del%20viento%20en%20La%20Bajada%20y%20me%20gustaria%20contactarlos." 
+               target="blank" 
+               class="flex items-center justify-center gap-4 mb-4">
+                
+                <!-- Logo 1: logo2.png (Timón/Paleta) -->
+                <img 
+                    src="logo2.png" 
+                    alt="Logo La Bajada Principal" 
+                    class="h-20 md:h-24 w-auto" 
+                    onerror="this.style.display='none'">
+                
+                <!-- Logo 2: logo_palmera.png (Palmera/Spot) -->
                 <img 
                     src="logo_palmera.png" 
-                    alt="Logo Claromeco Kitesurf Spot" 
-                    class="h-28 md:h-48 w-auto mb-4" 
+                    alt="Logo Palmera Kitesurf" 
+                    class="h-20 md:h-24 w-auto" 
                     onerror="this.style.display='none'">
             </a>
-            <!-- Subtítulo ELIMINADO para dar más protagonismo al logo --><!-- La Bajada ya es el título principal -->
+            
+            <!-- Título principal "La Bajada" (ELIMINADO - Ahora el logo lo dice) -->
         </div>
 
         
