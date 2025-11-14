@@ -50,15 +50,15 @@ document.addEventListener('DOMContentLoaded', () => {
         'verdict-data-loader',
         'highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader',
         'temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 
-        'rainfall-daily-data-loader', 'uvi-data-loader',
-        'stability-data-loader' // NUEVO
+        'rainfallDailyDataLoader', 'uvi-data-loader',
+        'stability-data-loader'
     ];
     const dataContentIds = [
         'verdict-data',
         'highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data',
         'temp-data', 'humidity-data', 'pressure-data',
-        'rainfall-daily-data', 'uvi-data',
-        'stability-data' // NUEVO
+        'rainfallDailyData', 'uvi-data',
+        'stability-data'
     ];
 
     // --- ESTADO GLOBAL ---
@@ -70,9 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isWindguruLoaded) return;
 
         // EJECUCIÓN INSTANTÁNEA: El código del loader de Windguru se ejecuta directamente aquí.
+        // CORRECCIÓN: Eliminamos la dependencia de window.load
         const arg = ["s=1312667" ,"m=29","uid=wg_fwdg_1312667_29_1762638808878" ,"wj=knots" ,"tj=c" ,"waj=m" ,"tij=cm" ,"odh=0" ,"doh=24" ,"fhours=240" ,"hrsm=2" ,"vt=forecasts" ,"lng=es" ,"ts=1" ,"p=WINDSPD,GUST,MWINDSPD,SMER,TMPE,FLHGT,CDC,APCP1s,RATING"];
         const script = document.createElement("script");
-        const tag = document.getElementById("windguru-loader-placeholder"); // Usamos el ID del contenedor
+        const tag = document.getElementById("windguru-loader-placeholder"); 
         script.src = "https://www.windguru.cz/js/widget.php?"+(arg.join("&"));
         
         if (tag) {
@@ -319,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateCardColors(stabilityCardEl, stability.color);
                     stabilityDataEl.textContent = stability.factor !== null 
                         ? `${Math.round(stability.factor)}% - ${stability.text}` 
-                        : stability.text;
+                        : stability.text; // Muestra "Viento Insuficiente"
                 }
                 
                 // --- (LÓGICA DE VEREDICTO SIMPLE) ---
