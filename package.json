@@ -2,6 +2,7 @@
   "name": "la-bajada-app",
   "version": "1.0.0",
   "description": "App del spot de kite La Bajada",
+  "type": "module",
   "scripts": {
     "build": "tailwindcss -i ./src/input.css -o ./style.css --minify"
   },
