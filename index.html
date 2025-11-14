@@ -45,7 +45,24 @@
         </div>
 
         <div id="wind-highlight-card" class="mt-6 lg:mt-8 p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
+            <div class="bg-gray-100 p-6 rounded-xl shadow-2xl mt-6 lg:mt-8 border border-gray-300">
+            <h3 class="text-xl font-extrabold text-gray-900 mb-4">
+                Ventana de Viento Óptima (Próx. 8hs)
+            </h3>
             
+            <!-- Skeleton Loader y Contenedor de la Ventana -->
+            <div id="optimal-window-loader" class="flex flex-row gap-2">
+                <div class="skeleton-loader h-20 w-full rounded-lg"></div>
+            </div>
+
+            <div id="optimal-window-container" class="data-content grid grid-cols-4 sm:grid-cols-8 gap-2">
+                <!-- Los bloques de tiempo serán inyectados aquí por JS -->
+            </div>
+
+            <p id="optimal-window-error" class="hidden text-sm text-center text-red-600 mt-4">
+                Error al cargar el pronóstico de la ventana.
+            </p>
+        </div>
             <div id="verdict-card" class="mb-4 p-3 rounded-lg border border-gray-300 transition-colors duration-300">
                 <p class="text-gray-600 text-xs font-medium text-center">Status del Spot</p>
                 <div id="verdict-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 70%;"></div>

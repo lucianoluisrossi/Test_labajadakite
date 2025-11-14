@@ -1,5 +1,10 @@
+// app.js
+
+// NOTA: Las líneas de import/inject de Vercel Analytics están eliminadas de aquí
+// para evitar el error de sintaxis del navegador. Se inyectan via CDN en index.html.
+
 document.addEventListener('DOMContentLoaded', () => {
-        
+    
     // --- Registro del Service Worker (PWA) ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -15,8 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- URLs de las Funciones Serverless (Proxy) ---
     const weatherApiUrl = 'api/data';
-    //const verdictApiUrl = 'api/verdict'; // API GEMINI (Para Veredicto)
-    const windyApiUrl = 'api/windy';    // API WINDY (Para Pronóstico)
+    const windyApiUrl = 'api/windy'; // Usaremos esta para la Ventana Optima
 
     // --- ELEMENTOS DEL DOM (Datos Generales) ---
     const tempEl = document.getElementById('temp-data');
@@ -41,10 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const verdictDataEl = document.getElementById('verdict-data');
     const verdictDataLoaderEl = document.getElementById('verdict-data-loader');
 
-    // --- ELEMENTOS DEL DOM (Veredicto PRONÓSTICO IA) ---
-    const forecastVerdictCardEl = document.getElementById('forecast-verdict-card');
-    const forecastVerdictLoaderEl = document.getElementById('forecast-verdict-loader');
-    const forecastVerdictDataEl = document.getElementById('forecast-verdict-data');
+    // --- ELEMENTOS DEL DOM (Ventana Optima) ---
+    const optimalWindowLoader = document.getElementById('optimal-window-loader');
+    const optimalWindowContainer = document.getElementById('optimal-window-container');
+    const optimalWindowError = document.getElementById('optimal-window-error');
+    
 
     // --- MEJORA UX: IDs de todos los Skeletons y Contenidos ---
     const skeletonLoaderIds = [
@@ -95,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     // --- FUNCIÓN: CONVERTIR GRADOS A PUNTO CARDINAL ---
     function convertDegreesToCardinal(degrees) {
         if (degrees === null || isNaN(degrees)) return 'N/A';
@@ -104,16 +108,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return arr[val % 16];
     }
     
-    // --- FUNCIÓN DE VEREDICTO (Lógica simple) ---
-    // (Anteriormente 'getSpotVerdict_Fallback')
+    // --- FUNCIÓN DE VEREDICTO (Lógica de Seguridad de Viento y Potencia) ---
     function getSpotVerdict(speed, gust, degrees) {
         // Esta función devuelve [texto, [claseFondo, claseBorde]]
-        // 1. Chequeo de Peligro (Offshore)
+        
+        // 1. Chequeo de Peligro (Offshore) - Lógica Corregida
         if (degrees !== null) {
-            if ((degrees > 337.5 || degrees <= 67.5)) {
+            // Rango de Peligro (N, NNE, NE, ENE, NO, NNO, ONO)
+            if ((degrees > 292.5 || degrees <= 67.5)) { 
                 return ["¡PELIGRO! VIENTO OFFSHORE", ['bg-red-400', 'border-red-600']];
             }
         }
+        
         // 2. Chequeo de Viento (basado en 'speed')
         if (speed === null) {
             return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
@@ -145,6 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'bg-orange-300', 'border-orange-500',
         'bg-red-400', 'border-red-600',
         'bg-purple-400', 'border-purple-600',
+        // Clases de flecha
+        'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900'
     ];
 
     // --- FUNCIÓN DE UTILIDAD: Para actualizar colores de tarjetas ---
@@ -163,17 +171,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function getWindyColorClasses(speedInKnots) {
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
             if (speedInKnots <= 10) {
-                return ['bg-blue-200', 'border-blue-400']; // Azul
+                return ['bg-blue-200', 'border-blue-400']; // Azul (Flojo)
             } else if (speedInKnots <= 16) {
-                return ['bg-green-300', 'border-green-500']; // Verde
+                return ['bg-green-300', 'border-green-500']; // Verde (Ideal/Medio)
             } else if (speedInKnots <= 21) {
-                return ['bg-yellow-300', 'border-yellow-500']; // Amarillo
+                return ['bg-yellow-300', 'border-yellow-500']; // Amarillo (Bueno/Fuerte)
             } else if (speedInKnots <= 27) {
-                return ['bg-orange-300', 'border-orange-500']; // Naranja
+                return ['bg-orange-300', 'border-orange-500']; // Naranja (Fuerte)
             } else if (speedInKnots <= 33) {
-                return ['bg-red-400', 'border-red-600']; // Rojo
+                return ['bg-red-400', 'border-red-600']; // Rojo (Muy Fuerte)
             } else {
-                return ['bg-purple-400', 'border-purple-600']; // Púrpura
+                return ['bg-purple-400', 'border-purple-600']; // Púrpura (Demasiado Fuerte)
             }
         }
         return ['bg-gray-100', 'border-gray-300']; // Default (Gris)
@@ -207,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- NUEVAS Funciones de Ayuda (Procesar datos de Windy) ---
+    // --- Funciones de Ayuda de Windy (Convertir vectores U/V a Knots/Degrees) ---
     function convertUVtoKnots(u, v) {
         // (m/s * 1.94384) = knots
         return Math.sqrt(u * u + v * v) * 1.94384;
@@ -217,21 +225,76 @@ document.addEventListener('DOMContentLoaded', () => {
         let degrees = (Math.atan2(u, v) * (180 / Math.PI)) + 180;
         return (degrees + 360) % 360; // Asegurar 0-360
     }
+    
+    // --- NUEVA FUNCIÓN: RENDERIZAR LA VENTANA ÓPTIMA ---
+    function renderOptimalWindow(forecastData) {
+        if (!forecastData || !forecastData['wind_u-surface']) {
+            optimalWindowError.textContent = "Datos de pronóstico incompletos.";
+            optimalWindowError.classList.remove('hidden');
+            return;
+        }
+
+        const u = forecastData['wind_u-surface'];
+        const v = forecastData['wind_v-surface'];
+        const times = forecastData.times; // Array de timestamps (en minutos desde 1970)
+
+        const hoursToDisplay = 8;
+        let html = '';
+
+        // El pronóstico de Windy trae un punto de datos cada 3 horas (usaremos 8 puntos = 24h)
+        for (let i = 0; i < hoursToDisplay; i++) {
+            if (i >= u.length) break; // Parar si no hay más datos
+
+            const speedKnots = convertUVtoKnots(u[i], v[i]);
+            const directionDegrees = convertUVtoDegrees(u[i], v[i]);
+            const cardinal = convertDegreesToCardinal(directionDegrees);
+
+            // Determinar color de fondo y borde según la lógica de fuerza de viento
+            const [verdictText, verdictClasses] = getSpotVerdict(speedKnots, null, directionDegrees);
+            
+            // Extraer solo la clase de fondo (bg-...) y la clase de borde (border-...)
+            const bgClass = verdictClasses.find(c => c.startsWith('bg-'));
+            const borderClass = verdictClasses.find(c => c.startsWith('border-'));
+
+            // Convertir el timestamp (minutos desde 1970) a un objeto Date
+            const date = new Date(times[i] * 1000); // Convertir a milisegundos
+            const hour = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+
+            html += `
+                <div class="p-2 ${bgClass} ${borderClass} rounded-lg flex flex-col justify-between text-center shadow-md border">
+                    <p class="text-xs font-bold text-gray-900">${hour}:${minutes}</p>
+                    <p class="text-lg font-extrabold text-gray-900">${Math.round(speedKnots)} kts</p>
+                    <p class="text-xs text-gray-700">${cardinal}</p>
+                </div>
+            `;
+        }
+
+        optimalWindowContainer.innerHTML = html;
+        optimalWindowContainer.classList.remove('data-content');
+    }
 
 
-    // --- NUEVA FUNCIÓN: OBTENER VEREDICTO DEL PRONÓSTICO (IA) ---
-    async function fetchForecastVerdict() {
-        forecastVerdictLoaderEl.style.display = 'block';
-        forecastVerdictDataEl.style.display = 'none';
+    // --- NUEVA FUNCIÓN: OBTENER PRONÓSTICO PARA VENTANA ÓPTIMA (WINDY) ---
+    async function fetchOptimalWindow() {
+        optimalWindowLoader.style.display = 'flex';
+        optimalWindowContainer.classList.add('data-content');
+        optimalWindowError.classList.add('hidden');
 
         try {
-            // 1. Get forecast data from Windy API
+            // Coordenadas de Claromecó (hardcodeadas aquí para la función)
+            const LAT = -38.860571; 
+            const LON = -60.079501;
+            
             const windyPayload = {
-                lat: -38.860571, // Coordenadas de Claromecó (de api/tides.js)
-                lon: -60.079501,
-                model: "gfs",
-                parameters: ["wind", "temp"], // Pedimos viento y temp
-                levels: ["surface"]
+                lat: LAT,
+                lon: LON,
+                model: "gfs", // Un buen modelo global
+                // Pedimos viento (u-v vectors) y el array de tiempos
+                parameters: ["wind"], 
+                levels: ["surface"],
+                // Solicitamos 8 pasos de pronóstico, que por defecto son 3 horas cada uno (24h)
+                hours: 8 
             };
             
             const windyData = await fetchWithBackoff(windyApiUrl, {
@@ -240,55 +303,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(windyPayload)
             });
 
-            if (!windyData || !windyData['wind_u-surface']) {
-                throw new Error('Datos de pronóstico (Windy) no válidos.');
-            }
-
-            // 2. Procesar el dato del pronóstico (usamos 6hs a futuro, índice 2)
-            const forecastIndex = 2; // Índice 2 = ~6 horas
-            const u = windyData['wind_u-surface'][forecastIndex];
-            const v = windyData['wind_v-surface'][forecastIndex];
-            // Windy devuelve temp en Kelvin, la pasamos a Celsius
-            const temp = windyData['temp-surface'][forecastIndex] - 273.15; 
-
-            const speed = convertUVtoKnots(u, v);
-            const direction = convertUVtoDegrees(u, v);
-            const cardinal = convertDegreesToCardinal(direction);
-
-            // 3. Obtener el color del veredicto primero (usando la lógica simple)
-            const [fallbackText, verdictColors] = getSpotVerdict(speed, null, direction);
-            updateCardColors(forecastVerdictCardEl, verdictColors); // Poner color a la tarjeta
-            forecastVerdictDataEl.textContent = fallbackText; // Poner texto de fallback
-
-            // 4. Llamar a Gemini (api/verdict.js) con estos datos del pronóstico
-            const geminiResponse = await fetchWithBackoff(verdictApiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    speed: parseFloat(speed.toFixed(1)),
-                    gust: null, // El pronóstico GFS de Windy no da racha (gust)
-                    direction: parseFloat(direction.toFixed(1)),
-                    cardinal: cardinal,
-                    temp: parseFloat(temp.toFixed(1))
-                })
-            });
-
-            if (geminiResponse.verdict) {
-                forecastVerdictDataEl.textContent = geminiResponse.verdict; // Sobrescribir con IA
-            }
+            // Procesar y renderizar los datos
+            renderOptimalWindow(windyData);
 
         } catch (error) {
-            console.error("Error al generar Veredicto (IA) del Pronóstico:", error);
-            forecastVerdictDataEl.textContent = "Error al analizar pronóstico.";
-            updateCardColors(forecastVerdictCardEl, ['bg-red-400', 'border-red-600']);
+            console.error('Error al obtener el pronóstico de la ventana:', error);
+            optimalWindowError.textContent = `Error: ${error.message}`;
+            optimalWindowError.classList.remove('hidden');
+
         } finally {
-            forecastVerdictLoaderEl.style.display = 'none';
-            forecastVerdictDataEl.style.display = 'block';
+            optimalWindowLoader.style.display = 'none';
         }
     }
     
     // --- FUNCIÓN: OBTENER DATOS DEL CLIMA (ECOWITT) ---
     async function fetchWeatherData() {
+        // ... (El resto de tu función fetchWeatherData permanece igual) ...
+        // ... (Se ha omitido aquí por brevedad, pero debe estar completo en tu app.js) ...
+        
+        // --- FUNCIÓN: OBTENER DATOS DEL CLIMA (ECOWITT) ---
+        // Pegar el contenido completo de tu fetchWeatherData() AQUÍ
+        // ... (Tu código de fetchWeatherData) ...
         
         showSkeletons(true); // MEJORA UX: Mostrar skeletons
         errorEl.classList.add('hidden'); // Ocultar error antiguo
@@ -328,8 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tempValue = (temp && temp.value !== null) ? parseFloat(temp.value) : null;
                 const windDirCardinal = windDirDegrees !== null ? convertDegreesToCardinal(windDirDegrees) : 'N/A';
                 
-                // --- (INICIO DE LÓGICA DE VEREDICTO SIMPLE) ---
-                // (Se eliminó la llamada a Gemini de aquí)
+                // --- (LÓGICA DE VEREDICTO SIMPLE) ---
                 const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
                 
                 // 1. Asignar el color de la tarjeta de veredicto
@@ -337,49 +371,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 2. Asignar el texto de veredicto
                 verdictDataEl.textContent = verdictText;
                 
-                // --- (FIN DE LÓGICA DE VEREDICTO SIMPLE) ---
-
-
                 // MEJORA UX: Aplicar rotación Y COLOR (Red/Yellow/Green) a la flecha
                 if (windArrowEl && windDirDegrees !== null) {
                     windArrowEl.style.transform = `rotate(${windDirDegrees}deg)`;
                     
                     // Lógica de color de flecha MEJORADA
-                    if (windDirDegrees > 337.5 || windDirDegrees <= 22.5) { // N (Offshore)
-                        windArrowEl.classList.remove('text-green-600', 'text-yellow-600', 'text-gray-900');
-                        windArrowEl.classList.add('text-red-600');
-                    } else if (windDirDegrees > 22.5 && windDirDegrees <= 67.5) { // NNE, NE (Offshore)
-                        windArrowEl.classList.remove('text-green-600', 'text-yellow-600', 'text-gray-900');
-                        windArrowEl.classList.add('text-red-600');
-                    } else if (windDirDegrees > 67.5 && windDirDegrees <= 112.5) { // ENE, E (Cross)
-                        windArrowEl.classList.remove('text-green-600', 'text-red-600', 'text-gray-900');
-                        windArrowEl.classList.add('text-yellow-600');
-                    } else if (windDirDegrees > 112.5 && windDirDegrees <= 247.5) { // ESE, SE, S, SO, OSO (Onshore)
-                        windArrowEl.classList.remove('text-red-600', 'text-yellow-600', 'text-gray-900');
-                        windArrowEl.classList.add('text-green-600');
-                    } else if (windDirDegrees > 247.5 && windDirDegrees <= 292.5) { // O, ONO (Cross)
-                        windArrowEl.classList.remove('text-green-600', 'text-red-600', 'text-gray-900');
-                        windArrowEl.classList.add('text-yellow-600');
-                    } else { // NO, NNO (Lógica Offshore modificada)
-                        windArrowEl.classList.remove('text-green-600', 'text-yellow-600', 'text-gray-900');
-                        windArrowEl.classList.add('text-red-600');
-                    }
+                    const isOffshore = (windDirDegrees > 292.5 || windDirDegrees <= 67.5);
+                    const isCross = (windDirDegrees > 67.5 && windDirDegrees <= 112.5) || (windDirDegrees > 247.5 && windDirDegrees <= 292.5);
+                    const isOnshore = !isOffshore && !isCross;
 
+                    windArrowEl.classList.remove('text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900');
+                    if (isOffshore) {
+                        windArrowEl.classList.add('text-red-600');
+                    } else if (isCross) {
+                        windArrowEl.classList.add('text-yellow-600');
+                    } else if (isOnshore) {
+                        windArrowEl.classList.add('text-green-600');
+                    } else {
+                         windArrowEl.classList.add('text-gray-900');
+                    }
                 } else if (windArrowEl) {
                     windArrowEl.classList.remove('text-red-600', 'text-green-600', 'text-yellow-600');
                     windArrowEl.classList.add('text-gray-900');
                 }
 
-
                 // Aplicar clase de color al card de viento PRINCIPAL (Neutral)
                 updateCardColors(windHighlightCard, getMainCardColorClasses(windSpeedValue));
-
                 // Aplicar clase de color a la SUB-TARJETA de velocidad (Lógica Windy)
                 updateCardColors(windSpeedSubCardEl, getWindyColorClasses(windSpeedValue));
-                
                 // Aplicar clase de color a la SUB-TARJETA de ráfaga (Lógica Windy)
                 updateCardColors(windGustSubCardEl, getWindyColorClasses(windGustValue));
-
 
                 // Actualizar UI del card de viento
                 highlightWindSpeedEl.textContent = windSpeed ? `${windSpeed.value} ${windSpeed.unit}` : 'N/A';
@@ -393,57 +414,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 rainfallDailyEl.textContent = rainfallDaily ? `${rainfallDaily.value} ${rainfallDaily.unit}` : 'N/A'; 
                 uviEl.textContent = uvi ? uvi.value : 'N/A'; 
                 
-                showSkeletons(false); // MEJORA UX: Ocultar skeletons
+                showSkeletons(false); // Ocultar skeletons
                 
-                lastUpdateTime = new Date(); // MEJORA UX: Registrar tiempo
-                updateTimeAgo(); // MEJORA UX: Actualizar "Time Ago"
-
-                // (Llamada a Gemini ELIMINADA de aquí)
+                lastUpdateTime = new Date(); // Registrar tiempo
+                updateTimeAgo(); // Actualizar "Time Ago"
 
             } else {
-                // Manejar errores de la API de Ecowitt que vienen en el JSON
                 throw new Error(json.msg || 'Formato de datos incorrecto de la fuente.');
             }
         } catch (error) {
             console.error('Error al obtener datos del clima:', error);
             
-            // MEJORA UX: Mostrar error en la tarjeta principal
             errorEl.textContent = `Error: No se pudieron cargar los datos. (${error.message})`;
             errorEl.classList.remove('hidden');
             
-            // Ocultar Skeletons aunque haya error
             showSkeletons(false);
             
-            // Resetear la UI a N/A
-            tempEl.textContent = 'N/A';
-            humidityEl.textContent = 'N/A';
-            pressureEl.textContent = 'N/A';
-            rainfallDailyEl.textContent = 'N/A';
-            uviEl.textContent = 'N/A';
-
-            highlightWindSpeedEl.textContent = 'N/A';
-            highlightGustEl.textContent = 'N/A';
-            highlightWindDirEl.textContent = 'N/A';
-            
-            // Resetear color de la tarjeta a gris (usando las funciones corregidas)
-            updateCardColors(windHighlightCard, getMainCardColorClasses(null));
-            
-            // Resetear color de la SUB-TARJETA a gris (usando las funciones corregidas)
-            updateCardColors(windSpeedSubCardEl, getWindyColorClasses(null));
-            updateCardColors(windGustSubCardEl, getWindyColorClasses(null));
-
-            // Resetear Veredicto (con error)
-            verdictDataEl.textContent = 'Error en API (Ecowitt)';
+            // Resetear UI a N/A y colores a Error
             updateCardColors(verdictCardEl, ['bg-red-400', 'border-red-600']);
-            verdictDataLoaderEl.style.display = 'none'; // Ocultar loader
-            verdictDataEl.style.display = 'block'; // Mostrar error
-
-            // Resetear flecha
-            if (windArrowEl) {
-                windArrowEl.classList.remove('text-red-600', 'text-green-600', 'text-yellow-600');
-                windArrowEl.classList.add('text-gray-900');
-                windArrowEl.style.transform = 'rotate(0deg)';
-            }
+            verdictDataEl.textContent = 'Error en API (Ecowitt)';
             
             if (lastUpdatedEl) lastUpdatedEl.textContent = "Error en la actualización.";
         }
@@ -453,11 +442,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Cargar datos del clima al iniciar
     fetchWeatherData();
-    // Cargar el veredicto del pronóstico (IA)
-    //fetchForecastVerdict();
+    // Cargar la nueva Ventana Optima al iniciar
+    fetchOptimalWindow();
 
     // Actualizar datos cada 30 segundos (30000ms)
     setInterval(fetchWeatherData, 30000);
+    // La Ventana Óptima se actualiza menos frecuente ya que es un PRONÓSTICO (cada 5 minutos)
+    setInterval(fetchOptimalWindow, 300000); // 5 minutos = 300,000 ms 
     
     // MEJORA UX: Actualizar el "Time Ago" cada 5 segundos
     setInterval(updateTimeAgo, 5000);
