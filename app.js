@@ -153,7 +153,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Aquí no puede haber colisión con IDEAL, ya que PELIGRO ya regresó.
         if (speed <= 14) {
             return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
-        } else if (speed <= 18) {
+        } else if (speed <= 16) { // NUEVO STATUS: ACEPTABLE (14.1kts a 16kts)
+            return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']]; // Usamos CYAN
+        } else if (speed <= 19) { // IDEAL ahora es de 16.1kts a 19kts
             return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
         } else if (speed <= 22) {
             return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
@@ -172,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const allColorClasses = [
         'bg-gray-100', 'border-gray-300',
         'bg-blue-200', 'border-blue-400',
+        'bg-cyan-300', 'border-cyan-500', // NUEVO: ACEPTABLE
         'bg-green-300', 'border-green-500',
         'bg-yellow-300', 'border-yellow-500',
         'bg-orange-300', 'border-orange-500',
@@ -198,10 +201,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNCIÓN: Obtener clases de color para SUB-TARJETA (Lógica Windy) ---
     function getWindyColorClasses(speedInKnots) {
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
+            // Aplicamos la misma lógica del veredicto para que los colores sean consistentes
             if (speedInKnots <= 10) {
                 return ['bg-blue-200', 'border-blue-400']; // Azul (Flojo)
             } else if (speedInKnots <= 16) {
-                return ['bg-green-300', 'border-green-500']; // Verde (Ideal/Medio)
+                return ['bg-cyan-300', 'border-cyan-500']; // Cian (Aceptable)
             } else if (speedInKnots <= 21) {
                 return ['bg-yellow-300', 'border-yellow-500']; // Amarillo (Bueno/Fuerte)
             } else if (speedInKnots <= 27) {
