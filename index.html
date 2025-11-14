@@ -15,23 +15,19 @@
 
     <div class="max-w-6xl mx-auto">
         
-        <!-- ENCABEZADO PRINCIPAL (LOGO APP Y TÍTULO) --><div class="flex flex-col items-center mb-8 mt-4 md:mt-8">
-            <!-- Fila 1: Logo 2 (La Bajada - Título Visual, COMPACTADO PARA MÓVIL) --><div class="w-full flex justify-center mb-2">
-                <a href="https://wa.me/#NUMERO_DE_TELEFONO_PRINCIPAL#?text=Hola%2C%20vi%20el%20reporte%20del%20viento%20en%20La%20Bajada%20y%20me%20gustaria%20contactarlos." target="blank">
-                    <img 
-                        src="logo2.png" 
-                        alt="Logo La Bajada" 
-                        class="h-24 md:h-48 w-auto" 
-                        onerror="this.style.display='none'">
-                </a>
-            </div>
-            <!-- Fila 2: Título del Spot (Actualizado con Imagen de PALMERA más apropiada) --><h2 class="text-2xl font-extrabold text-gray-900 mb-4 text-center flex items-center justify-center gap-2">
-                Claromeco Kitesurf Spot
-                <!-- IMAGEN DE PALMERA (TAMAÑO MÁS EQUILIBRADO: w-16 h-16) --><img 
-                    src="palmera.png" 
-                    alt="Palmera con viento" 
-                    class="w-16 h-16 ml-2" 
+        <!-- NUEVO ENCABEZADO PRINCIPAL (TEXTO "LA BAJADA" + LOGO PALMERA) --><div class="flex flex-col items-center mb-8 mt-4 md:mt-8">
+            <!-- Título Principal: "La Bajada" --><h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-2 text-center">
+                La Bajada
+            </h1>
+            <!-- Nuevo Logo de Palmera --><a href="https://wa.me/#NUMERO_DE_TELEFONO_PRINCIPAL#?text=Hola%2C%20vi%20el%20reporte%20del%20viento%20en%20La%20Bajada%20y%20me%20gustaria%20contactarlos." target="blank">
+                <img 
+                    src="logo_palmera.png" 
+                    alt="Logo Claromeco Kitesurf Spot" 
+                    class="h-32 md:h-48 w-auto mb-4" 
                     onerror="this.style.display='none'">
+            </a>
+            <!-- Subtítulo del Spot (MANTENEMOS ESTE TEXTO, AHORA ES UN SUBTÍTULO) --><h2 class="text-2xl font-extrabold text-gray-900 mb-4 text-center">
+                Claromeco Kitesurf Spot
             </h2>
         </div>
 
@@ -125,7 +121,7 @@
                 </li>
                 <!-- Humedad --><li class="flex justify-between items-center">
                     <span class="text-gray-600 text-sm flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048l-1.096 1.096A11.25 11.25 0 0012 21a11.25 11.25 0 006.058-20.957l-1.096 1.096z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048l-1.096 1.096A11.25 11.25 0 0012 21a11.25 11.25 0 006.058-20.957l-1.096 1.096z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75v12.75A3 3 0 0015 13.5a3 3 0 00-3-2.25z" /></svg>
                         Humedad:
                     </span>
                     <div id="humidity-data-loader" class="skeleton-loader skeleton-text-xl"></div>
