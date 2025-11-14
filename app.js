@@ -1,6 +1,3 @@
-//import { inject } from '@vercel/analytics';
- 
-//inject();
 document.addEventListener('DOMContentLoaded', () => {
         
     // --- Registro del Service Worker (PWA) ---
