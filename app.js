@@ -138,19 +138,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function getSpotVerdict(speed, gust, degrees) {
         // Esta función devuelve [texto, [claseFondo, claseBorde]]
         
-        // 1. Chequeo de Peligro (Offshore) - Lógica Corregida
-        if (degrees !== null) {
-            // Rango de Peligro (N, NNE, NE, ENE, NO, NNO, ONO)
-            if ((degrees > 292.5 || degrees <= 67.5)) { 
-                return ["¡PELIGRO! VIENTO OFFSHORE", ['bg-red-400', 'border-red-600']];
-            }
-        }
-        
-        // 2. Chequeo de Viento (basado en 'speed')
-        if (speed === null) {
+        // 1. MANEJO DE DATOS INCOMPLETOS
+        if (degrees === null || speed === null) {
             return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
         }
-        // 3. Chequeo de Viento Navegable
+
+        // 2. SEGURIDAD MÁXIMA: Chequeo de Peligro (Offshore) - PRIORIDAD
+        // Rango de Peligro (N, NNE, NE, ENE, NO, NNO, ONO)
+        if (degrees > 292.5 || degrees <= 67.5) { 
+            return ["¡PELIGRO! VIENTO OFFSHORE", ['bg-red-400', 'border-red-600']];
+        }
+        
+        // 3. Chequeo de Viento (Potencia) - Se ejecuta solo si es ON/Cross-shore
+        // Aquí no puede haber colisión con IDEAL, ya que PELIGRO ya regresó.
         if (speed <= 14) {
             return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
         } else if (speed <= 18) {
@@ -242,6 +242,17 @@ document.addEventListener('DOMContentLoaded', () => {
             throw error; // Lanzar el error final
         }
     }
+
+    // --- Funciones de Ayuda de Windy (Ya no son necesarias, pero se mantienen por si acaso) ---
+    function convertUVtoKnots(u, v) {
+        // (m/s * 1.94384) = knots
+        return Math.sqrt(u * u + v * v) * 1.94384;
+    }
+    function convertUVtoDegrees(u, v) {
+        // Dirección meteorológica (de dónde viene el viento)
+        let degrees = (Math.atan2(u, v) * (180 / Math.PI)) + 180;
+        return (degrees + 360) % 360; // Asegurar 0-360
+    }
     
     // --- FUNCIÓN: OBTENER DATOS DEL CLIMA (ECOWITT) ---
     async function fetchWeatherData() {
@@ -295,6 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 // --- (LÓGICA DE VEREDICTO SIMPLE) ---
+                // Usa la función reestructurada para garantizar la prioridad de seguridad
                 const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
                 
                 // 1. Asignar el color de la tarjeta de veredicto
