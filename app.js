@@ -69,24 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadWindguruWidget() {
         if (isWindguruLoaded) return;
 
-        // Script de Windguru original (Ahora ejecutado bajo demanda)
-        (function (window, document) {
-            const loader = function () {
-                const arg = ["s=1312667" ,"m=29","uid=wg_fwdg_1312667_29_1762638808878" ,"wj=knots" ,"tj=c" ,"waj=m" ,"tij=cm" ,"odh=0" ,"doh=24" ,"fhours=240" ,"hrsm=2" ,"vt=forecasts" ,"lng=es" ,"ts=1" ,"p=WINDSPD,GUST,MWINDSPD,SMER,TMPE,FLHGT,CDC,APCP1s,RATING"];
-                const script = document.createElement("script");
-                const tag = document.getElementById("windguru-loader-placeholder"); // Usamos el ID del contenedor
-                script.src = "https://www.windguru.cz/js/widget.php?"+(arg.join("&"));
-                
-                // Limpiamos el mensaje de cargando y adjuntamos el script
-                if (tag) {
-                    tag.innerHTML = '';
-                    tag.appendChild(script);
-                } else {
-                    console.error("No se encontró el placeholder de Windguru.");
-                }
-            };
-            window.addEventListener ? window.addEventListener("load", loader, false) : window.attachEvent("onload", loader);
-        })(window, document);
+        // EJECUCIÓN INSTANTÁNEA: El código del loader de Windguru se ejecuta directamente aquí.
+        const arg = ["s=1312667" ,"m=29","uid=wg_fwdg_1312667_29_1762638808878" ,"wj=knots" ,"tj=c" ,"waj=m" ,"tij=cm" ,"odh=0" ,"doh=24" ,"fhours=240" ,"hrsm=2" ,"vt=forecasts" ,"lng=es" ,"ts=1" ,"p=WINDSPD,GUST,MWINDSPD,SMER,TMPE,FLHGT,CDC,APCP1s,RATING"];
+        const script = document.createElement("script");
+        const tag = document.getElementById("windguru-loader-placeholder"); // Usamos el ID del contenedor
+        script.src = "https://www.windguru.cz/js/widget.php?"+(arg.join("&"));
+        
+        if (tag) {
+            tag.innerHTML = '';
+            tag.appendChild(script);
+        } else {
+            console.error("No se encontró el placeholder de Windguru.");
+        }
         
         isWindguruLoaded = true;
     }
@@ -269,17 +263,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Funciones de Ayuda de Windy (No esenciales) ---
     function convertUVtoKnots(u, v) {
+        // (m/s * 1.94384) = knots
         return Math.sqrt(u * u + v * v) * 1.94384;
     }
     function convertUVtoDegrees(u, v) {
+        // Dirección meteorológica (de dónde viene el viento)
         let degrees = (Math.atan2(u, v) * (180 / Math.PI)) + 180;
-        return (degrees + 360) % 360;
+        return (degrees + 360) % 360; // Asegurar 0-360
     }
     
     // --- FUNCIÓN: OBTENER DATOS DEL CLIMA (ECOWITT) ---
     async function fetchWeatherData() {
-        showSkeletons(true);
-        errorEl.classList.add('hidden');
+        showSkeletons(true); // MEJORA UX: Mostrar skeletons
+        errorEl.classList.add('hidden'); // Ocultar error antiguo
 
         let windSpeedValue = null; 
         let windGustValue = null; 
@@ -292,6 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (json.code === 0 && json.data) {
                 const data = json.data;
                 
+                // Extracción de datos
                 const outdoor = data.outdoor || {};
                 const wind = data.wind || {};
                 const pressure = data.pressure || {};
@@ -328,13 +325,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 // --- (LÓGICA DE VEREDICTO SIMPLE) ---
                 const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
                 
+                // 1. Asignar el color de la tarjeta de veredicto
                 updateCardColors(verdictCardEl, verdictColors);
+                // 2. Asignar el texto de veredicto
                 verdictDataEl.textContent = verdictText;
                 
                 // MEJORA UX: Aplicar rotación Y COLOR (Red/Yellow/Green) a la flecha
                 if (windArrowEl && windDirDegrees !== null) {
                     windArrowEl.style.transform = `rotate(${windDirDegrees}deg)`;
                     
+                    // Lógica de color de flecha MEJORADA
                     const isOffshore = (windDirDegrees > 292.5 || windDirDegrees <= 67.5);
                     const isCross = (windDirDegrees > 67.5 && windDirDegrees <= 112.5) || (windDirDegrees > 247.5 && windDirDegrees <= 292.5);
                     const isOnshore = !isOffshore && !isCross;
@@ -354,23 +354,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     windArrowEl.classList.add('text-gray-900');
                 }
 
+                // Aplicar clase de color al card de viento PRINCIPAL (Neutral)
                 updateCardColors(windHighlightCard, getMainCardColorClasses(windSpeedValue));
+                // Aplicar clase de color a la SUB-TARJETA de velocidad (Lógica Windy)
                 updateCardColors(windSpeedSubCardEl, getWindyColorClasses(windSpeedValue));
+                // Aplicar clase de color a la SUB-TARJETA de ráfaga (Lógica Windy)
                 updateCardColors(windGustSubCardEl, getWindyColorClasses(windGustValue));
 
+                // Actualizar UI del card de viento
                 highlightWindSpeedEl.textContent = windSpeed ? `${windSpeed.value} ${windSpeed.unit}` : 'N/A';
                 highlightGustEl.textContent = windGust ? `${windGust.value} ${windGust.unit}` : 'N/A';
                 highlightWindDirEl.textContent = windDirCardinal; 
 
+                // Actualizar UI de datos generales
                 tempEl.textContent = temp ? `${temp.value} ${temp.unit}` : 'N/A';
                 humidityEl.textContent = humidity ? `${humidity.value} ${humidity.unit}` : 'N/A';
                 pressureEl.textContent = pressureRel ? `${pressureRel.value} ${pressureRel.unit}` : 'N/A'; 
                 rainfallDailyEl.textContent = rainfallDaily ? `${rainfallDaily.value} ${rainfallDaily.unit}` : 'N/A'; 
                 uviEl.textContent = uvi ? uvi.value : 'N/A'; 
                 
-                showSkeletons(false);
-                lastUpdateTime = new Date();
-                updateTimeAgo();
+                showSkeletons(false); // Ocultar skeletons
+                
+                lastUpdateTime = new Date(); // Registrar tiempo
+                updateTimeAgo(); // Actualizar "Time Ago"
 
             } else {
                 throw new Error(json.msg || 'Formato de datos incorrecto de la fuente.');
@@ -383,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             showSkeletons(false);
             
+            // Resetear UI a N/A y colores a Error
             updateCardColors(verdictCardEl, ['bg-red-400', 'border-red-600']);
             verdictDataEl.textContent = 'Error en API (Ecowitt)';
             
