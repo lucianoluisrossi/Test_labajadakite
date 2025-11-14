@@ -1,5 +1,8 @@
 // app.js
 
+// NOTA: Las líneas de import/inject de Vercel Analytics están eliminadas de aquí
+// para evitar el error de sintaxis del navegador. Se inyectan via CDN en index.html.
+
 document.addEventListener('DOMContentLoaded', () => {
     
     // --- Registro del Service Worker (PWA) ---
@@ -17,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- URLs de las Funciones Serverless (Proxy) ---
     const weatherApiUrl = 'api/data';
-    // const windyApiUrl = 'api/windy'; // Ya no se usa para el pronóstico de la ventana
+    const windyApiUrl = 'api/windy'; // Usaremos esta para la Ventana Optima
 
     // --- ELEMENTOS DEL DOM (Datos Generales) ---
     const tempEl = document.getElementById('temp-data');
@@ -42,24 +45,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const verdictDataEl = document.getElementById('verdict-data');
     const verdictDataLoaderEl = document.getElementById('verdict-data-loader');
 
-    // --- ELEMENTOS DEL DOM (ESTABILIDAD - NUEVOS) ---
-    const stabilityCardEl = document.getElementById('stability-card');
-    const stabilityDataEl = document.getElementById('stability-data');
+    // --- ELEMENTOS DEL DOM (Ventana Optima) ---
+    const optimalWindowLoader = document.getElementById('optimal-window-loader');
+    const optimalWindowContainer = document.getElementById('optimal-window-container');
+    const optimalWindowError = document.getElementById('optimal-window-error');
     
+
     // --- MEJORA UX: IDs de todos los Skeletons y Contenidos ---
     const skeletonLoaderIds = [
         'verdict-data-loader',
         'highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader',
         'temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 
-        'rainfall-daily-data-loader', 'uvi-data-loader',
-        'stability-data-loader' // NUEVO
+        'rainfall-daily-data-loader', 'uvi-data-loader'
     ];
     const dataContentIds = [
         'verdict-data',
         'highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data',
         'temp-data', 'humidity-data', 'pressure-data',
-        'rainfall-daily-data', 'uvi-data',
-        'stability-data' // NUEVO
+        'rainfall-daily-data', 'uvi-data'
     ];
 
     // --- MEJORA UX: Variable para "Time Ago" ---
@@ -103,29 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const val = Math.floor((degrees / 22.5) + 0.5);
         const arr = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO"];
         return arr[val % 16];
-    }
-
-    // --- FUNCIÓN: CALCULAR ÍNDICE DE ESTABILIDAD (Gust Factor) ---
-    function calculateGustFactor(speed, gust) {
-        if (speed === null || gust === null || speed <= 0) {
-            return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
-        }
-        
-        // Si la ráfaga es igual o menor a la velocidad promedio, es un viento MUY estable.
-        if (gust <= speed) {
-             return { factor: 100, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
-        }
-
-        // El factor se calcula como (Velocidad Promedio / Racha) * 100
-        const factor = (speed / gust) * 100; 
-
-        if (factor >= 85) {
-            return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; // ¡Excelente para navegar!
-        } else if (factor >= 70) {
-            return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] }; // Cuidado al relanzar.
-        } else {
-            return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; // Peligroso, requiere habilidad.
-        }
     }
     
     // --- FUNCIÓN DE VEREDICTO (Lógica de Seguridad de Viento y Potencia) ---
@@ -172,9 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'bg-red-400', 'border-red-600',
         'bg-purple-400', 'border-purple-600',
         // Clases de flecha
-        'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
-        // Clases extra para estabilidad
-        'bg-green-400', 'border-green-600'
+        'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900'
     ];
 
     // --- FUNCIÓN DE UTILIDAD: Para actualizar colores de tarjetas ---
@@ -237,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Funciones de Ayuda de Windy (Ya no son necesarias, pero se mantienen por si acaso) ---
+    // --- Funciones de Ayuda de Windy (Convertir vectores U/V a Knots/Degrees) ---
     function convertUVtoKnots(u, v) {
         // (m/s * 1.94384) = knots
         return Math.sqrt(u * u + v * v) * 1.94384;
@@ -248,8 +226,105 @@ document.addEventListener('DOMContentLoaded', () => {
         return (degrees + 360) % 360; // Asegurar 0-360
     }
     
+    // --- NUEVA FUNCIÓN: RENDERIZAR LA VENTANA ÓPTIMA ---
+    function renderOptimalWindow(forecastData) {
+        if (!forecastData || !forecastData['wind_u-surface']) {
+            optimalWindowError.textContent = "Datos de pronóstico incompletos.";
+            optimalWindowError.classList.remove('hidden');
+            return;
+        }
+
+        const u = forecastData['wind_u-surface'];
+        const v = forecastData['wind_v-surface'];
+        const times = forecastData.times; // Array de timestamps (en minutos desde 1970)
+
+        const hoursToDisplay = 8;
+        let html = '';
+
+        // El pronóstico de Windy trae un punto de datos cada 3 horas (usaremos 8 puntos = 24h)
+        for (let i = 0; i < hoursToDisplay; i++) {
+            if (i >= u.length) break; // Parar si no hay más datos
+
+            const speedKnots = convertUVtoKnots(u[i], v[i]);
+            const directionDegrees = convertUVtoDegrees(u[i], v[i]);
+            const cardinal = convertDegreesToCardinal(directionDegrees);
+
+            // Determinar color de fondo y borde según la lógica de fuerza de viento
+            const [verdictText, verdictClasses] = getSpotVerdict(speedKnots, null, directionDegrees);
+            
+            // Extraer solo la clase de fondo (bg-...) y la clase de borde (border-...)
+            const bgClass = verdictClasses.find(c => c.startsWith('bg-'));
+            const borderClass = verdictClasses.find(c => c.startsWith('border-'));
+
+            // Convertir el timestamp (minutos desde 1970) a un objeto Date
+            const date = new Date(times[i] * 1000); // Convertir a milisegundos
+            const hour = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+
+            html += `
+                <div class="p-2 ${bgClass} ${borderClass} rounded-lg flex flex-col justify-between text-center shadow-md border">
+                    <p class="text-xs font-bold text-gray-900">${hour}:${minutes}</p>
+                    <p class="text-lg font-extrabold text-gray-900">${Math.round(speedKnots)} kts</p>
+                    <p class="text-xs text-gray-700">${cardinal}</p>
+                </div>
+            `;
+        }
+
+        optimalWindowContainer.innerHTML = html;
+        optimalWindowContainer.classList.remove('data-content');
+    }
+
+
+    // --- NUEVA FUNCIÓN: OBTENER PRONÓSTICO PARA VENTANA ÓPTIMA (WINDY) ---
+    async function fetchOptimalWindow() {
+        optimalWindowLoader.style.display = 'flex';
+        optimalWindowContainer.classList.add('data-content');
+        optimalWindowError.classList.add('hidden');
+
+        try {
+            // Coordenadas de Claromecó (hardcodeadas aquí para la función)
+            const LAT = -38.860571; 
+            const LON = -60.079501;
+            
+            const windyPayload = {
+                lat: LAT,
+                lon: LON,
+                model: "gfs", // Un buen modelo global
+                // Pedimos viento (u-v vectors) y el array de tiempos
+                parameters: ["wind"], 
+                levels: ["surface"],
+                // Solicitamos 8 pasos de pronóstico, que por defecto son 3 horas cada uno (24h)
+                hours: 8 
+            };
+            
+            const windyData = await fetchWithBackoff(windyApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(windyPayload)
+            });
+
+            // Procesar y renderizar los datos
+            renderOptimalWindow(windyData);
+
+        } catch (error) {
+            console.error('Error al obtener el pronóstico de la ventana:', error);
+            optimalWindowError.textContent = `Error: ${error.message}`;
+            optimalWindowError.classList.remove('hidden');
+
+        } finally {
+            optimalWindowLoader.style.display = 'none';
+        }
+    }
+    
     // --- FUNCIÓN: OBTENER DATOS DEL CLIMA (ECOWITT) ---
     async function fetchWeatherData() {
+        // ... (El resto de tu función fetchWeatherData permanece igual) ...
+        // ... (Se ha omitido aquí por brevedad, pero debe estar completo en tu app.js) ...
+        
+        // --- FUNCIÓN: OBTENER DATOS DEL CLIMA (ECOWITT) ---
+        // Pegar el contenido completo de tu fetchWeatherData() AQUÍ
+        // ... (Tu código de fetchWeatherData) ...
+        
         showSkeletons(true); // MEJORA UX: Mostrar skeletons
         errorEl.classList.add('hidden'); // Ocultar error antiguo
 
@@ -287,14 +362,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 windDirDegrees = (windDir && windDir.value !== null) ? parseFloat(windDir.value) : null;
                 tempValue = (temp && temp.value !== null) ? parseFloat(temp.value) : null;
                 const windDirCardinal = windDirDegrees !== null ? convertDegreesToCardinal(windDirDegrees) : 'N/A';
-                
-                // --- CALCULAR ESTABILIDAD (Gust Factor) ---
-                const stability = calculateGustFactor(windSpeedValue, windGustValue);
-
-                if (stabilityCardEl) {
-                    updateCardColors(stabilityCardEl, stability.color);
-                    stabilityDataEl.textContent = stability.factor !== null ? `${Math.round(stability.factor)}% - ${stability.text}` : 'N/A';
-                }
                 
                 // --- (LÓGICA DE VEREDICTO SIMPLE) ---
                 const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
@@ -375,11 +442,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Cargar datos del clima al iniciar
     fetchWeatherData();
-    // Ya no se llama a fetchOptimalWindow()
+    // Cargar la nueva Ventana Optima al iniciar
+    fetchOptimalWindow();
 
     // Actualizar datos cada 30 segundos (30000ms)
     setInterval(fetchWeatherData, 30000);
-    // Ya no se llama a fetchOptimalWindow en el intervalo
+    // La Ventana Óptima se actualiza menos frecuente ya que es un PRONÓSTICO (cada 5 minutos)
+    setInterval(fetchOptimalWindow, 300000); // 5 minutos = 300,000 ms 
     
     // MEJORA UX: Actualizar el "Time Ago" cada 5 segundos
     setInterval(updateTimeAgo, 5000);

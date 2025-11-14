@@ -90,11 +90,13 @@
                 </div>
             </div>
             
-            <!-- INICIO: Tarjeta de Estabilidad (NUEVA FUNCIÓN) -->
+            <!-- INICIO: Tarjeta de Estabilidad (NUEVA FUNCIÓN - RELEVANCIA REDUCIDA) -->
             <div id="stability-card" class="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-300 transition-colors duration-300 text-center">
                 <p class="text-gray-600 text-xs font-medium">Índice de Estabilidad (Racheo)</p>
-                <div id="stability-data-loader" class="skeleton-loader skeleton-text-3xl mx-auto mt-1" style="width: 50%;"></div>
-                <p class="text-3xl font-extrabold text-gray-900 data-content" id="stability-data">N/A</p>
+                <!-- Loader usa skeleton-text-xl (más pequeño) -->
+                <div id="stability-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 50%;"></div>
+                <!-- Dato usa text-xl (menos prominente) -->
+                <p class="text-xl font-extrabold text-gray-900 data-content" id="stability-data">N/A</p>
             </div>
             <!-- FIN: Tarjeta de Estabilidad -->
 
