@@ -1,0 +1,12 @@
+{
+  "name": "la-bajada-app",
+  "version": "1.0.0",
+  "description": "App del spot de kite La Bajada",
+  "scripts": {
+    "build": "tailwindcss -i ./src/input.css -o ./style.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "@vercel/analytics": "^1.3.1"
+  }
+}
