@@ -108,13 +108,13 @@
         <!-- Fin Sección de Viento Resaltado -->
         
         <!-- INICIO: TARJETA DE PRONÓSTICO WINDGURU (Desplegable con Lazy Loading) -->
-        <div class="bg-gray-100 p-6 rounded-xl shadow-2xl flex flex-col mt-6 lg:mt-8 border border-gray-300">
+        <div class="bg-gray-100 p-6 rounded-xl shadow-2xl flex flex-col mt-6 lg:mt-8 border border-gray-300 overflow-x-auto">
             
             <!-- Etiqueta DETAILS para el Acordeón -->
             <details id="windguru-details">
-                <summary class="text-xl font-extrabold text-gray-900 flex items-center justify-between">
+                <summary class="text-xl font-extrabold text-gray-900 flex items-center justify-between cursor-pointer">
                     Pronóstico Windguru
-                    <!-- Flecha indicadora de desplegable (usando SVG de Lucide) -->
+                    <!-- Flecha indicadora de desplegable (usando SVG) -->
                     <svg class="w-5 h-5 transition-transform duration-300 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
@@ -122,10 +122,11 @@
                 
                 <!-- Contenido del Pronóstico (se inyectará aquí) -->
                 <div id="windguru-loader-placeholder" class="mt-4 pt-4 border-t border-gray-300 overflow-x-auto text-center">
+                    <!-- El script se inyectará aquí -->
                     <p class="text-gray-500 italic">Cargando pronóstico...</p>
                 </div>
 
-                <!-- NOTA: El script del widget DEBE SER CREADO POR JS, no está aquí -->
+                <!-- NOTA: El script del widget NO está aquí para permitir la carga diferida -->
             </details>
         
         </div>
