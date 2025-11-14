@@ -15,7 +15,7 @@
 
     <div class="max-w-6xl mx-auto">
         
-        <!-- NUEVO ENCABEZADO PRINCIPAL (DOBLE LOGO COMPACTO Y AMPLIADO) --><div class="flex flex-col items-center mb-8 mt-4 md:mt-8">
+        <!-- ENCABEZADO PRINCIPAL (DOBLE LOGO COMPACTO Y AMPLIADO) --><div class="flex flex-col items-center mb-8 mt-4 md:mt-8">
             
             <!-- Contenedor Flex para los dos logos centrados (Doble Logo) -->
             <a href="https://wa.me/#NUMERO_DE_TELEFONO_PRINCIPAL#?text=Hola%2C%20vi%20el%20reporte%20del%20viento%20en%20La%20Bajada%20y%20me%20gustaria%20contactarlos." 
@@ -37,23 +37,28 @@
                     onerror="this.style.display='none'">
             </a>
             
-            <!-- Título principal "La Bajada" (ELIMINADO) -->
         </div>
 
         
-        <!-- Video (LiveCam) --><div class="bg-gray-100 rounded-xl shadow-2xl overflow-hidden mb-6 lg:mb-8 border border-gray-300">
-            <iframe 
-                class="w-full aspect-video" 
-                src="https://www.youtube.com/embed/QWo36gCzZEo?si=hftjioeg4y-dP4FT&autoplay=1&mute=1" 
-                title="YouTube video player" 
-                frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                referrerpolicy="strict-origin-when-cross-origin" 
-                allowfullscreen>
-            </iframe>
-        </div>
+        <!-- Sección de DATOS EN VIVO (LiveCam + Viento) - UNIFIED CARD -->
+        <div id="real-time-data-container" class="mt-6 lg:mt-8 p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
+            
+            <h2 class="text-2xl font-extrabold text-gray-900 mb-6 text-center border-b pb-3 border-gray-300">
+                DATOS EN VIVO DEL SPOT
+            </h2>
 
-        <!-- Sección de Viento Resaltado (DATOS EN TIEMPO REAL) --><div id="wind-highlight-card" class="mt-6 lg:mt-8 p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
+            <!-- LiveCam (ahora dentro del contenedor principal de datos) -->
+            <div class="overflow-hidden mb-8">
+                <iframe 
+                    class="w-full aspect-video rounded-lg shadow-lg" 
+                    src="https://www.youtube.com/embed/QWo36gCzZEo?si=hftjioeg4y-dP4FT&autoplay=1&mute=1" 
+                    title="YouTube video player" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    referrerpolicy="strict-origin-when-cross-origin" 
+                    allowfullscreen>
+                </iframe>
+            </div>
             
             <!-- Veredicto / Status del Spot (Lógica simple) --><div id="verdict-card" class="mb-4 p-3 rounded-lg border border-gray-300 transition-colors duration-300">
                 <p class="text-gray-600 text-xs font-medium text-center">Status del Spot</p>
@@ -95,7 +100,7 @@
                 Error al cargar los datos del clima.
             </div>
         </div>
-        <!-- Fin Sección de Viento Resaltado --><!-- INICIO: TARJETA DE PRONÓSTICO WINDGURU (ESTÁTICO) --><div class="bg-gray-100 p-6 rounded-xl shadow-2xl flex flex-col mt-6 lg:mt-8 border border-gray-300 overflow-x-auto">
+        <!-- Fin Sección de DATOS EN VIVO (LiveCam + Viento) --><!-- INICIO: TARJETA DE PRONÓSTICO WINDGURU (ESTÁTICO) --><div class="bg-gray-100 p-6 rounded-xl shadow-2xl flex flex-col mt-6 lg:mt-8 border border-gray-300 overflow-x-auto">
             
             <h3 class="text-xl font-extrabold text-gray-900 mb-4">
                 Pronóstico Windguru
