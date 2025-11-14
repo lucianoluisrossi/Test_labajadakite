@@ -46,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const stabilityDataEl = document.getElementById('stability-data');
     
     // --- MEJORA UX: IDs de todos los Skeletons y Contenidos ---
-    // Incluye estabilidad aquí para que se muestre/oculte correctamente
     const skeletonLoaderIds = [
         'verdict-data-loader',
         'highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader',
@@ -62,8 +61,35 @@ document.addEventListener('DOMContentLoaded', () => {
         'stability-data' // NUEVO
     ];
 
-    // --- MEJORA UX: Variable para "Time Ago" ---
+    // --- ESTADO GLOBAL ---
     let lastUpdateTime = null;
+    let isWindguruLoaded = false; // Bandera para Lazy Loading
+
+    // --- FUNCIÓN: CARGA DIFERIDA DE WINDGURU ---
+    function loadWindguruWidget() {
+        if (isWindguruLoaded) return;
+
+        // Script de Windguru original (Ahora ejecutado bajo demanda)
+        (function (window, document) {
+            const loader = function () {
+                const arg = ["s=1312667" ,"m=29","uid=wg_fwdg_1312667_29_1762638808878" ,"wj=knots" ,"tj=c" ,"waj=m" ,"tij=cm" ,"odh=0" ,"doh=24" ,"fhours=240" ,"hrsm=2" ,"vt=forecasts" ,"lng=es" ,"ts=1" ,"p=WINDSPD,GUST,MWINDSPD,SMER,TMPE,FLHGT,CDC,APCP1s,RATING"];
+                const script = document.createElement("script");
+                const tag = document.getElementById("windguru-loader-placeholder"); // Usamos el ID del contenedor
+                script.src = "https://www.windguru.cz/js/widget.php?"+(arg.join("&"));
+                
+                // Limpiamos el mensaje de cargando y adjuntamos el script
+                if (tag) {
+                    tag.innerHTML = '';
+                    tag.appendChild(script);
+                } else {
+                    console.error("No se encontró el placeholder de Windguru.");
+                }
+            };
+            window.addEventListener ? window.addEventListener("load", loader, false) : window.attachEvent("onload", loader);
+        })(window, document);
+        
+        isWindguruLoaded = true;
+    }
 
     // --- MEJORA UX: Función para mostrar/ocultar Skeletons ---
     function showSkeletons(isLoading) {
@@ -111,57 +137,52 @@ document.addEventListener('DOMContentLoaded', () => {
             return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
         }
         
-        // REGLA: Si la velocidad es menor a 12 nudos, no aplica el índice de estabilidad. (Regla del Kitesurfista)
         const MIN_KITE_WIND = 12; 
         if (speed < MIN_KITE_WIND) {
              return { factor: null, text: 'Viento Insuficiente', color: ['bg-gray-100', 'border-gray-300'] };
         }
 
-        // Si la ráfaga es igual o menor a la velocidad promedio, es un viento MUY estable.
         if (gust <= speed) {
              return { factor: 100, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
         }
 
-        // El factor se calcula como (Velocidad Promedio / Racha) * 100
         const factor = (speed / gust) * 100; 
 
         if (factor >= 85) {
-            return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; // ¡Excelente para navegar!
+            return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] };
         } else if (factor >= 70) {
-            return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] }; // Cuidado al relanzar.
+            return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] };
         } else {
-            return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; // Peligroso, requiere habilidad.
+            return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] };
         }
     }
     
     // --- FUNCIÓN DE VEREDICTO (Lógica de Seguridad de Viento y Potencia) ---
     function getSpotVerdict(speed, gust, degrees) {
-        // Esta función devuelve [texto, [claseFondo, claseBorde]]
         
-        // 1. MANEJO DE DATOS INCOMPLETOS
-        if (degrees === null || speed === null) {
+        // 1. Chequeo de Peligro (Offshore) - PRIORIDAD
+        if (degrees !== null) {
+            if ((degrees > 292.5 || degrees <= 67.5)) { 
+                return ["¡PELIGRO! VIENTO OFFSHORE", ['bg-red-400', 'border-red-600']];
+            }
+        }
+        
+        // 2. Chequeo de Viento (basado en 'speed')
+        if (speed === null) {
             return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
         }
-
-        // 2. SEGURIDAD MÁXIMA: Chequeo de Peligro (Offshore) - PRIORIDAD
-        // Rango de Peligro (N, NNE, NE, ENE, NO, NNO, ONO)
-        if (degrees > 292.5 || degrees <= 67.5) { 
-            return ["¡PELIGRO! VIENTO OFFSHORE", ['bg-red-400', 'border-red-600']];
-        }
-        
-        // 3. Chequeo de Viento (Potencia) - Se ejecuta solo si es ON/Cross-shore
-        // Aquí no puede haber colisión con IDEAL, ya que PELIGRO ya regresó.
+        // 3. Chequeo de Viento Navegable
         if (speed <= 14) {
             return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
-        } else if (speed <= 16) { // NUEVO STATUS: ACEPTABLE (14.1kts a 16kts)
-            return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']]; // Usamos CYAN
-        } else if (speed <= 19) { // IDEAL ahora es de 16.1kts a 19kts
+        } else if (speed <= 16) {
+            return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
+        } else if (speed <= 19) {
             return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
         } else if (speed <= 22) {
             return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
         } else if (speed <= 27) {
             return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
-        } else { // > 27
+        } else {
             if (speed > 33) {
                 return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
             } else {
@@ -174,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const allColorClasses = [
         'bg-gray-100', 'border-gray-300',
         'bg-blue-200', 'border-blue-400',
-        'bg-cyan-300', 'border-cyan-500', // NUEVO: ACEPTABLE
+        'bg-cyan-300', 'border-cyan-500', // ACEPTABLE
         'bg-green-300', 'border-green-500',
         'bg-yellow-300', 'border-yellow-500',
         'bg-orange-300', 'border-orange-500',
@@ -201,7 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNCIÓN: Obtener clases de color para SUB-TARJETA (Lógica Windy) ---
     function getWindyColorClasses(speedInKnots) {
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
-            // Aplicamos la misma lógica del veredicto para que los colores sean consistentes
             if (speedInKnots <= 10) {
                 return ['bg-blue-200', 'border-blue-400']; // Azul (Flojo)
             } else if (speedInKnots <= 16) {
@@ -247,21 +267,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Funciones de Ayuda de Windy (Ya no son necesarias, pero se mantienen por si acaso) ---
+    // --- Funciones de Ayuda de Windy (No esenciales) ---
     function convertUVtoKnots(u, v) {
-        // (m/s * 1.94384) = knots
         return Math.sqrt(u * u + v * v) * 1.94384;
     }
     function convertUVtoDegrees(u, v) {
-        // Dirección meteorológica (de dónde viene el viento)
         let degrees = (Math.atan2(u, v) * (180 / Math.PI)) + 180;
-        return (degrees + 360) % 360; // Asegurar 0-360
+        return (degrees + 360) % 360;
     }
     
     // --- FUNCIÓN: OBTENER DATOS DEL CLIMA (ECOWITT) ---
     async function fetchWeatherData() {
-        showSkeletons(true); // MEJORA UX: Mostrar skeletons
-        errorEl.classList.add('hidden'); // Ocultar error antiguo
+        showSkeletons(true);
+        errorEl.classList.add('hidden');
 
         let windSpeedValue = null; 
         let windGustValue = null; 
@@ -274,7 +292,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (json.code === 0 && json.data) {
                 const data = json.data;
                 
-                // Extracción de datos
                 const outdoor = data.outdoor || {};
                 const wind = data.wind || {};
                 const pressure = data.pressure || {};
@@ -303,26 +320,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (stabilityCardEl) {
                     updateCardColors(stabilityCardEl, stability.color);
-                    // Mostrar N/A o el factor %
                     stabilityDataEl.textContent = stability.factor !== null 
                         ? `${Math.round(stability.factor)}% - ${stability.text}` 
-                        : stability.text; // Muestra "< 12kts (No Aplica)"
+                        : stability.text;
                 }
                 
                 // --- (LÓGICA DE VEREDICTO SIMPLE) ---
-                // Usa la función reestructurada para garantizar la prioridad de seguridad
                 const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
                 
-                // 1. Asignar el color de la tarjeta de veredicto
                 updateCardColors(verdictCardEl, verdictColors);
-                // 2. Asignar el texto de veredicto
                 verdictDataEl.textContent = verdictText;
                 
                 // MEJORA UX: Aplicar rotación Y COLOR (Red/Yellow/Green) a la flecha
                 if (windArrowEl && windDirDegrees !== null) {
                     windArrowEl.style.transform = `rotate(${windDirDegrees}deg)`;
                     
-                    // Lógica de color de flecha MEJORADA
                     const isOffshore = (windDirDegrees > 292.5 || windDirDegrees <= 67.5);
                     const isCross = (windDirDegrees > 67.5 && windDirDegrees <= 112.5) || (windDirDegrees > 247.5 && windDirDegrees <= 292.5);
                     const isOnshore = !isOffshore && !isCross;
@@ -342,29 +354,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     windArrowEl.classList.add('text-gray-900');
                 }
 
-                // Aplicar clase de color al card de viento PRINCIPAL (Neutral)
                 updateCardColors(windHighlightCard, getMainCardColorClasses(windSpeedValue));
-                // Aplicar clase de color a la SUB-TARJETA de velocidad (Lógica Windy)
                 updateCardColors(windSpeedSubCardEl, getWindyColorClasses(windSpeedValue));
-                // Aplicar clase de color a la SUB-TARJETA de ráfaga (Lógica Windy)
                 updateCardColors(windGustSubCardEl, getWindyColorClasses(windGustValue));
 
-                // Actualizar UI del card de viento
                 highlightWindSpeedEl.textContent = windSpeed ? `${windSpeed.value} ${windSpeed.unit}` : 'N/A';
                 highlightGustEl.textContent = windGust ? `${windGust.value} ${windGust.unit}` : 'N/A';
                 highlightWindDirEl.textContent = windDirCardinal; 
 
-                // Actualizar UI de datos generales
                 tempEl.textContent = temp ? `${temp.value} ${temp.unit}` : 'N/A';
                 humidityEl.textContent = humidity ? `${humidity.value} ${humidity.unit}` : 'N/A';
                 pressureEl.textContent = pressureRel ? `${pressureRel.value} ${pressureRel.unit}` : 'N/A'; 
                 rainfallDailyEl.textContent = rainfallDaily ? `${rainfallDaily.value} ${rainfallDaily.unit}` : 'N/A'; 
                 uviEl.textContent = uvi ? uvi.value : 'N/A'; 
                 
-                showSkeletons(false); // Ocultar skeletons
-                
-                lastUpdateTime = new Date(); // Registrar tiempo
-                updateTimeAgo(); // Actualizar "Time Ago"
+                showSkeletons(false);
+                lastUpdateTime = new Date();
+                updateTimeAgo();
 
             } else {
                 throw new Error(json.msg || 'Formato de datos incorrecto de la fuente.');
@@ -377,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             showSkeletons(false);
             
-            // Resetear UI a N/A y colores a Error
             updateCardColors(verdictCardEl, ['bg-red-400', 'border-red-600']);
             verdictDataEl.textContent = 'Error en API (Ecowitt)';
             
@@ -385,15 +390,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- INICIALIZACIÓN ---
+    // --- INICIALIZACIÓN Y EVENTOS ---
     
+    // Listener para la carga diferida de Windguru
+    const windguruDetails = document.getElementById('windguru-details');
+    if (windguruDetails) {
+        windguruDetails.addEventListener('toggle', () => {
+            if (windguruDetails.open) {
+                loadWindguruWidget();
+            }
+        });
+    }
+
     // Cargar datos del clima al iniciar
     fetchWeatherData();
-    // Ya no se llama a fetchOptimalWindow()
 
     // Actualizar datos cada 30 segundos (30000ms)
     setInterval(fetchWeatherData, 30000);
-    // Ya no se llama a fetchOptimalWindow en el intervalo
     
     // MEJORA UX: Actualizar el "Time Ago" cada 5 segundos
     setInterval(updateTimeAgo, 5000);
