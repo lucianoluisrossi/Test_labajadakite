@@ -69,8 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadWindguruWidget() {
         if (isWindguruLoaded) return;
 
-        // EJECUCIÓN INSTANTÁNEA: El código del loader de Windguru se ejecuta directamente aquí.
-        // CORRECCIÓN: Eliminamos la dependencia de window.load
+        // CORRECCIÓN: Se ejecuta el script loader de Windguru instantáneamente.
         const arg = ["s=1312667" ,"m=29","uid=wg_fwdg_1312667_29_1762638808878" ,"wj=knots" ,"tj=c" ,"waj=m" ,"tij=cm" ,"odh=0" ,"doh=24" ,"fhours=240" ,"hrsm=2" ,"vt=forecasts" ,"lng=es" ,"ts=1" ,"p=WINDSPD,GUST,MWINDSPD,SMER,TMPE,FLHGT,CDC,APCP1s,RATING"];
         const script = document.createElement("script");
         const tag = document.getElementById("windguru-loader-placeholder"); 
@@ -262,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Funciones de Ayuda de Windy (No esenciales) ---
+    // --- Funciones de Ayuda de Windy (Ya no son necesarias, pero se mantienen por si acaso) ---
     function convertUVtoKnots(u, v) {
         // (m/s * 1.94384) = knots
         return Math.sqrt(u * u + v * v) * 1.94384;
@@ -318,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (stabilityCardEl) {
                     updateCardColors(stabilityCardEl, stability.color);
+                    // Mostrar N/A o el factor %
                     stabilityDataEl.textContent = stability.factor !== null 
                         ? `${Math.round(stability.factor)}% - ${stability.text}` 
                         : stability.text; // Muestra "Viento Insuficiente"
