@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // REGLA: Si la velocidad es menor a 12 nudos, no aplica el índice de estabilidad. (Regla del Kitesurfista)
         const MIN_KITE_WIND = 12; 
         if (speed < MIN_KITE_WIND) {
-             return { factor: null, text: '< 12kts (No Aplica)', color: ['bg-gray-100', 'border-gray-300'] };
+             return { factor: null, text: 'Viento Insuficiente', color: ['bg-gray-100', 'border-gray-300'] };
         }
 
         // Si la ráfaga es igual o menor a la velocidad promedio, es un viento MUY estable.
