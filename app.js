@@ -1,17 +1,39 @@
 // app.js
+// Importamos las funciones necesarias de los SDKs de Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// --- CONFIGURACIÓN DE FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
+  authDomain: "labajadakite.firebaseapp.com",
+  projectId: "labajadakite",
+  storageBucket: "labajadakite.firebasestorage.app",
+  messagingSenderId: "982938582037",
+  appId: "1:982938582037:web:7141082f9ca601e9aa221c",
+  measurementId: "G-R926P5WBWW"
+};
+
+// Inicializar Firebase
+let db;
+let messagesCollection;
+
+try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    // Referencia a la colección 'kiter_board'
+    messagesCollection = collection(db, "kiter_board");
+    console.log("Firebase inicializado correctamente.");
+} catch (e) {
+    console.error("Error inicializando Firebase:", e);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     
     // --- Registro del Service Worker (PWA) ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js') 
-                .then(registration => {
-                    console.log('Service Worker: Instalado y registrado con éxito', registration);
-                })
-                .catch(error => {
-                    console.log('Error al registrar el Service Worker:', error);
-                });
+            navigator.serviceWorker.register('sw.js').catch(console.error);
         });
     }
 
@@ -22,26 +44,105 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuBackdrop = document.getElementById('menu-backdrop');
 
     function toggleMenu() {
-        // Alternar la visibilidad del menú (slide-in)
         if (mobileMenu.classList.contains('translate-x-full')) {
-            mobileMenu.classList.remove('translate-x-full'); // Mostrar
-            menuBackdrop.classList.remove('hidden'); // Mostrar fondo oscuro
+            mobileMenu.classList.remove('translate-x-full'); 
+            menuBackdrop.classList.remove('hidden'); 
         } else {
-            mobileMenu.classList.add('translate-x-full'); // Ocultar
-            menuBackdrop.classList.add('hidden'); // Ocultar fondo oscuro
+            mobileMenu.classList.add('translate-x-full'); 
+            menuBackdrop.classList.add('hidden'); 
         }
     }
 
-    // Listeners del Menú
-    if (menuButton) {
-        menuButton.addEventListener('click', toggleMenu);
+    if (menuButton) menuButton.addEventListener('click', toggleMenu);
+    if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
+    if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
+
+    // --- LÓGICA DE PIZARRA KITER ---
+    const messageForm = document.getElementById('kiter-board-form');
+    const messagesContainer = document.getElementById('messages-container');
+    const authorInput = document.getElementById('message-author');
+    const textInput = document.getElementById('message-text');
+
+    // Función para formatear tiempo relativo (Ej: "hace 5 min")
+    function timeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        let interval = seconds / 3600;
+        if (interval > 1) return "hace " + Math.floor(interval) + " horas";
+        interval = seconds / 60;
+        if (interval > 1) return "hace " + Math.floor(interval) + " min";
+        return "hace un momento";
     }
-    if (menuCloseButton) {
-        menuCloseButton.addEventListener('click', toggleMenu);
+
+    // Enviar Mensaje
+    if (messageForm && db) {
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const author = authorInput.value.trim();
+            const text = textInput.value.trim();
+
+            if (author && text) {
+                try {
+                    await addDoc(messagesCollection, {
+                        author: author,
+                        text: text,
+                        timestamp: serverTimestamp() // Hora del servidor
+                    });
+                    textInput.value = ''; // Limpiar solo el mensaje
+                    // Guardar nombre en localStorage para no reescribirlo
+                    localStorage.setItem('kiterName', author);
+                } catch (e) {
+                    console.error("Error al enviar mensaje: ", e);
+                    alert("No se pudo enviar el mensaje. Verifica tu conexión.");
+                }
+            }
+        });
+
+        // Cargar nombre guardado
+        const savedName = localStorage.getItem('kiterName');
+        if (savedName) authorInput.value = savedName;
     }
-    if (menuBackdrop) {
-        menuBackdrop.addEventListener('click', toggleMenu);
+
+    // Escuchar Mensajes en Tiempo Real
+    if (messagesContainer && db) {
+        // Consulta: Ordenar por fecha descendente, limitar a los últimos 50 (seguridad)
+        const q = query(messagesCollection, orderBy("timestamp", "desc"), limit(50));
+
+        onSnapshot(q, (snapshot) => {
+            messagesContainer.innerHTML = ''; // Limpiar lista
+            const now = Date.now();
+            const oneDay = 24 * 60 * 60 * 1000;
+            let hasMessages = false;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.timestamp) { // Solo mostrar si ya se guardó la fecha
+                    const msgDate = data.timestamp.toDate();
+                    
+                    // FILTRO 24 HORAS (Cliente)
+                    if (now - msgDate.getTime() < oneDay) {
+                        hasMessages = true;
+                        const div = document.createElement('div');
+                        div.className = "bg-gray-50 p-3 rounded border border-gray-100 text-sm";
+                        div.innerHTML = `
+                            <div class="flex justify-between items-baseline mb-1">
+                                <span class="font-bold text-blue-900">${data.author}</span>
+                                <span class="text-xs text-gray-400">${timeAgo(msgDate)}</span>
+                            </div>
+                            <p class="text-gray-700 break-words">${data.text}</p>
+                        `;
+                        messagesContainer.appendChild(div);
+                    }
+                }
+            });
+
+            if (!hasMessages) {
+                messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes. ¡Sé el primero!</p>';
+            }
+        });
+    } else if (!db) {
+        if(messagesContainer) messagesContainer.innerHTML = '<p class="text-center text-red-400 text-xs">Error de configuración de base de datos.</p>';
     }
+
 
     // --- URLs de las Funciones Serverless (Proxy) ---
     const weatherApiUrl = 'api/data';
