@@ -9,8 +9,7 @@
     <meta name="theme-color" content="#1f2937">
     <link rel="manifest" href="manifest.json">
 
-    <!-- Tailwind CSS (CDN - Reemplazar con style.css si se usa build) -->
-    <!-- Si usas Vercel, el CSS se compila y se carga via link rel="stylesheet" -->
+    <!-- Tailwind CSS -->
     <link rel="stylesheet" href="style.css">
 
 </head>
@@ -21,7 +20,7 @@
         <!-- ENCABEZADO PRINCIPAL (DOBLE LOGO + MENÚ) -->
         <div class="flex justify-between items-start mb-4 mt-4 md:mt-8 relative">
             
-            <!-- Espaciador izquierdo para centrar el logo visualmente -->
+            <!-- Espaciador izquierdo para equilibrar y centrar los logos -->
             <div class="w-10 md:w-12"></div>
 
             <!-- LOGOS CENTRALES -->
@@ -30,14 +29,14 @@
                    target="blank" 
                    class="flex items-center justify-center gap-4">
                     
-                    <!-- Logo 1 (Izquierda): logo_palmera.png (Palmera/Spot) - AMPLIADO Y DESTACADO -->
+                    <!-- Logo 1 (Izquierda): Palmera -->
                     <img 
                         src="logo_palmera.png" 
                         alt="Logo Palmera Kitesurf" 
                         class="h-28 md:h-32 w-auto" 
                         onerror="this.style.display='none'">
                     
-                    <!-- Logo 2 (Derecha): logo2.png (Timón/Paleta) - AMPLIADO 20% -->
+                    <!-- Logo 2 (Derecha): Timón -->
                     <img 
                         src="logo2.png" 
                         alt="Logo La Bajada Principal" 
@@ -47,7 +46,7 @@
             </div>
 
             <!-- BOTÓN MENÚ HAMBURGUESA (Derecha) -->
-            <button id="menu-button" class="p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none z-50">
+            <button id="menu-button" class="p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none z-50 mt-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
@@ -55,7 +54,7 @@
         </div>
 
         <!-- MENÚ OFF-CANVAS (Lateral Derecho) -->
-        <div id="mobile-menu" class="fixed inset-y-0 right-0 w-64 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col h-full border-l border-gray-200">
+        <div id="mobile-menu" class="fixed inset-y-0 right-0 w-72 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col h-full border-l border-gray-200">
             
             <!-- Cabecera del Menú -->
             <div class="p-4 flex justify-between items-center border-b border-gray-200 bg-gray-50">
@@ -68,12 +67,12 @@
             </div>
 
             <!-- Contenido del Menú -->
-            <div class="p-6 flex-grow overflow-y-auto flex flex-col gap-6">
+            <div class="p-6 flex-grow overflow-y-auto flex flex-col gap-8">
                 
-                <!-- SECCIÓN 1: CAFECITO APP (Destacado) -->
-                <div class="flex flex-col items-center text-center">
-                    <p class="text-sm text-gray-600 mb-2 font-medium">¿Te sirve la app? ¡Ayudanos!</p>
-                    <a href='https://cafecito.app/labajadakite' rel='noopener' target='_blank' class="transition-transform hover:scale-105">
+                <!-- SECCIÓN 1: CAFECITO APP -->
+                <div class="flex flex-col items-center text-center space-y-2">
+                    <p class="text-sm text-gray-600 font-medium">¿Te sirve la app? ¡Ayudanos!</p>
+                    <a href='https://cafecito.app/labajadakite' rel='noopener' target='_blank' class="transition-transform hover:scale-105 block">
                         <img srcset='https://cdn.cafecito.app/imgs/buttons/button_6.png 1x, https://cdn.cafecito.app/imgs/buttons/button_6_2x.png 2x, https://cdn.cafecito.app/imgs/buttons/button_6_3.75x.png 3.75x' src='https://cdn.cafecito.app/imgs/buttons/button_6.png' alt='Invitame un café en cafecito.app' />
                     </a>
                 </div>
@@ -82,20 +81,20 @@
 
                 <!-- SECCIÓN 2: ESCUELAS -->
                 <div>
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 text-center">Escuelas & Clases</h4>
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 text-center">Escuelas & Clases</h4>
                     <div class="space-y-4">
                         <!-- Escuela 1 -->
-                        <a href="https://wa.me/542983595133?text=Hola!%20Quiero%20consultar%20por%20clases!" target="blank" class="block bg-gray-50 hover:bg-gray-100 p-3 rounded-lg transition-colors border border-gray-200 text-center">
+                        <a href="https://wa.me/542983595133?text=Hola!%20Quiero%20consultar%20por%20clases!" target="blank" class="block bg-white hover:bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 text-center transition-all">
                             <p class="text-sm font-bold text-gray-800">Claromecó Kiteboarding</p>
-                            <p class="text-xs text-green-600 flex items-center justify-center gap-1 mt-1">
+                            <p class="text-xs text-green-600 flex items-center justify-center gap-1 mt-1 font-semibold">
                                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                                 WhatsApp
                             </p>
                         </a>
                         <!-- Escuela 2 -->
-                        <a href="https://wa.me/5492223575161?text=Hola!%20Quiero%20consultar%20por%20clases!" target="blank" class="block bg-gray-50 hover:bg-gray-100 p-3 rounded-lg transition-colors border border-gray-200 text-center">
+                        <a href="https://wa.me/5492223575161?text=Hola!%20Quiero%20consultar%20por%20clases!" target="blank" class="block bg-white hover:bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 text-center transition-all">
                             <p class="text-sm font-bold text-gray-800">Kukulkán Kitesurf</p>
-                            <p class="text-xs text-green-600 flex items-center justify-center gap-1 mt-1">
+                            <p class="text-xs text-green-600 flex items-center justify-center gap-1 mt-1 font-semibold">
                                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                                 WhatsApp
                             </p>
@@ -115,24 +114,22 @@
         <div id="menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
 
 
-        <!-- Sección de DATOS EN VIVO (LiveCam + Viento) - UNIFIED CARD -->
-        <!-- MARGEN SUPERIOR REDUCIDO: mt-4 lg:mt-6 -->
-        <div id="real-time-data-container" class="mt-4 lg:mt-6 p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
-            
-            <!-- Título DATOS EN VIVO DEL SPOT ELIMINADO -->
+        
+        <!-- Video (LiveCam) -->
+        <div class="bg-gray-100 rounded-xl shadow-2xl overflow-hidden mb-6 lg:mb-8 border border-gray-300">
+            <iframe 
+                class="w-full aspect-video" 
+                src="https://www.youtube.com/embed/QWo36gCzZEo?si=hftjioeg4y-dP4FT&autoplay=1&mute=1" 
+                title="YouTube video player" 
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                referrerpolicy="strict-origin-when-cross-origin" 
+                allowfullscreen>
+            </iframe>
+        </div>
 
-            <!-- LiveCam (ahora dentro del contenedor principal de datos) -->
-            <div class="overflow-hidden mb-8">
-                <iframe 
-                    class="w-full aspect-video rounded-lg shadow-lg" 
-                    src="https://www.youtube.com/embed/QWo36gCzZEo?si=hftjioeg4y-dP4FT&autoplay=1&mute=1" 
-                    title="YouTube video player" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                    referrerpolicy="strict-origin-when-cross-origin" 
-                    allowfullscreen>
-                </iframe>
-            </div>
+        <!-- Sección de Viento Resaltado (DATOS EN TIEMPO REAL) -->
+        <div id="wind-highlight-card" class="mt-6 lg:mt-8 p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
             
             <!-- Veredicto / Status del Spot (Lógica simple) -->
             <div id="verdict-card" class="mb-4 p-3 rounded-lg border border-gray-300 transition-colors duration-300">
@@ -140,7 +137,8 @@
                 <div id="verdict-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 70%;"></div>
                 <p id="verdict-data" class="data-content text-xl font-extrabold text-gray-900 text-center">Calculando...</p>
             </div>
-            
+            <!-- Fin Veredicto -->
+
             <!-- Datos de Viento -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 
@@ -170,27 +168,29 @@
                 </div>
             </div>
             
-            <!-- INICIO: Tarjeta de Estabilidad (NUEVA FUNCIÓN - RELEVANCIA REDUCIDA) -->
+            <!-- INICIO: Tarjeta de Estabilidad (NUEVA FUNCIÓN) -->
             <div id="stability-card" class="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-300 transition-colors duration-300 text-center">
                 <p class="text-gray-600 text-xs font-medium">Índice de Estabilidad (Racheo)</p>
-                <!-- Loader usa skeleton-text-xl (más pequeño) -->
-                <div id="stability-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 50%;"></div>
-                <!-- Dato usa text-xl (menos prominente) -->
-                <p class="text-xl font-extrabold text-gray-900 data-content" id="stability-data">N/A</p>
+                <div id="stability-data-loader" class="skeleton-loader skeleton-text-3xl mx-auto mt-1" style="width: 50%;"></div>
+                <p class="text-3xl font-extrabold text-gray-900 data-content" id="stability-data">N/A</p>
             </div>
-            
+            <!-- FIN: Tarjeta de Estabilidad -->
+
             <!-- Ubicación del Error de API -->
             <div id="error-message" class="hidden mt-6 p-4 bg-red-600 text-white rounded-lg text-center">
                 Error al cargar los datos del clima.
             </div>
         </div>
+        <!-- Fin Sección de Viento Resaltado -->
         
-        <!-- INICIO: TARJETA DE PRONÓSTICO WINDGURU (ESTÁTICO) -->
+        <!-- INICIO: TARJETA DE PRONÓSTICO WINDGURU -->
         <div class="bg-gray-100 p-6 rounded-xl shadow-2xl flex flex-col mt-6 lg:mt-8 border border-gray-300 overflow-x-auto">
+            
             <h3 class="text-xl font-extrabold text-gray-900 mb-4">
                 Pronóstico Windguru
             </h3>
-            <!-- Script de Windguru (cargará el widget aquí) -->
+
+            <!-- Script de Windguru -->
             <script id="wg_fwdg_1312667_29_1762638808878">
                 (function (window, document) {
                     var loader = function () {
@@ -203,7 +203,9 @@
                     window.addEventListener ? window.addEventListener("load", loader, false) : window.attachEvent("onload", loader);
                 })(window, document);
             </script>
+        
         </div>
+        <!-- FIN: TARJETA DE PRONÓSTICO WINDGURU -->
 
         <!-- Columna de Datos en Vivo (OTROS DATOS) -->
         <div class="bg-gray-100 p-6 rounded-xl shadow-2xl flex flex-col mt-6 lg:mt-8 border border-gray-300">
@@ -272,7 +274,7 @@
             </div>
         </div>
         
-        <!-- FOOTER SIMPLE (Las escuelas y contacto están en el menú) -->
+        <!-- FOOTER SIMPLE (Simplificado) -->
         <footer class="mt-8 pt-4 pb-2 border-t border-gray-300">
             <!-- Contacto de Desarrollador -->
             <div class="mt-2 text-center text-xs text-gray-500">
@@ -286,12 +288,13 @@
                 </p>
             </div>
         </footer>
+        <!-- Fin FOOTER -->
     </div>
 
-    <!-- ANALÍTICA: CDN de Vercel para la inyección no bloqueante -->
+    <!-- ANALÍTICA: CDN de Vercel -->
     <script src="/_vercel/insights/script.js"></script>
 
-    <!-- LÓGICA: Revertimos a script normal con defer -->
+    <!-- LÓGICA -->
     <script src="app.js" defer></script>
 
 </body>

@@ -15,29 +15,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA DEL MENÚ HAMBURGUESA (IMPRESCINDIBLE PARA ABRIRLO) ---
+    // --- LÓGICA DEL MENÚ HAMBURGUESA ---
     const menuButton = document.getElementById('menu-button');
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
 
     function toggleMenu() {
-        if (!mobileMenu) return;
-        const isClosed = mobileMenu.classList.contains('translate-x-full');
-        if (isClosed) {
-            mobileMenu.classList.remove('translate-x-full');
-            if(menuBackdrop) menuBackdrop.classList.remove('hidden');
+        // Alternar la visibilidad del menú (slide-in)
+        if (mobileMenu.classList.contains('translate-x-full')) {
+            mobileMenu.classList.remove('translate-x-full'); // Mostrar
+            menuBackdrop.classList.remove('hidden'); // Mostrar fondo oscuro
         } else {
-            mobileMenu.classList.add('translate-x-full');
-            if(menuBackdrop) menuBackdrop.classList.add('hidden');
+            mobileMenu.classList.add('translate-x-full'); // Ocultar
+            menuBackdrop.classList.add('hidden'); // Ocultar fondo oscuro
         }
     }
 
+    // Listeners del Menú
     if (menuButton) {
-        menuButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleMenu();
-        });
+        menuButton.addEventListener('click', toggleMenu);
     }
     if (menuCloseButton) {
         menuCloseButton.addEventListener('click', toggleMenu);
@@ -75,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const stabilityCardEl = document.getElementById('stability-card');
     const stabilityDataEl = document.getElementById('stability-data');
     
-    // --- MEJORA UX: IDs de todos los Skeletons y Contenidos ---
+    // --- Skeletons y Contenidos ---
     const skeletonLoaderIds = [
         'verdict-data-loader',
         'highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader',
@@ -91,10 +88,10 @@ document.addEventListener('DOMContentLoaded', () => {
         'stability-data'
     ];
 
-    // --- MEJORA UX: Variable para "Time Ago" ---
+    // --- Variable para "Time Ago" ---
     let lastUpdateTime = null;
 
-    // --- MEJORA UX: Función para mostrar/ocultar Skeletons ---
+    // --- Función para mostrar/ocultar Skeletons ---
     function showSkeletons(isLoading) {
         skeletonLoaderIds.forEach(id => {
             const el = document.getElementById(id);
@@ -110,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- MEJORA UX: Función para actualizar "Time Ago" ---
+    // --- Función para actualizar "Time Ago" ---
     function updateTimeAgo() {
         if (!lastUpdateTime) return;
         const now = new Date();
@@ -133,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return arr[val % 16];
     }
 
-    // --- FUNCIÓN: CALCULAR ÍNDICE DE ESTABILIDAD (Gust Factor) ---
+    // --- FUNCIÓN: CALCULAR ESTABILIDAD ---
     function calculateGustFactor(speed, gust) {
         if (speed === null || gust === null || speed <= 0) {
             return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
@@ -155,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- FUNCIÓN DE VEREDICTO (Lógica de Seguridad de Viento y Potencia) ---
+    // --- FUNCIÓN DE VEREDICTO ---
     function getSpotVerdict(speed, gust, degrees) {
         if (degrees !== null) {
             if ((degrees > 292.5 || degrees <= 67.5)) { 
@@ -174,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- CONSTANTES DE CLASES DE COLOR ---
+    // --- CONSTANTES DE CLASES ---
     const allColorClasses = [
         'bg-gray-100', 'border-gray-300',
         'bg-blue-200', 'border-blue-400',
@@ -187,19 +184,16 @@ document.addEventListener('DOMContentLoaded', () => {
         'bg-green-400', 'border-green-600'
     ];
 
-    // --- FUNCIÓN DE UTILIDAD: Para actualizar colores de tarjetas ---
     function updateCardColors(element, newClasses) {
         if (!element) return;
         element.classList.remove(...allColorClasses);
         element.classList.add(...newClasses);
     }
 
-    // --- FUNCIÓN: Obtener clases de color para TARJETA PRINCIPAL (Neutral) ---
     function getMainCardColorClasses(speedInKnots) {
         return ['bg-gray-100', 'border-gray-300'];
     }
 
-    // --- FUNCIÓN: Obtener clases de color para SUB-TARJETA (Lógica Windy) ---
     function getWindyColorClasses(speedInKnots) {
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
             if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
@@ -212,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return ['bg-gray-100', 'border-gray-300']; 
     }
     
-    // --- FUNCIÓN DE UTILIDAD: Fetch con Reintentos (Exponential Backoff) ---
+    // --- FETCH WITH BACKOFF ---
     async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
         try {
             const response = await fetch(url, options);
@@ -238,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- FUNCIÓN: OBTENER DATOS DEL CLIMA (ECOWITT) ---
+    // --- OBTENER DATOS (Main Loop) ---
     async function fetchWeatherData() {
         showSkeletons(true);
         errorEl.classList.add('hidden'); 
@@ -276,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tempValue = (temp && temp.value !== null) ? parseFloat(temp.value) : null;
                 const windDirCardinal = windDirDegrees !== null ? convertDegreesToCardinal(windDirDegrees) : 'N/A';
                 
-                // --- CALCULAR ESTABILIDAD (Gust Factor) ---
+                // Estabilidad
                 const stability = calculateGustFactor(windSpeedValue, windGustValue);
                 if (stabilityCardEl) {
                     updateCardColors(stabilityCardEl, stability.color);
@@ -285,12 +279,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         : stability.text; 
                 }
                 
-                // --- (LÓGICA DE VEREDICTO SIMPLE) ---
+                // Veredicto
                 const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
                 updateCardColors(verdictCardEl, verdictColors);
                 verdictDataEl.textContent = verdictText;
                 
-                // MEJORA UX: Aplicar rotación Y COLOR a la flecha
+                // Flecha
                 if (windArrowEl && windDirDegrees !== null) {
                     windArrowEl.style.transform = `rotate(${windDirDegrees}deg)`;
                     const isOffshore = (windDirDegrees > 292.5 || windDirDegrees <= 67.5);
@@ -336,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- INICIALIZACIÓN ---
+    // --- START ---
     fetchWeatherData();
     setInterval(fetchWeatherData, 30000);
     setInterval(updateTimeAgo, 5000);
