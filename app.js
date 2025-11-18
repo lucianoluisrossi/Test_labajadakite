@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const authorInput = document.getElementById('message-author');
     const textInput = document.getElementById('message-text');
 
-    // Función para formatear tiempo relativo (Ej: "hace 5 min")
+    // Función para formatear tiempo relativo
     function timeAgo(date) {
         const seconds = Math.floor((new Date() - date) / 1000);
         let interval = seconds / 3600;
@@ -88,11 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         timestamp: serverTimestamp() // Hora del servidor
                     });
                     textInput.value = ''; // Limpiar solo el mensaje
-                    // Guardar nombre en localStorage para no reescribirlo
                     localStorage.setItem('kiterName', author);
                 } catch (e) {
-                    console.error("Error al enviar mensaje: ", e);
-                    alert("No se pudo enviar el mensaje. Verifica tu conexión.");
+                    console.error("Error detallado al enviar:", e);
+                    // Alerta mejorada para diagnóstico
+                    alert(`Error al enviar: ${e.message || e.code || "Error desconocido"}. \nRevisa las Reglas de Firestore.`);
                 }
             }
         });
@@ -104,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Escuchar Mensajes en Tiempo Real
     if (messagesContainer && db) {
-        // Consulta: Ordenar por fecha descendente, limitar a los últimos 50 (seguridad)
         const q = query(messagesCollection, orderBy("timestamp", "desc"), limit(50));
 
         onSnapshot(q, (snapshot) => {
@@ -115,10 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                if (data.timestamp) { // Solo mostrar si ya se guardó la fecha
+                if (data.timestamp) {
                     const msgDate = data.timestamp.toDate();
                     
-                    // FILTRO 24 HORAS (Cliente)
+                    // FILTRO 24 HORAS
                     if (now - msgDate.getTime() < oneDay) {
                         hasMessages = true;
                         const div = document.createElement('div');
@@ -137,6 +136,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!hasMessages) {
                 messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes. ¡Sé el primero!</p>';
+            }
+        }, (error) => {
+            console.error("Error escuchando mensajes:", error);
+            if (messagesContainer) {
+                messagesContainer.innerHTML = `<p class="text-center text-red-400 text-xs">Error de conexión o permisos: ${error.code}</p>`;
             }
         });
     } else if (!db) {
