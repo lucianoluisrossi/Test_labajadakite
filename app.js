@@ -4,7 +4,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- CONFIGURACIÓN DE FIREBASE ---
-// Asegúrate de que estos datos coinciden exactamente con tu consola
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
   authDomain: "labajadakite.firebaseapp.com",
@@ -42,6 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
+    
+    // NUEVO: Botón de Pizarra en Menú
+    const btnPizarraMenu = document.getElementById('btn-pizarra-menu');
 
     function toggleMenu() {
         if (mobileMenu.classList.contains('translate-x-full')) {
@@ -53,15 +55,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function goToPizarra() {
+        // Cierra menú si está abierto
+        if (!mobileMenu.classList.contains('translate-x-full')) {
+            toggleMenu();
+        }
+        // Scroll suave
+        const pizarraSection = document.getElementById('pizarra-section');
+        if (pizarraSection) {
+            pizarraSection.scrollIntoView({ behavior: 'smooth' });
+            // Al ir, marcamos mensajes como leídos
+            markMessagesAsRead();
+        }
+    }
+
     if (menuButton) menuButton.addEventListener('click', toggleMenu);
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
+    if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', goToPizarra);
 
-    // --- LÓGICA DE PIZARRA KITER ---
+    // --- LÓGICA DE PIZARRA KITERA ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
     const authorInput = document.getElementById('message-author');
     const textInput = document.getElementById('message-text');
+    const newMessageToast = document.getElementById('new-message-toast');
 
     // Función para formatear tiempo relativo
     function timeAgo(date) {
@@ -71,6 +89,18 @@ document.addEventListener('DOMContentLoaded', () => {
         interval = seconds / 60;
         if (interval > 1) return "hace " + Math.floor(interval) + " min";
         return "hace un momento";
+    }
+
+    // Función para marcar mensajes como leídos
+    function markMessagesAsRead() {
+        const now = Date.now();
+        localStorage.setItem('lastReadTime', now);
+        if (newMessageToast) newMessageToast.classList.add('hidden');
+    }
+
+    // Listener para el Toast de Notificación
+    if (newMessageToast) {
+        newMessageToast.addEventListener('click', goToPizarra);
     }
 
     // Enviar Mensaje
@@ -91,6 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log("Mensaje enviado con éxito.");
                     textInput.value = ''; 
                     localStorage.setItem('kiterName', author);
+                    // Al enviar, consideramos que hemos leído todo
+                    markMessagesAsRead();
                 } catch (e) {
                     console.error("Error detallado al enviar:", e);
                     alert(`Error al enviar: ${e.message}. \n\nSi ves 'Missing or insufficient permissions', ve a la Consola de Firebase > Firestore Database > Reglas y permite lectura/escritura global.`);
@@ -111,13 +143,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = Date.now();
             const oneDay = 24 * 60 * 60 * 1000;
             let hasMessages = false;
+            
+            // Lógica de Notificación
+            const lastReadTime = parseInt(localStorage.getItem('lastReadTime') || '0');
+            let newestMessageTime = 0;
 
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.timestamp) {
                     const msgDate = data.timestamp.toDate();
+                    const msgTime = msgDate.getTime();
                     
-                    if (now - msgDate.getTime() < oneDay) {
+                    // Guardar el tiempo del mensaje más nuevo para comparación
+                    if (msgTime > newestMessageTime) {
+                        newestMessageTime = msgTime;
+                    }
+
+                    // FILTRO 24 HORAS
+                    if (now - msgTime < oneDay) {
                         hasMessages = true;
                         const div = document.createElement('div');
                         div.className = "bg-gray-50 p-3 rounded border border-gray-100 text-sm";
@@ -135,7 +178,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!hasMessages) {
                 messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes. ¡Sé el primero!</p>';
+            } else {
+                // Verificar si hay mensajes nuevos NO leídos que sean recientes (últimas 24hs)
+                // Y evitar que aparezca en la primera carga si el usuario nunca entró (opcional, aquí mostramos si es nuevo absoluto)
+                if (newestMessageTime > lastReadTime && lastReadTime > 0) {
+                    if(newMessageToast) newMessageToast.classList.remove('hidden');
+                } else if (lastReadTime === 0 && newestMessageTime > 0) {
+                    // Primera vez: Marcamos como leido para no molestar, O mostramos notificación.
+                    // Decisión: Marcamos como leído para que no salte apenas abres la app por primera vez.
+                    localStorage.setItem('lastReadTime', now);
+                }
             }
+
         }, (error) => {
             console.error("Error escuchando mensajes:", error);
             if (messagesContainer) {
@@ -159,14 +213,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- ELEMENTOS DEL DOM (Viento Resaltado) ---
     const windHighlightCard = document.getElementById('wind-highlight-card');
-    // NUEVO: Referencia a la tarjeta unificada
     const unifiedWindDataCardEl = document.getElementById('unified-wind-data-card');
     
     const highlightWindDirEl = document.getElementById('highlight-wind-dir-data');
     const highlightWindSpeedEl = document.getElementById('highlight-wind-speed-data');
     const highlightGustEl = document.getElementById('highlight-gust-data');
     const windArrowEl = document.getElementById('wind-arrow'); 
-    // (Se eliminaron referencias a windSpeedSubCardEl y windGustSubCardEl porque ya no existen)
     
     // --- ELEMENTOS DEL DOM (Veredicto EN VIVO) ---
     const verdictCardEl = document.getElementById('verdict-card');
@@ -230,21 +282,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return arr[val % 16];
     }
 
+    // --- FUNCIÓN: CALCULAR ESTABILIDAD (Lógica Inversa: 0% = Perfecto) ---
     function calculateGustFactor(speed, gust) {
         if (speed === null || gust === null || speed <= 0) {
             return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
         }
         const MIN_KITE_WIND = 12; 
+        // CAMBIO: Texto "No Aplica"
         if (speed < MIN_KITE_WIND) {
-             return { factor: null, text: '< 12kts (No Aplica)', color: ['bg-gray-100', 'border-gray-300'] };
+             return { factor: null, text: 'No Aplica', color: ['bg-gray-100', 'border-gray-300'] };
         }
+        
         if (gust <= speed) {
-             return { factor: 100, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
+             // CAMBIO: 0% es perfección
+             return { factor: 0, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
         }
-        const factor = (speed / gust) * 100; 
-        if (factor >= 85) {
+        
+        // CAMBIO: Fórmula Inversa
+        const factor = (1 - (speed / gust)) * 100; 
+
+        // CAMBIO: Condicionales Invertidos
+        if (factor <= 15) {
             return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; 
-        } else if (factor >= 70) {
+        } else if (factor <= 30) {
             return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] }; 
         } else {
             return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; 
@@ -391,7 +451,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 updateCardColors(windHighlightCard, getMainCardColorClasses(windSpeedValue));
-                // AHORA: Actualizar el color de la tarjeta unificada completa
                 updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeedValue));
 
                 highlightWindSpeedEl.textContent = windSpeed ? `${windSpeed.value} ${windSpeed.unit}` : 'N/A';
