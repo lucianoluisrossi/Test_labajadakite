@@ -1,9 +1,7 @@
 // app.js
-// Importamos SOLO las funciones de Firestore (Base64 directo)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
   authDomain: "labajadakite.firebaseapp.com",
@@ -14,7 +12,6 @@ const firebaseConfig = {
   measurementId: "G-R926P5WBWW"
 };
 
-// Inicializar Firebase
 let db;
 let messagesCollection;
 let galleryCollection;
@@ -49,8 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
 
-    // Estado
-    let currentView = 'dashboard'; // 'dashboard' | 'community'
+    let currentView = 'dashboard';
 
     function switchView(viewName) {
         currentView = viewName;
@@ -59,31 +55,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (viewName === 'dashboard') {
             viewDashboard.classList.remove('hidden');
             viewCommunity.classList.add('hidden');
-            fabCommunity.classList.remove('hidden'); // Mostrar botón flotante en Home
+            fabCommunity.classList.remove('hidden'); 
             
-            // Actualizar estilo menú
             navHomeBtn.classList.add('bg-blue-50', 'text-blue-700');
             navCommunityBtn.classList.remove('bg-blue-50', 'text-blue-700');
         } else {
             viewDashboard.classList.add('hidden');
             viewCommunity.classList.remove('hidden');
-            fabCommunity.classList.add('hidden'); // Ocultar botón flotante en Comunidad
+            fabCommunity.classList.add('hidden'); 
             
-            // Actualizar estilo menú
             navHomeBtn.classList.remove('bg-blue-50', 'text-blue-700');
             navCommunityBtn.classList.add('bg-blue-50', 'text-blue-700');
 
-            // Al entrar a comunidad, limpiamos notificaciones
             markMessagesAsRead();
         }
 
-        // Cerrar menú móvil si está abierto
         if (mobileMenu.classList.contains('translate-x-full') === false) {
             toggleMenu();
         }
     }
 
-    // Listeners de Navegación
     navHomeBtn.addEventListener('click', () => switchView('dashboard'));
     navCommunityBtn.addEventListener('click', () => switchView('community'));
     backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
@@ -91,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
     newMessageToast.addEventListener('click', () => switchView('community'));
 
 
-    // --- LÓGICA DEL MENÚ HAMBURGUESA ---
     const menuButton = document.getElementById('menu-button');
     const menuCloseButton = document.getElementById('menu-close-button');
 
@@ -175,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Error:", error);
                 alert("Error al subir.");
             } finally {
-                window.location.reload(); // Simple reload para resetear input
+                window.location.reload(); 
             }
         });
     }
@@ -197,7 +187,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         hasImages = true;
                         const imgContainer = document.createElement('div');
                         imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-sm bg-gray-200";
-                        // Lazy loading nativo para performance
                         imgContainer.innerHTML = `
                             <img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto">
                             <div class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 rounded-tl">
@@ -220,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // --- LÓGICA PIZARRA KITERA + NOTIFICACIONES ---
+    // --- LÓGICA PIZARRA KITERA ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
     const authorInput = document.getElementById('message-author');
@@ -257,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     textInput.value = ''; 
                     localStorage.setItem('kiterName', author);
-                    markMessagesAsRead(); // Si yo escribo, he leído todo
+                    markMessagesAsRead(); 
                 } catch (e) {
                     console.error(e);
                 }
@@ -306,23 +295,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!hasMessages) {
                 messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">Sé el primero en escribir.</p>';
             } else {
-                // Lógica de Notificación
                 if (newestMessageTime > lastReadTime && lastReadTime > 0) {
-                    // Hay mensajes nuevos no leídos
                     if (currentView === 'dashboard') {
-                        // Si estoy en dashboard, mostrar avisos
                         notificationBadge.classList.remove('hidden');
                         newMessageToast.classList.remove('hidden');
-                        // Ocultar el toast flotante después de 5 seg para no molestar, dejar solo el badge
                         setTimeout(() => {
                             newMessageToast.classList.add('hidden');
                         }, 5000);
                     } else {
-                        // Si estoy en comunidad, se marca como leído al instante
                         markMessagesAsRead();
                     }
                 } else if (lastReadTime === 0 && newestMessageTime > 0) {
-                    localStorage.setItem('lastReadTime', now); // Primera visita no notifica
+                    localStorage.setItem('lastReadTime', now);
                 }
             }
 
@@ -333,13 +317,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- URLs de las Funciones Serverless (Proxy) ---
     const weatherApiUrl = 'api/data';
 
-    // --- ELEMENTOS DEL DOM (Datos Generales) ---
+    // --- ELEMENTOS DEL DOM (RECUPERADOS TODOS) ---
     const tempEl = document.getElementById('temp-data');
+    const humidityEl = document.getElementById('humidity-data'); // RECUPERADO
+    const pressureEl = document.getElementById('pressure-data'); // RECUPERADO
     const rainfallDailyEl = document.getElementById('rainfall-daily-data'); 
+    const uviEl = document.getElementById('uvi-data'); // RECUPERADO
     const errorEl = document.getElementById('error-message');
     const lastUpdatedEl = document.getElementById('last-updated');
 
-    // --- ELEMENTOS DEL DOM (Viento Resaltado) ---
     const windHighlightCard = document.getElementById('wind-highlight-card');
     const unifiedWindDataCardEl = document.getElementById('unified-wind-data-card');
     
@@ -348,23 +334,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const highlightGustEl = document.getElementById('highlight-gust-data');
     const windArrowEl = document.getElementById('wind-arrow'); 
     
-    // --- ELEMENTOS DEL DOM (Veredicto EN VIVO) ---
     const verdictCardEl = document.getElementById('verdict-card');
     const verdictDataEl = document.getElementById('verdict-data');
     
-    // --- ELEMENTOS DEL DOM (ESTABILIDAD) ---
     const stabilityCardEl = document.getElementById('stability-card');
     const stabilityDataEl = document.getElementById('stability-data');
     
-    // --- Skeletons y Contenidos ---
+    // Skeletons (RECUPERADOS)
     const skeletonLoaderIds = [
         'verdict-data-loader',
         'highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader',
+        'temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 
+        'rainfall-daily-data-loader', 'uvi-data-loader',
         'stability-data-loader'
     ];
     const dataContentIds = [
         'verdict-data',
         'highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data',
+        'temp-data', 'humidity-data', 'pressure-data',
+        'rainfall-daily-data', 'uvi-data',
         'stability-data'
     ];
 
@@ -402,7 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return arr[val % 16];
     }
 
-    // --- FUNCIÓN: CALCULAR ESTABILIDAD ---
     function calculateGustFactor(speed, gust) {
         if (speed === null || gust === null || speed <= 0) {
             return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
@@ -516,10 +503,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const outdoor = data.outdoor || {};
                 const wind = data.wind || {};
+                const pressure = data.pressure || {};
                 const rainfall = data.rainfall || {}; 
+                const solarUVI = data.solar_and_uvi || {}; 
                 
                 const temp = outdoor.temperature;
+                const humidity = outdoor.humidity;
+                const pressureRel = pressure.relative;
                 const rainfallDaily = rainfall.daily; 
+                const uvi = solarUVI.uvi; 
                 
                 const windSpeed = wind.wind_speed;
                 const windGust = wind.wind_gust;
@@ -555,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     else windArrowEl.classList.add('text-gray-900');
                 }
 
-                updateCardColors(windHighlightCard, ['bg-white', 'border-gray-200']); 
+                updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
                 updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeedValue));
 
                 highlightWindSpeedEl.textContent = windSpeed ? `${windSpeed.value} ${windSpeed.unit}` : 'N/A';
@@ -563,7 +555,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 highlightWindDirEl.textContent = windDirCardinal; 
 
                 tempEl.textContent = temp ? `${temp.value} ${temp.unit}` : 'N/A';
+                humidityEl.textContent = humidity ? `${humidity.value} ${humidity.unit}` : 'N/A'; // RECUPERADO
+                pressureEl.textContent = pressureRel ? `${pressureRel.value} ${pressureRel.unit}` : 'N/A'; // RECUPERADO
                 rainfallDailyEl.textContent = rainfallDaily ? `${rainfallDaily.value} ${rainfallDaily.unit}` : 'N/A'; 
+                uviEl.textContent = uvi ? uvi.value : 'N/A'; // RECUPERADO
                 
                 showSkeletons(false); 
                 lastUpdateTime = new Date(); 
