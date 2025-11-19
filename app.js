@@ -4,6 +4,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- CONFIGURACIÓN DE FIREBASE ---
+// Asegúrate de que estos datos coinciden exactamente con tu consola
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
   authDomain: "labajadakite.firebaseapp.com",
@@ -21,11 +22,10 @@ let messagesCollection;
 try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
-    // Referencia a la colección 'kiter_board'
     messagesCollection = collection(db, "kiter_board");
-    console.log("Firebase inicializado correctamente.");
+    console.log("✅ Firebase inicializado. Conectando a 'kiter_board'...");
 } catch (e) {
-    console.error("Error inicializando Firebase:", e);
+    console.error("❌ Error crítico inicializando Firebase:", e);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -82,22 +82,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (author && text) {
                 try {
+                    console.log("Intentando enviar mensaje a Firestore...");
                     await addDoc(messagesCollection, {
                         author: author,
                         text: text,
-                        timestamp: serverTimestamp() // Hora del servidor
+                        timestamp: serverTimestamp() 
                     });
-                    textInput.value = ''; // Limpiar solo el mensaje
+                    console.log("Mensaje enviado con éxito.");
+                    textInput.value = ''; 
                     localStorage.setItem('kiterName', author);
                 } catch (e) {
                     console.error("Error detallado al enviar:", e);
-                    // Alerta mejorada para diagnóstico
-                    alert(`Error al enviar: ${e.message || e.code || "Error desconocido"}. \nRevisa las Reglas de Firestore.`);
+                    alert(`Error al enviar: ${e.message}. \n\nSi ves 'Missing or insufficient permissions', ve a la Consola de Firebase > Firestore Database > Reglas y permite lectura/escritura global.`);
                 }
             }
         });
 
-        // Cargar nombre guardado
         const savedName = localStorage.getItem('kiterName');
         if (savedName) authorInput.value = savedName;
     }
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const q = query(messagesCollection, orderBy("timestamp", "desc"), limit(50));
 
         onSnapshot(q, (snapshot) => {
-            messagesContainer.innerHTML = ''; // Limpiar lista
+            messagesContainer.innerHTML = ''; 
             const now = Date.now();
             const oneDay = 24 * 60 * 60 * 1000;
             let hasMessages = false;
@@ -117,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.timestamp) {
                     const msgDate = data.timestamp.toDate();
                     
-                    // FILTRO 24 HORAS
                     if (now - msgDate.getTime() < oneDay) {
                         hasMessages = true;
                         const div = document.createElement('div');
@@ -140,11 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }, (error) => {
             console.error("Error escuchando mensajes:", error);
             if (messagesContainer) {
-                messagesContainer.innerHTML = `<p class="text-center text-red-400 text-xs">Error de conexión o permisos: ${error.code}</p>`;
+                messagesContainer.innerHTML = `<p class="text-center text-red-400 text-xs">Error de permisos: ${error.code}. Revisa las Reglas en Firebase.</p>`;
             }
         });
-    } else if (!db) {
-        if(messagesContainer) messagesContainer.innerHTML = '<p class="text-center text-red-400 text-xs">Error de configuración de base de datos.</p>';
     }
 
 
@@ -193,10 +190,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'stability-data'
     ];
 
-    // --- Variable para "Time Ago" ---
     let lastUpdateTime = null;
 
-    // --- Función para mostrar/ocultar Skeletons ---
     function showSkeletons(isLoading) {
         skeletonLoaderIds.forEach(id => {
             const el = document.getElementById(id);
@@ -212,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- Función para actualizar "Time Ago" ---
     function updateTimeAgo() {
         if (!lastUpdateTime) return;
         const now = new Date();
@@ -227,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- FUNCIÓN: CONVERTIR GRADOS A PUNTO CARDINAL ---
     function convertDegreesToCardinal(degrees) {
         if (degrees === null || isNaN(degrees)) return 'N/A';
         const val = Math.floor((degrees / 22.5) + 0.5);
@@ -235,7 +228,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return arr[val % 16];
     }
 
-    // --- FUNCIÓN: CALCULAR ESTABILIDAD ---
     function calculateGustFactor(speed, gust) {
         if (speed === null || gust === null || speed <= 0) {
             return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
@@ -257,7 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- FUNCIÓN DE VEREDICTO ---
     function getSpotVerdict(speed, gust, degrees) {
         if (degrees !== null) {
             if ((degrees > 292.5 || degrees <= 67.5)) { 
@@ -276,7 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- CONSTANTES DE CLASES ---
     const allColorClasses = [
         'bg-gray-100', 'border-gray-300',
         'bg-blue-200', 'border-blue-400',
@@ -311,7 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return ['bg-gray-100', 'border-gray-300']; 
     }
     
-    // --- FETCH WITH BACKOFF ---
     async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
         try {
             const response = await fetch(url, options);
@@ -337,7 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- OBTENER DATOS (Main Loop) ---
     async function fetchWeatherData() {
         showSkeletons(true);
         errorEl.classList.add('hidden'); 
@@ -375,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 tempValue = (temp && temp.value !== null) ? parseFloat(temp.value) : null;
                 const windDirCardinal = windDirDegrees !== null ? convertDegreesToCardinal(windDirDegrees) : 'N/A';
                 
-                // Estabilidad
                 const stability = calculateGustFactor(windSpeedValue, windGustValue);
                 if (stabilityCardEl) {
                     updateCardColors(stabilityCardEl, stability.color);
@@ -384,12 +371,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         : stability.text; 
                 }
                 
-                // Veredicto
                 const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
                 updateCardColors(verdictCardEl, verdictColors);
                 verdictDataEl.textContent = verdictText;
                 
-                // Flecha
                 if (windArrowEl && windDirDegrees !== null) {
                     windArrowEl.style.transform = `rotate(${windDirDegrees}deg)`;
                     const isOffshore = (windDirDegrees > 292.5 || windDirDegrees <= 67.5);
@@ -435,7 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- START ---
     fetchWeatherData();
     setInterval(fetchWeatherData, 30000);
     setInterval(updateTimeAgo, 5000);
