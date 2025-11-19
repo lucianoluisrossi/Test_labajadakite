@@ -1,5 +1,5 @@
 // app.js
-// Importamos las funciones necesarias de los SDKs de Firebase
+// Importamos SOLO las funciones de Firestore (Quitamos Storage para evitar líos de facturación)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -17,19 +17,20 @@ const firebaseConfig = {
 // Inicializar Firebase
 let db;
 let messagesCollection;
+let galleryCollection;
 
 try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     messagesCollection = collection(db, "kiter_board");
-    console.log("✅ Firebase inicializado. Conectando a 'kiter_board'...");
+    galleryCollection = collection(db, "daily_gallery_meta"); 
+    console.log("✅ Firebase (Solo DB) inicializado.");
 } catch (e) {
     console.error("❌ Error crítico inicializando Firebase:", e);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // --- Registro del Service Worker (PWA) ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(console.error);
@@ -41,8 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
-    
-    // NUEVO: Botón de Pizarra en Menú
     const btnPizarraMenu = document.getElementById('btn-pizarra-menu');
 
     function toggleMenu() {
@@ -56,15 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function goToPizarra() {
-        // Cierra menú si está abierto
         if (!mobileMenu.classList.contains('translate-x-full')) {
             toggleMenu();
         }
-        // Scroll suave
         const pizarraSection = document.getElementById('pizarra-section');
         if (pizarraSection) {
             pizarraSection.scrollIntoView({ behavior: 'smooth' });
-            // Al ir, marcamos mensajes como leídos
             markMessagesAsRead();
         }
     }
@@ -74,6 +70,144 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
     if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', goToPizarra);
 
+    // --- FUNCIÓN 1: COMPRESIÓN DE IMÁGENES (Vital para este método) ---
+    async function compressImage(file) {
+        return new Promise((resolve, reject) => {
+            const MAX_WIDTH = 800; // Reducimos un poco más para asegurar que quepa en DB
+            const QUALITY = 0.6;   // Calidad media/buena
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Convertimos directamente a Base64 (String) en lugar de Blob
+                    const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+                    resolve(dataUrl);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
+    }
+
+    // --- LÓGICA GALERÍA DEL DÍA ---
+    const galleryUploadInput = document.getElementById('gallery-upload-input');
+    const galleryGrid = document.getElementById('gallery-grid');
+    const imageModal = document.getElementById('image-modal');
+    const modalImg = document.getElementById('modal-img');
+
+    // Subida de Imagen (Método Directo a DB)
+    if (galleryUploadInput && db) {
+        galleryUploadInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                alert("Solo se permiten imágenes.");
+                return;
+            }
+
+            // Feedback visual
+            galleryUploadInput.parentElement.innerHTML = `Procesando...`;
+            
+            try {
+                // 1. Comprimir y obtener String Base64
+                const base64String = await compressImage(file);
+                
+                // 2. Guardar directamente en Firestore
+                // NOTA: Firestore tiene límite de 1MB por documento. 
+                // Con la compresión a 800px/0.6, la imagen pesará unos 50kb-100kb. Perfecto.
+                await addDoc(galleryCollection, {
+                    url: base64String, // Guardamos la imagen aquí mismo
+                    type: 'base64',
+                    timestamp: serverTimestamp()
+                });
+
+                alert("¡Foto subida con éxito!");
+
+            } catch (error) {
+                console.error("Error subiendo foto:", error);
+                alert("Error al subir. Intenta con una foto más simple.");
+            } finally {
+                // Restaurar botón
+                const parent = document.querySelector('label[for="gallery-upload-input"]') || galleryUploadInput.parentElement;
+                if (parent) {
+                     parent.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Subir Foto
+                        <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
+                    `;
+                    // Re-attach listener
+                    document.getElementById('gallery-upload-input').addEventListener('change', arguments.callee);
+                } else {
+                    // Fallback por si el DOM cambió demasiado, recargar página es una opción segura
+                    window.location.reload();
+                }
+            }
+        });
+    }
+
+    // Renderizar Galería
+    if (galleryGrid && db) {
+        const q = query(galleryCollection, orderBy("timestamp", "desc"), limit(20));
+
+        onSnapshot(q, (snapshot) => {
+            galleryGrid.innerHTML = ''; 
+            const now = Date.now();
+            const oneDay = 24 * 60 * 60 * 1000;
+            let hasImages = false;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // Aceptamos 'url' tradicional o Base64 directa
+                if (data.timestamp && data.url) {
+                    const imgDate = data.timestamp.toDate();
+                    
+                    if (now - imgDate.getTime() < oneDay) {
+                        hasImages = true;
+                        const imgContainer = document.createElement('div');
+                        imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-md bg-gray-100 hover:opacity-90 transition-opacity";
+                        imgContainer.innerHTML = `
+                            <img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto del spot">
+                            <div class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-tl-lg">
+                                ${timeAgo(imgDate)}
+                            </div>
+                        `;
+                        imgContainer.addEventListener('click', () => {
+                            modalImg.src = data.url;
+                            imageModal.classList.remove('hidden');
+                        });
+                        galleryGrid.appendChild(imgContainer);
+                    }
+                }
+            });
+
+            if (!hasImages) {
+                galleryGrid.innerHTML = '<div class="col-span-full flex flex-col items-center justify-center py-6 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-lg"><span class="text-2xl mb-2">📷</span><p>Sin fotos hoy. ¡Sube la primera!</p></div>';
+            }
+        });
+    }
+
+
     // --- LÓGICA DE PIZARRA KITERA ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
@@ -81,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const textInput = document.getElementById('message-text');
     const newMessageToast = document.getElementById('new-message-toast');
 
-    // Función para formatear tiempo relativo
     function timeAgo(date) {
         const seconds = Math.floor((new Date() - date) / 1000);
         let interval = seconds / 3600;
@@ -91,19 +224,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return "hace un momento";
     }
 
-    // Función para marcar mensajes como leídos
     function markMessagesAsRead() {
         const now = Date.now();
         localStorage.setItem('lastReadTime', now);
         if (newMessageToast) newMessageToast.classList.add('hidden');
     }
 
-    // Listener para el Toast de Notificación
     if (newMessageToast) {
         newMessageToast.addEventListener('click', goToPizarra);
     }
 
-    // Enviar Mensaje
     if (messageForm && db) {
         messageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -112,20 +242,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (author && text) {
                 try {
-                    console.log("Intentando enviar mensaje a Firestore...");
                     await addDoc(messagesCollection, {
                         author: author,
                         text: text,
                         timestamp: serverTimestamp() 
                     });
-                    console.log("Mensaje enviado con éxito.");
                     textInput.value = ''; 
                     localStorage.setItem('kiterName', author);
-                    // Al enviar, consideramos que hemos leído todo
                     markMessagesAsRead();
                 } catch (e) {
                     console.error("Error detallado al enviar:", e);
-                    alert(`Error al enviar: ${e.message}. \n\nSi ves 'Missing or insufficient permissions', ve a la Consola de Firebase > Firestore Database > Reglas y permite lectura/escritura global.`);
+                    alert(`Error al enviar: ${e.message}.`);
                 }
             }
         });
@@ -134,7 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedName) authorInput.value = savedName;
     }
 
-    // Escuchar Mensajes en Tiempo Real
     if (messagesContainer && db) {
         const q = query(messagesCollection, orderBy("timestamp", "desc"), limit(50));
 
@@ -144,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const oneDay = 24 * 60 * 60 * 1000;
             let hasMessages = false;
             
-            // Lógica de Notificación
             const lastReadTime = parseInt(localStorage.getItem('lastReadTime') || '0');
             let newestMessageTime = 0;
 
@@ -154,12 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const msgDate = data.timestamp.toDate();
                     const msgTime = msgDate.getTime();
                     
-                    // Guardar el tiempo del mensaje más nuevo para comparación
                     if (msgTime > newestMessageTime) {
                         newestMessageTime = msgTime;
                     }
 
-                    // FILTRO 24 HORAS
                     if (now - msgTime < oneDay) {
                         hasMessages = true;
                         const div = document.createElement('div');
@@ -179,22 +302,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!hasMessages) {
                 messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes. ¡Sé el primero!</p>';
             } else {
-                // Verificar si hay mensajes nuevos NO leídos que sean recientes (últimas 24hs)
-                // Y evitar que aparezca en la primera carga si el usuario nunca entró (opcional, aquí mostramos si es nuevo absoluto)
                 if (newestMessageTime > lastReadTime && lastReadTime > 0) {
                     if(newMessageToast) newMessageToast.classList.remove('hidden');
                 } else if (lastReadTime === 0 && newestMessageTime > 0) {
-                    // Primera vez: Marcamos como leido para no molestar, O mostramos notificación.
-                    // Decisión: Marcamos como leído para que no salte apenas abres la app por primera vez.
                     localStorage.setItem('lastReadTime', now);
                 }
             }
 
         }, (error) => {
             console.error("Error escuchando mensajes:", error);
-            if (messagesContainer) {
-                messagesContainer.innerHTML = `<p class="text-center text-red-400 text-xs">Error de permisos: ${error.code}. Revisa las Reglas en Firebase.</p>`;
-            }
         });
     }
 
@@ -282,26 +398,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return arr[val % 16];
     }
 
-    // --- FUNCIÓN: CALCULAR ESTABILIDAD (Lógica Inversa: 0% = Perfecto) ---
+    // --- FUNCIÓN: CALCULAR ESTABILIDAD ---
     function calculateGustFactor(speed, gust) {
         if (speed === null || gust === null || speed <= 0) {
             return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
         }
         const MIN_KITE_WIND = 12; 
-        // CAMBIO: Texto "No Aplica"
         if (speed < MIN_KITE_WIND) {
              return { factor: null, text: 'No Aplica', color: ['bg-gray-100', 'border-gray-300'] };
         }
         
         if (gust <= speed) {
-             // CAMBIO: 0% es perfección
              return { factor: 0, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
         }
         
-        // CAMBIO: Fórmula Inversa
         const factor = (1 - (speed / gust)) * 100; 
 
-        // CAMBIO: Condicionales Invertidos
         if (factor <= 15) {
             return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; 
         } else if (factor <= 30) {
