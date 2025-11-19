@@ -47,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationBadge = document.getElementById('notification-badge');
     const newMessageToast = document.getElementById('new-message-toast');
     
-    // ELEMENTOS DEL MENÚ (SIDE DRAWER IZQUIERDO)
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
     const menuButton = document.getElementById('menu-button');
@@ -76,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             markMessagesAsRead();
         }
-        // Cerrar menú si está abierto (ahora checamos si NO tiene la clase de oculto)
         if (!mobileMenu.classList.contains('-translate-x-full')) {
             toggleMenu();
         }
@@ -89,16 +87,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (newMessageToast) newMessageToast.addEventListener('click', () => switchView('community'));
 
 
-    // --- LÓGICA TOGGLE MENÚ (IZQUIERDA) ---
-    // El menú ahora está oculto con '-translate-x-full' (fuera a la izquierda).
-    // Para mostrarlo, removemos esa clase (vuelve a 0).
+    // --- LÓGICA TOGGLE MENÚ ---
     function toggleMenu() {
         if (mobileMenu.classList.contains('-translate-x-full')) {
-            // ABRIR
             mobileMenu.classList.remove('-translate-x-full'); 
             menuBackdrop.classList.remove('hidden'); 
         } else {
-            // CERRAR
             mobileMenu.classList.add('-translate-x-full'); 
             menuBackdrop.classList.add('hidden'); 
         }
@@ -162,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const parent = galleryUploadInput.parentElement;
-            const originalContent = parent.innerHTML;
             parent.innerHTML = `<span class="animate-pulse">Subiendo...</span>`;
             
             try {
@@ -345,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- URLs de las Funciones Serverless (Proxy) ---
     const weatherApiUrl = 'api/data';
 
-    // --- ELEMENTOS DEL DOM (RECUPERADOS TODOS) ---
+    // --- ELEMENTOS DEL DOM ---
     const tempEl = document.getElementById('temp-data');
     const humidityEl = document.getElementById('humidity-data'); 
     const pressureEl = document.getElementById('pressure-data'); 
@@ -354,8 +347,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorEl = document.getElementById('error-message');
     const lastUpdatedEl = document.getElementById('last-updated');
 
-    const windHighlightCard = document.getElementById('wind-highlight-card');
-    const unifiedWindDataCardEl = document.getElementById('unified-wind-data-card');
+    // TARJETA UNIFICADA (RECUPERADO)
+    const windHighlightCard = document.getElementById('wind-highlight-card'); // Contenedor padre
+    const unifiedWindDataCardEl = document.getElementById('unified-wind-data-card'); // Tarjeta interior
     
     const highlightWindDirEl = document.getElementById('highlight-wind-dir-data');
     const highlightWindSpeedEl = document.getElementById('highlight-wind-speed-data');
@@ -368,7 +362,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const stabilityCardEl = document.getElementById('stability-card');
     const stabilityDataEl = document.getElementById('stability-data');
     
-    // Skeletons (RECUPERADOS)
     const skeletonLoaderIds = [
         'verdict-data-loader',
         'highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader',
@@ -397,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (isLoading && lastUpdatedEl) {
-            lastUpdatedEl.textContent = 'Actualizando...';
+            lastUpdatedEl.textContent = 'Actualizando datos...';
         }
     }
     
@@ -455,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (speed <= 22) return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
         else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
         else { 
-            if (speed > 33) return ["¡DEMASIADO!", ['bg-purple-400', 'border-purple-600']];
+            if (speed > 33) return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
             else return ["¡MUY FUERTE!", ['bg-red-400', 'border-red-600']];
         }
     }
@@ -577,18 +570,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     else windArrowEl.classList.add('text-gray-900');
                 }
 
-                updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
-                updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeedValue));
+                // ACTUALIZADO PARA TARJETA UNIFICADA
+                updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); // Contenedor en gris
+                if (unifiedWindDataCardEl) {
+                    updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeedValue)); // Interior con color del viento
+                }
 
                 highlightWindSpeedEl.textContent = windSpeed ? `${windSpeed.value} ${windSpeed.unit}` : 'N/A';
                 highlightGustEl.textContent = windGust ? `${windGust.value} ${windGust.unit}` : 'N/A';
                 highlightWindDirEl.textContent = windDirCardinal; 
 
                 tempEl.textContent = temp ? `${temp.value} ${temp.unit}` : 'N/A';
-                humidityEl.textContent = humidity ? `${humidity.value} ${humidity.unit}` : 'N/A'; // RECUPERADO
-                pressureEl.textContent = pressureRel ? `${pressureRel.value} ${pressureRel.unit}` : 'N/A'; // RECUPERADO
+                humidityEl.textContent = humidity ? `${humidity.value} ${humidity.unit}` : 'N/A';
+                pressureEl.textContent = pressureRel ? `${pressureRel.value} ${pressureRel.unit}` : 'N/A'; 
                 rainfallDailyEl.textContent = rainfallDaily ? `${rainfallDaily.value} ${rainfallDaily.unit}` : 'N/A'; 
-                uviEl.textContent = uvi ? uvi.value : 'N/A'; // RECUPERADO
+                uviEl.textContent = uvi ? uvi.value : 'N/A'; 
                 
                 showSkeletons(false); 
                 lastUpdateTime = new Date(); 
@@ -599,12 +595,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error al obtener datos del clima:', error);
-            errorEl.textContent = `Error: ${error.message}`;
+            errorEl.textContent = `Error: No se pudieron cargar los datos. (${error.message})`;
             errorEl.classList.remove('hidden');
             showSkeletons(false);
             updateCardColors(verdictCardEl, ['bg-red-400', 'border-red-600']);
-            verdictDataEl.textContent = 'Error API';
-            if (lastUpdatedEl) lastUpdatedEl.textContent = "Error";
+            verdictDataEl.textContent = 'Error en API (Ecowitt)';
+            if (lastUpdatedEl) lastUpdatedEl.textContent = "Error en la actualización.";
         }
     }
     
