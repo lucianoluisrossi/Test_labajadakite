@@ -224,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const highlightWindSpeedEl = document.getElementById('highlight-wind-speed-data');
     const highlightGustEl = document.getElementById('highlight-gust-data');
     const windArrowEl = document.getElementById('wind-arrow'); 
+    const gustInfoContainer = document.getElementById('gust-info-container'); // ID PARA LA RACHA
     
     const verdictCardEl = document.getElementById('verdict-card');
     const verdictDataEl = document.getElementById('verdict-data');
@@ -262,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
         'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600',
         'bg-purple-400', 'border-purple-600', 'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
-        'bg-green-400', 'border-green-600'
+        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30'
     ];
 
     function updateCardColors(element, newClasses) {
@@ -316,10 +317,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // COLOR TARJETA UNIFICADA
-                // El contenedor padre (windHighlightCard) se queda gris neutro para contener el video y demás.
                 updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
-                // La tarjeta interna de datos (unifiedWindDataCardEl) CAMBIA DE COLOR según viento
                 updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeed));
+                if (gustInfoContainer) {
+                    updateCardColors(gustInfoContainer, getWindyColorClasses(windGust));
+                }
 
                 if(highlightWindSpeedEl) highlightWindSpeedEl.textContent = windSpeed ?? 'N/A';
                 if(highlightGustEl) highlightGustEl.textContent = windGust ?? 'N/A';

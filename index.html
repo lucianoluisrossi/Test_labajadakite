@@ -74,7 +74,7 @@
                     </a>
                 </div>
             </div>
-            <div class="p-4 border-t border-gray-200 text-center text-xs text-gray-400">La Bajada App v3.6</div>
+            <div class="p-4 border-t border-gray-200 text-center text-xs text-gray-400">La Bajada App v3.7</div>
         </div>
         <div id="menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
 
@@ -84,7 +84,7 @@
             <!-- CONTENEDOR PRINCIPAL DE VIENTO Y VIDEO (Unificado) -->
             <div id="wind-highlight-card" class="mt-6 lg:mt-8 p-4 md:p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
                 
-                <!-- 1. LiveCam (AHORA DENTRO DE LA TARJETA) -->
+                <!-- 1. LiveCam -->
                 <div class="bg-black rounded-lg overflow-hidden shadow-lg mb-6 border border-gray-400">
                     <iframe class="w-full aspect-video" src="https://www.youtube.com/embed/QWo36gCzZEo?si=hftjioeg4y-dP4FT&autoplay=1&mute=1" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
                 </div>
@@ -96,7 +96,7 @@
                     <p id="verdict-data" class="data-content text-xl font-extrabold text-gray-900 text-center">Calculando...</p>
                 </div>
                 
-                <!-- 3. TARJETA DE VIENTO UNIFICADA (La que cambia de color) -->
+                <!-- 3. TARJETA DE VIENTO UNIFICADA -->
                 <div id="unified-wind-data-card" class="flex flex-row items-center justify-between p-4 rounded-lg border border-gray-300 transition-colors duration-300 bg-gray-50">
                     
                     <!-- Columna Dirección (35%) -->
@@ -116,10 +116,11 @@
                             <div id="highlight-wind-speed-data-loader" class="skeleton-loader skeleton-text-4xl w-24 mt-1"></div>
                             <p class="text-5xl font-black text-gray-900 data-content leading-none tracking-tight" id="highlight-wind-speed-data">N/A</p>
                         </div>
-                        <div class="mt-3 flex items-center justify-center gap-2 opacity-80 bg-white/30 px-3 py-1 rounded-full shadow-sm">
-                            <span class="text-xs text-gray-700 font-medium uppercase">Racha:</span>
+                        <!-- ID AGREGADO AQUI: gust-info-container -->
+                        <div id="gust-info-container" class="mt-3 flex items-center justify-center gap-2 opacity-90 bg-white/30 px-3 py-1 rounded-full shadow-sm transition-colors duration-300">
+                            <span class="text-xs text-gray-800 font-bold uppercase">Racha:</span>
                             <div id="highlight-gust-data-loader" class="skeleton-loader skeleton-text-sm w-8 inline-block"></div>
-                            <span class="text-lg font-bold text-gray-900 data-content" id="highlight-gust-data">N/A</span>
+                            <span class="text-lg font-black text-gray-900 data-content" id="highlight-gust-data">N/A</span>
                         </div>
                     </div>
                 </div>
