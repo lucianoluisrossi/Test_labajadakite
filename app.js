@@ -1,6 +1,6 @@
 // app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- CONFIGURACIÓN DE FIREBASE ---
@@ -20,7 +20,7 @@ let auth;
 let messagesCollection;
 let galleryCollection; 
 
-// --- INICIALIZACIÓN ROBUSTA ---
+// --- INICIALIZACIÓN SIMPLE Y ROBUSTA ---
 try {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
@@ -29,34 +29,13 @@ try {
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
 
-    // Listener para depurar estado de sesión
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            console.log("✅ Usuario conectado:", user.uid);
-        } else {
-            console.log("⚠️ Usuario desconectado. Intentando reconectar...");
-            signInAnonymously(auth).catch(e => console.error("Error auto-login:", e));
-        }
-    });
+    // Iniciamos sesión silenciosamente en el fondo, sin bloquear la UI
+    signInAnonymously(auth).catch(e => console.warn("Auth warning:", e));
+    console.log("✅ Firebase inicializado correctamente.");
 
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
 }
-
-// --- FUNCIÓN CLAVE: ASEGURAR AUTENTICACIÓN ---
-// Esta función se llama antes de cualquier acción de escritura
-async function ensureAuth() {
-    if (auth.currentUser) return auth.currentUser;
-    try {
-        console.log("🔄 Intentando autenticación bajo demanda...");
-        const result = await signInAnonymously(auth);
-        return result.user;
-    } catch (error) {
-        console.error("❌ Falló la autenticación:", error);
-        throw new Error("No se pudo conectar al servidor. Verifica tu internet.");
-    }
-}
-
 
 document.addEventListener('DOMContentLoaded', () => {
     
@@ -117,10 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
 
-    // --- COMPRESIÓN A BASE64 (Para guardar directo en DB) ---
+    // --- COMPRESIÓN A BASE64 (Para guardar en Firestore Database) ---
     async function compressImageToBase64(file) {
         return new Promise((resolve, reject) => {
-            const MAX_WIDTH = 800; 
+            // Reducimos un poco más para asegurar rendimiento en BD
+            const MAX_WIDTH = 600; 
             const QUALITY = 0.6;   
 
             const reader = new FileReader();
@@ -152,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA GALERÍA (MODO BASE DE DATOS) ---
+    // --- LÓGICA GALERÍA (MODO BASE DE DATOS - SIN STORAGE) ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
     const imageModal = document.getElementById('image-modal');
@@ -170,24 +150,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputElement = e.target;
         const labelElement = inputElement.parentElement;
         
-        // Guardar estado original
+        // Guardar estado original del botón
         const spans = labelElement.querySelectorAll('span');
         const originalTexts = []; 
         spans.forEach(s => originalTexts.push(s.textContent));
 
-        // Feedback Visual
+        // Feedback Visual (Sin bloquear lógica)
         spans.forEach(s => s.textContent = "Subiendo...");
         labelElement.classList.add('opacity-50', 'cursor-wait');
         inputElement.disabled = true; 
         
         try {
-            // 1. Asegurar Autenticación (Nuevo paso crítico)
-            await ensureAuth();
-
-            // 2. Convertir
+            // 1. Convertir a Base64
             const base64String = await compressImageToBase64(file);
             
-            // 3. Guardar
+            // 2. Guardar DIRECTO en la colección (Sin verificaciones extrañas)
             await addDoc(galleryCollection, {
                 url: base64String,
                 timestamp: serverTimestamp()
@@ -195,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Error subiendo:", error);
-            alert("No se pudo subir: " + error.message);
+            alert("No se pudo subir. Intenta con una imagen más chica.");
         } finally {
             // Restaurar UI
             spans.forEach((s, index) => s.textContent = originalTexts[index]);
@@ -277,28 +254,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = textInput.value.trim();
 
             if (author && text) {
-                // Feedback visual en el botón
+                // UI Feedback simple
                 const btn = messageForm.querySelector('button');
                 const originalText = btn.innerText;
                 btn.innerText = '...';
                 btn.disabled = true;
 
                 try {
-                    // 1. Asegurar Autenticación
-                    await ensureAuth();
-
-                    // 2. Enviar
+                    // Enviar directo (Firebase maneja la cola si está conectando)
                     await addDoc(messagesCollection, {
                         author: author,
                         text: text,
                         timestamp: serverTimestamp() 
                     });
+                    
                     textInput.value = ''; 
                     localStorage.setItem('kiterName', author);
                     markMessagesAsRead();
                 } catch (e) { 
                     console.error(e);
-                    alert("Error al enviar mensaje: " + e.message);
+                    alert("Error al enviar: " + e.message);
                 } finally {
                     btn.innerText = originalText;
                     btn.disabled = false;
@@ -461,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return ['bg-gray-100', 'border-gray-300']; 
     }
 
+    // --- MOCK DATA (DATOS DE PRUEBA) ---
     function getMockWeatherData() {
         return {
             code: 0,
