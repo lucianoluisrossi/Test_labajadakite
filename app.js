@@ -1,5 +1,7 @@
 // app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+// IMPORTANTE: Agregamos Auth para tener permisos de escritura
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
@@ -14,19 +16,31 @@ const firebaseConfig = {
   measurementId: "G-R926P5WBWW"
 };
 
-// Inicializar Firebase
+// Variables globales
 let db;
 let storage; 
+let auth; // Variable para Auth
 let messagesCollection;
 let galleryCollection; 
 
 try {
     const app = initializeApp(firebaseConfig);
+    auth = getAuth(app); // Inicializar Auth
     db = getFirestore(app);
     storage = getStorage(app); 
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
-    console.log("✅ Firebase (DB + Storage) inicializado.");
+    
+    // AUTENTICACIÓN ANÓNIMA AUTOMÁTICA
+    // Esto es vital para que Storage permita subir archivos
+    signInAnonymously(auth)
+        .then(() => {
+            console.log("✅ Usuario autenticado anónimamente (Permisos OK)");
+        })
+        .catch((error) => {
+            console.error("❌ Error de autenticación:", error);
+        });
+
 } catch (e) {
     console.error("❌ Error crítico inicializando Firebase:", e);
 }
@@ -43,14 +57,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewDashboard = document.getElementById('view-dashboard');
     const viewCommunity = document.getElementById('view-community');
     
-    // Botones de navegación
     const navHomeBtn = document.getElementById('nav-home');
     const btnPizarraMenu = document.getElementById('btn-pizarra-menu');
     const backToHomeBtn = document.getElementById('back-to-home');
     const fabCommunity = document.getElementById('fab-community');
     const newMessageToast = document.getElementById('new-message-toast');
 
-    // Menú Lateral
     const menuButton = document.getElementById('menu-button');
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
@@ -63,22 +75,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (viewName === 'dashboard') {
             viewDashboard.classList.remove('hidden');
             viewCommunity.classList.add('hidden');
-            if(fabCommunity) fabCommunity.classList.remove('hidden'); // Mostrar botón flotante en home
+            if(fabCommunity) fabCommunity.classList.remove('hidden');
         } else {
-            // Vista Comunidad
             viewDashboard.classList.add('hidden');
             viewCommunity.classList.remove('hidden');
-            if(fabCommunity) fabCommunity.classList.add('hidden'); // Ocultar botón flotante en comunidad
-            markMessagesAsRead(); // Marcar mensajes como leídos al entrar
+            if(fabCommunity) fabCommunity.classList.add('hidden');
+            markMessagesAsRead();
         }
 
-        // Cerrar menú si está abierto (verificando si NO tiene la clase de oculto)
         if (mobileMenu && !mobileMenu.classList.contains('-translate-x-full')) {
             toggleMenu();
         }
     }
 
-    // --- LÓGICA DEL MENÚ HAMBURGUESA ---
     function toggleMenu() {
         if (mobileMenu.classList.contains('-translate-x-full')) {
             mobileMenu.classList.remove('-translate-x-full'); 
@@ -89,15 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Asignar eventos de navegación
     if (navHomeBtn) navHomeBtn.addEventListener('click', () => switchView('dashboard'));
     if (backToHomeBtn) backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
-    
     if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', () => switchView('community'));
     if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
     if (newMessageToast) newMessageToast.addEventListener('click', () => switchView('community'));
 
-    // Asignar eventos de menú
     if (menuButton) menuButton.addEventListener('click', toggleMenu);
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
@@ -139,16 +145,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA GALERÍA DEL DÍA (CORREGIDA Y ROBUSTA) ---
+    // --- LÓGICA GALERÍA DEL DÍA ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
     const imageModal = document.getElementById('image-modal');
     const modalImg = document.getElementById('modal-img');
 
-    // Función para manejar la subida sin destruir el DOM
     const handleGalleryUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        // Verificar Auth antes de intentar subir
+        if (!auth.currentUser) {
+            alert("Conectando con el servidor... Intenta en unos segundos.");
+            return;
+        }
 
         if (!file.type.startsWith('image/')) {
             alert("Solo se permiten imágenes.");
@@ -158,47 +169,47 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputElement = e.target;
         const labelElement = inputElement.parentElement;
         
-        // Obtenemos los textos (spans) dentro del botón para cambiarlos temporalmente
+        // Guardar textos originales
         const spans = labelElement.querySelectorAll('span');
-        const originalTexts = Array.from(spans).map(s => s.textContent); // Guardamos textos originales
+        const originalTexts = []; 
+        spans.forEach(s => originalTexts.push(s.textContent));
 
-        // 1. Feedback Visual: Cambiar texto a "Subiendo..." y deshabilitar
+        // Feedback Visual (SIN destruir el input)
         spans.forEach(s => s.textContent = "Subiendo...");
         labelElement.classList.add('opacity-50', 'cursor-wait');
         inputElement.disabled = true; 
         
         try {
-            // 2. Comprimir
+            // Comprimir
             const compressedBlob = await compressImage(file);
             
-            // 3. Subir a Storage
+            // Subir a Storage
             const fileName = `gallery/${Date.now()}_${Math.floor(Math.random()*1000)}.jpg`;
             const storageRef = ref(storage, fileName);
             
             await uploadBytes(storageRef, compressedBlob);
             const downloadURL = await getDownloadURL(storageRef);
 
-            // 4. Guardar en Base de Datos
+            // Guardar en DB
             await addDoc(galleryCollection, {
                 url: downloadURL,
                 path: fileName,
                 timestamp: serverTimestamp()
             });
 
-            // Éxito (sin alert invasivo, el feedback visual se restaura solo)
-
         } catch (error) {
             console.error("Error subiendo foto:", error);
-            alert("Hubo un error al subir la foto. Intenta nuevamente.");
+            alert("Hubo un error al subir la foto. Verifica tu conexión.");
         } finally {
-            // 5. Restaurar el botón a su estado original
+            // Restaurar estado
             spans.forEach((s, index) => s.textContent = originalTexts[index]);
             labelElement.classList.remove('opacity-50', 'cursor-wait');
             inputElement.disabled = false;
-            inputElement.value = ''; // Limpiar el input para permitir subir la misma foto si se quiere
+            inputElement.value = ''; 
         }
     };
 
+    // Asignar listener (SOLO UNA VEZ)
     if (galleryUploadInput && storage && db) {
         galleryUploadInput.addEventListener('change', handleGalleryUpload);
     }
@@ -270,6 +281,12 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const author = authorInput.value.trim();
             const text = textInput.value.trim();
+
+            // Verificar Auth antes de enviar mensaje
+            if (!auth.currentUser) {
+                alert("Conectando... espera un momento.");
+                return;
+            }
 
             if (author && text) {
                 try {
@@ -465,7 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- MOCK DATA (DATOS DE PRUEBA) ---
-    // Se usa cuando la API real falla (común en previews)
     function getMockWeatherData() {
         return {
             code: 0,
