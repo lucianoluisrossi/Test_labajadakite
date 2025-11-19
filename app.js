@@ -1,9 +1,10 @@
 // app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-// IMPORTANTE: Agregamos Auth para tener permisos de escritura
+// Mantenemos Auth para poder escribir en la base de datos
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+// NOTA: Ya no importamos 'firebase-storage' porque guardaremos en Firestore directo.
 
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -18,31 +19,25 @@ const firebaseConfig = {
 
 // Variables globales
 let db;
-let storage; 
-let auth; // Variable para Auth
+let auth; 
 let messagesCollection;
 let galleryCollection; 
 
 try {
     const app = initializeApp(firebaseConfig);
-    auth = getAuth(app); // Inicializar Auth
+    auth = getAuth(app);
     db = getFirestore(app);
-    storage = getStorage(app); 
+    
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
     
-    // AUTENTICACIÓN ANÓNIMA AUTOMÁTICA
-    // Esto es vital para que Storage permita subir archivos
+    // Autenticación Anónima (Necesaria para escribir en la DB)
     signInAnonymously(auth)
-        .then(() => {
-            console.log("✅ Usuario autenticado anónimamente (Permisos OK)");
-        })
-        .catch((error) => {
-            console.error("❌ Error de autenticación:", error);
-        });
+        .then(() => console.log("✅ Autenticado (DB Mode)"))
+        .catch((error) => console.error("❌ Error Auth:", error));
 
 } catch (e) {
-    console.error("❌ Error crítico inicializando Firebase:", e);
+    console.error("❌ Error inicializando Firebase:", e);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -53,22 +48,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- ELEMENTOS DE NAVEGACIÓN Y VISTAS ---
+    // --- ELEMENTOS DE NAVEGACIÓN ---
     const viewDashboard = document.getElementById('view-dashboard');
     const viewCommunity = document.getElementById('view-community');
-    
     const navHomeBtn = document.getElementById('nav-home');
     const btnPizarraMenu = document.getElementById('btn-pizarra-menu');
     const backToHomeBtn = document.getElementById('back-to-home');
     const fabCommunity = document.getElementById('fab-community');
     const newMessageToast = document.getElementById('new-message-toast');
-
     const menuButton = document.getElementById('menu-button');
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
 
-    // --- LÓGICA DE CAMBIO DE VISTA (SPA) ---
+    // --- LÓGICA DE VISTAS ---
     function switchView(viewName) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -82,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if(fabCommunity) fabCommunity.classList.add('hidden');
             markMessagesAsRead();
         }
-
         if (mobileMenu && !mobileMenu.classList.contains('-translate-x-full')) {
             toggleMenu();
         }
@@ -103,17 +95,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', () => switchView('community'));
     if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
     if (newMessageToast) newMessageToast.addEventListener('click', () => switchView('community'));
-
     if (menuButton) menuButton.addEventListener('click', toggleMenu);
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
 
-
-    // --- FUNCIÓN DE COMPRESIÓN DE IMÁGENES ---
-    async function compressImage(file) {
+    // --- COMPRESIÓN A BASE64 (Para guardar directo en DB) ---
+    // Modificado para devolver un string Base64 en lugar de un Blob
+    async function compressImageToBase64(file) {
         return new Promise((resolve, reject) => {
-            const MAX_WIDTH = 1024; 
-            const QUALITY = 0.7;   
+            const MAX_WIDTH = 800; // Reducido un poco para asegurar que entre en Firestore
+            const QUALITY = 0.6;   // Calidad balanceada para Base64
 
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -135,9 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    canvas.toBlob((blob) => {
-                        resolve(blob);
-                    }, 'image/jpeg', QUALITY);
+                    // AQUÍ ESTÁ LA CLAVE: Devolvemos el string dataURL directo
+                    const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+                    resolve(dataUrl);
                 };
                 img.onerror = (err) => reject(err);
             };
@@ -145,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA GALERÍA DEL DÍA ---
+    // --- LÓGICA GALERÍA (MODO BASE DE DATOS) ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
     const imageModal = document.getElementById('image-modal');
@@ -155,53 +146,44 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Verificar Auth antes de intentar subir
         if (!auth.currentUser) {
-            alert("Conectando con el servidor... Intenta en unos segundos.");
+            alert("Conectando... espera un momento.");
             return;
         }
 
         if (!file.type.startsWith('image/')) {
-            alert("Solo se permiten imágenes.");
+            alert("Solo imágenes.");
             return;
         }
 
         const inputElement = e.target;
         const labelElement = inputElement.parentElement;
         
-        // Guardar textos originales
+        // Guardar estado original
         const spans = labelElement.querySelectorAll('span');
         const originalTexts = []; 
         spans.forEach(s => originalTexts.push(s.textContent));
 
-        // Feedback Visual (SIN destruir el input)
-        spans.forEach(s => s.textContent = "Subiendo...");
+        // Feedback Visual
+        spans.forEach(s => s.textContent = "Procesando...");
         labelElement.classList.add('opacity-50', 'cursor-wait');
         inputElement.disabled = true; 
         
         try {
-            // Comprimir
-            const compressedBlob = await compressImage(file);
+            // 1. Convertir a Base64 (String)
+            const base64String = await compressImageToBase64(file);
             
-            // Subir a Storage
-            const fileName = `gallery/${Date.now()}_${Math.floor(Math.random()*1000)}.jpg`;
-            const storageRef = ref(storage, fileName);
-            
-            await uploadBytes(storageRef, compressedBlob);
-            const downloadURL = await getDownloadURL(storageRef);
-
-            // Guardar en DB
+            // 2. Guardar DIRECTAMENTE en Firestore
             await addDoc(galleryCollection, {
-                url: downloadURL,
-                path: fileName,
+                url: base64String, // Guardamos la imagen entera aquí
                 timestamp: serverTimestamp()
             });
 
         } catch (error) {
-            console.error("Error subiendo foto:", error);
-            alert("Hubo un error al subir la foto. Verifica tu conexión.");
+            console.error("Error subiendo:", error);
+            alert("Error al guardar la foto. Intenta con una más pequeña.");
         } finally {
-            // Restaurar estado
+            // Restaurar UI
             spans.forEach((s, index) => s.textContent = originalTexts[index]);
             labelElement.classList.remove('opacity-50', 'cursor-wait');
             inputElement.disabled = false;
@@ -209,8 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Asignar listener (SOLO UNA VEZ)
-    if (galleryUploadInput && storage && db) {
+    if (galleryUploadInput && db) {
         galleryUploadInput.addEventListener('change', handleGalleryUpload);
     }
 
@@ -231,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         hasImages = true;
                         const imgContainer = document.createElement('div');
                         imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-md bg-gray-100 hover:opacity-90 transition-opacity";
+                        // data.url ya es el string base64, así que funciona directo en src
                         imgContainer.innerHTML = `
                             <img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto">
                             <div class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-tl-lg">
@@ -252,8 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
-    // --- LÓGICA DE PIZARRA KITERA ---
+    // --- LÓGICA DE PIZARRA ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
     const authorInput = document.getElementById('message-author');
@@ -282,9 +263,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const author = authorInput.value.trim();
             const text = textInput.value.trim();
 
-            // Verificar Auth antes de enviar mensaje
             if (!auth.currentUser) {
-                alert("Conectando... espera un momento.");
+                alert("Conectando...");
                 return;
             }
 
@@ -298,9 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     textInput.value = ''; 
                     localStorage.setItem('kiterName', author);
                     markMessagesAsRead();
-                } catch (e) {
-                    console.error(e);
-                }
+                } catch (e) { console.error(e); }
             }
         });
         const savedName = localStorage.getItem('kiterName');
@@ -309,13 +287,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (messagesContainer && db) {
         const q = query(messagesCollection, orderBy("timestamp", "desc"), limit(50));
-
         onSnapshot(q, (snapshot) => {
             messagesContainer.innerHTML = ''; 
             const now = Date.now();
             const oneDay = 24 * 60 * 60 * 1000;
             let hasMessages = false;
-            
             const lastReadTime = parseInt(localStorage.getItem('lastReadTime') || '0');
             let newestMessageTime = 0;
 
@@ -324,7 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.timestamp) {
                     const msgDate = data.timestamp.toDate();
                     const msgTime = msgDate.getTime();
-                    
                     if (msgTime > newestMessageTime) newestMessageTime = msgTime;
 
                     if (now - msgTime < oneDay) {
@@ -343,17 +318,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            if (!hasMessages) {
-                messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes.</p>';
-            } else {
+            if (!hasMessages) messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes.</p>';
+            else {
                 if (newestMessageTime > lastReadTime && lastReadTime > 0) {
                     if (viewCommunity.classList.contains('hidden')) {
                         if(newMessageToast) newMessageToast.classList.remove('hidden');
                         const badge = document.getElementById('notification-badge');
                         if(badge) badge.classList.remove('hidden');
-                    } else {
-                        markMessagesAsRead();
-                    }
+                    } else { markMessagesAsRead(); }
                 } else if (lastReadTime === 0 && newestMessageTime > 0) {
                     localStorage.setItem('lastReadTime', now);
                 }
@@ -361,11 +333,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
-    // --- URLs de las Funciones Serverless (Proxy) ---
+    // --- API DE CLIMA (MOCK + REAL) ---
     const weatherApiUrl = 'api/data';
-
-    // --- ELEMENTOS DEL DOM (Datos) ---
     const tempEl = document.getElementById('temp-data');
     const humidityEl = document.getElementById('humidity-data');
     const pressureEl = document.getElementById('pressure-data');
@@ -386,21 +355,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const stabilityCardEl = document.getElementById('stability-card');
     const stabilityDataEl = document.getElementById('stability-data');
 
-    // Skeletons
-    const skeletonLoaderIds = [
-        'verdict-data-loader',
-        'highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader',
-        'temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 
-        'rainfall-daily-data-loader', 'uvi-data-loader',
-        'stability-data-loader'
-    ];
-    const dataContentIds = [
-        'verdict-data',
-        'highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data',
-        'temp-data', 'humidity-data', 'pressure-data',
-        'rainfall-daily-data', 'uvi-data',
-        'stability-data'
-    ];
+    const skeletonLoaderIds = ['verdict-data-loader','highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader','temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 'rainfall-daily-data-loader', 'uvi-data-loader','stability-data-loader'];
+    const dataContentIds = ['verdict-data','highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data','temp-data', 'humidity-data', 'pressure-data','rainfall-daily-data', 'uvi-data','stability-data'];
 
     let lastUpdateTime = null;
 
@@ -481,7 +437,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return ['bg-gray-100', 'border-gray-300']; 
     }
 
-    // --- MOCK DATA (DATOS DE PRUEBA) ---
     function getMockWeatherData() {
         return {
             code: 0,
@@ -519,14 +474,11 @@ document.addEventListener('DOMContentLoaded', () => {
         errorEl.classList.add('hidden'); 
         
         let json;
-        
         try {
-            // Intentar fetch real
             try {
                 json = await fetchWithBackoff(weatherApiUrl, {});
             } catch (e) {
-                console.warn("API real falló, usando datos MOCK para demostración.");
-                // Fallback a Mock Data
+                console.warn("API real falló, usando MOCK.");
                 json = getMockWeatherData();
             }
 
@@ -536,12 +488,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const windGustValue = (data.wind?.wind_gust?.value) ? parseFloat(data.wind.wind_gust.value) : null; 
                 const windDirDegrees = (data.wind?.wind_direction?.value) ? parseFloat(data.wind.wind_direction.value) : null;
                 
-                // Veredicto
                 const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
                 updateCardColors(verdictCardEl, verdictColors);
                 verdictDataEl.textContent = verdictText;
                 
-                // Flecha
                 if (windArrowEl && windDirDegrees !== null) {
                     windArrowEl.style.transform = `rotate(${windDirDegrees}deg)`;
                     const isOffshore = (windDirDegrees > 292.5 || windDirDegrees <= 67.5);
@@ -554,24 +504,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     else windArrowEl.classList.add('text-green-600');
                 }
 
-                // Colores Tarjetas
                 updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
                 updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeedValue));
                 if (gustInfoContainer) updateCardColors(gustInfoContainer, getWindyColorClasses(windGustValue));
 
-                // Textos Viento
                 highlightWindSpeedEl.textContent = windSpeedValue ?? 'N/A';
                 highlightGustEl.textContent = windGustValue ?? 'N/A';
                 highlightWindDirEl.textContent = convertDegreesToCardinal(windDirDegrees); 
 
-                // Otros Datos
                 tempEl.textContent = data.outdoor?.temperature?.value ? `${data.outdoor.temperature.value} ${data.outdoor.temperature.unit}` : 'N/A';
                 humidityEl.textContent = data.outdoor?.humidity?.value ? `${data.outdoor.humidity.value}%` : 'N/A';
                 pressureEl.textContent = data.pressure?.relative?.value ? `${data.pressure.relative.value} hPa` : 'N/A'; 
                 rainfallDailyEl.textContent = data.rainfall?.daily?.value ? `${data.rainfall.daily.value} mm` : 'N/A'; 
                 uviEl.textContent = data.solar_and_uvi?.uvi?.value ?? 'N/A'; 
 
-                // Estabilidad
                 const stability = calculateGustFactor(windSpeedValue, windGustValue);
                 if (stabilityCardEl) updateCardColors(stabilityCardEl, stability.color);
                 if (stabilityDataEl) stabilityDataEl.textContent = stability.text;
