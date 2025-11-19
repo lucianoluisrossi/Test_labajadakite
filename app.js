@@ -3,7 +3,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
   authDomain: "labajadakite.firebaseapp.com",
@@ -14,13 +13,11 @@ const firebaseConfig = {
   measurementId: "G-R926P5WBWW"
 };
 
-// Variables globales
 let db;
 let auth; 
 let messagesCollection;
 let galleryCollection; 
 
-// --- INICIALIZACIÓN SIMPLE Y ROBUSTA ---
 try {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
@@ -29,9 +26,7 @@ try {
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
 
-    // Iniciamos sesión silenciosamente en el fondo, sin bloquear la UI
     signInAnonymously(auth).catch(e => console.warn("Auth warning:", e));
-    console.log("✅ Firebase inicializado correctamente.");
 
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
@@ -58,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
 
-    // --- LÓGICA DE VISTAS ---
     function switchView(viewName) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -96,10 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
 
-    // --- COMPRESIÓN A BASE64 (Para guardar en Firestore Database) ---
     async function compressImageToBase64(file) {
         return new Promise((resolve, reject) => {
-            // Reducimos un poco más para asegurar rendimiento en BD
             const MAX_WIDTH = 600; 
             const QUALITY = 0.6;   
 
@@ -132,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA GALERÍA (MODO BASE DE DATOS - SIN STORAGE) ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
     const imageModal = document.getElementById('image-modal');
@@ -150,21 +141,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputElement = e.target;
         const labelElement = inputElement.parentElement;
         
-        // Guardar estado original del botón
         const spans = labelElement.querySelectorAll('span');
         const originalTexts = []; 
         spans.forEach(s => originalTexts.push(s.textContent));
 
-        // Feedback Visual (Sin bloquear lógica)
         spans.forEach(s => s.textContent = "Subiendo...");
         labelElement.classList.add('opacity-50', 'cursor-wait');
         inputElement.disabled = true; 
         
         try {
-            // 1. Convertir a Base64
             const base64String = await compressImageToBase64(file);
             
-            // 2. Guardar DIRECTO en la colección (Sin verificaciones extrañas)
             await addDoc(galleryCollection, {
                 url: base64String,
                 timestamp: serverTimestamp()
@@ -174,7 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error subiendo:", error);
             alert("No se pudo subir. Intenta con una imagen más chica.");
         } finally {
-            // Restaurar UI
             spans.forEach((s, index) => s.textContent = originalTexts[index]);
             labelElement.classList.remove('opacity-50', 'cursor-wait');
             inputElement.disabled = false;
@@ -224,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA DE PIZARRA ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
     const authorInput = document.getElementById('message-author');
@@ -254,14 +239,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = textInput.value.trim();
 
             if (author && text) {
-                // UI Feedback simple
                 const btn = messageForm.querySelector('button');
                 const originalText = btn.innerText;
                 btn.innerText = '...';
                 btn.disabled = true;
 
                 try {
-                    // Enviar directo (Firebase maneja la cola si está conectando)
                     await addDoc(messagesCollection, {
                         author: author,
                         text: text,
@@ -436,7 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return ['bg-gray-100', 'border-gray-300']; 
     }
 
-    // --- MOCK DATA (DATOS DE PRUEBA) ---
     function getMockWeatherData() {
         return {
             code: 0,
@@ -508,7 +490,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeedValue));
                 if (gustInfoContainer) updateCardColors(gustInfoContainer, getWindyColorClasses(windGustValue));
 
-                highlightWindSpeedEl.textContent = windSpeedValue ?? 'N/A';
+                // MODIFICACIÓN IMPORTANTE: Insertar KTS via JS de forma segura
+                highlightWindSpeedEl.innerHTML = windSpeedValue 
+                    ? `${windSpeedValue} <span class="text-xl font-bold align-baseline">kts</span>` 
+                    : 'N/A';
+                
                 highlightGustEl.textContent = windGustValue ?? 'N/A';
                 highlightWindDirEl.textContent = convertDegreesToCardinal(windDirDegrees); 
 
