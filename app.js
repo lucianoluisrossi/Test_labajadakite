@@ -1,10 +1,7 @@
 // app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-// Mantenemos Auth para poder escribir en la base de datos
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-// NOTA: Ya no importamos 'firebase-storage' porque guardaremos en Firestore directo.
 
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -23,6 +20,7 @@ let auth;
 let messagesCollection;
 let galleryCollection; 
 
+// --- INICIALIZACIÓN ROBUSTA ---
 try {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
@@ -30,15 +28,35 @@ try {
     
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
-    
-    // Autenticación Anónima (Necesaria para escribir en la DB)
-    signInAnonymously(auth)
-        .then(() => console.log("✅ Autenticado (DB Mode)"))
-        .catch((error) => console.error("❌ Error Auth:", error));
+
+    // Listener para depurar estado de sesión
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            console.log("✅ Usuario conectado:", user.uid);
+        } else {
+            console.log("⚠️ Usuario desconectado. Intentando reconectar...");
+            signInAnonymously(auth).catch(e => console.error("Error auto-login:", e));
+        }
+    });
 
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
 }
+
+// --- FUNCIÓN CLAVE: ASEGURAR AUTENTICACIÓN ---
+// Esta función se llama antes de cualquier acción de escritura
+async function ensureAuth() {
+    if (auth.currentUser) return auth.currentUser;
+    try {
+        console.log("🔄 Intentando autenticación bajo demanda...");
+        const result = await signInAnonymously(auth);
+        return result.user;
+    } catch (error) {
+        console.error("❌ Falló la autenticación:", error);
+        throw new Error("No se pudo conectar al servidor. Verifica tu internet.");
+    }
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     
@@ -100,11 +118,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
 
     // --- COMPRESIÓN A BASE64 (Para guardar directo en DB) ---
-    // Modificado para devolver un string Base64 en lugar de un Blob
     async function compressImageToBase64(file) {
         return new Promise((resolve, reject) => {
-            const MAX_WIDTH = 800; // Reducido un poco para asegurar que entre en Firestore
-            const QUALITY = 0.6;   // Calidad balanceada para Base64
+            const MAX_WIDTH = 800; 
+            const QUALITY = 0.6;   
 
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -126,7 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // AQUÍ ESTÁ LA CLAVE: Devolvemos el string dataURL directo
                     const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
                     resolve(dataUrl);
                 };
@@ -146,11 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (!auth.currentUser) {
-            alert("Conectando... espera un momento.");
-            return;
-        }
-
         if (!file.type.startsWith('image/')) {
             alert("Solo imágenes.");
             return;
@@ -165,23 +176,26 @@ document.addEventListener('DOMContentLoaded', () => {
         spans.forEach(s => originalTexts.push(s.textContent));
 
         // Feedback Visual
-        spans.forEach(s => s.textContent = "Procesando...");
+        spans.forEach(s => s.textContent = "Subiendo...");
         labelElement.classList.add('opacity-50', 'cursor-wait');
         inputElement.disabled = true; 
         
         try {
-            // 1. Convertir a Base64 (String)
+            // 1. Asegurar Autenticación (Nuevo paso crítico)
+            await ensureAuth();
+
+            // 2. Convertir
             const base64String = await compressImageToBase64(file);
             
-            // 2. Guardar DIRECTAMENTE en Firestore
+            // 3. Guardar
             await addDoc(galleryCollection, {
-                url: base64String, // Guardamos la imagen entera aquí
+                url: base64String,
                 timestamp: serverTimestamp()
             });
 
         } catch (error) {
             console.error("Error subiendo:", error);
-            alert("Error al guardar la foto. Intenta con una más pequeña.");
+            alert("No se pudo subir: " + error.message);
         } finally {
             // Restaurar UI
             spans.forEach((s, index) => s.textContent = originalTexts[index]);
@@ -212,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         hasImages = true;
                         const imgContainer = document.createElement('div');
                         imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-md bg-gray-100 hover:opacity-90 transition-opacity";
-                        // data.url ya es el string base64, así que funciona directo en src
                         imgContainer.innerHTML = `
                             <img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto">
                             <div class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-tl-lg">
@@ -263,13 +276,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const author = authorInput.value.trim();
             const text = textInput.value.trim();
 
-            if (!auth.currentUser) {
-                alert("Conectando...");
-                return;
-            }
-
             if (author && text) {
+                // Feedback visual en el botón
+                const btn = messageForm.querySelector('button');
+                const originalText = btn.innerText;
+                btn.innerText = '...';
+                btn.disabled = true;
+
                 try {
+                    // 1. Asegurar Autenticación
+                    await ensureAuth();
+
+                    // 2. Enviar
                     await addDoc(messagesCollection, {
                         author: author,
                         text: text,
@@ -278,7 +296,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     textInput.value = ''; 
                     localStorage.setItem('kiterName', author);
                     markMessagesAsRead();
-                } catch (e) { console.error(e); }
+                } catch (e) { 
+                    console.error(e);
+                    alert("Error al enviar mensaje: " + e.message);
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
             }
         });
         const savedName = localStorage.getItem('kiterName');
