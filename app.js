@@ -407,15 +407,25 @@ document.addEventListener('DOMContentLoaded', () => {
         element.classList.add(...newClasses);
     }
 
-    function getWindyColorClasses(speedInKnots) {
-        if (speedInKnots !== null && !isNaN(speedInKnots)) {
-            if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
-            else if (speedInKnots <= 16) return ['bg-green-300', 'border-green-500']; 
-            else if (speedInKnots <= 21) return ['bg-yellow-300', 'border-yellow-500']; 
-            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; 
-            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; 
-            else return ['bg-purple-400', 'border-purple-600']; 
+    // FUNCIÓN NUEVA: Lógica Unificada con Prioridad de Seguridad
+    function getUnifiedWindColorClasses(speedInKnots, degrees) {
+        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA.
+        if (degrees !== null) {
+             if ((degrees > 292.5 || degrees <= 67.5)) { 
+                return ['bg-red-400', 'border-red-600'];
+            }
         }
+
+        // 2. Si es dirección segura, usamos la Escala Kitera (igual al Veredicto)
+        if (speedInKnots !== null && !isNaN(speedInKnots)) {
+            if (speedInKnots <= 14) return ['bg-blue-200', 'border-blue-400']; // Flojo
+            else if (speedInKnots <= 18) return ['bg-green-300', 'border-green-500']; // Ideal
+            else if (speedInKnots <= 22) return ['bg-yellow-300', 'border-yellow-500']; // Muy Bueno
+            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; // Fuerte
+            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; // Muy Fuerte
+            else return ['bg-purple-400', 'border-purple-600']; // Demasiado
+        }
+        
         return ['bg-gray-100', 'border-gray-300']; 
     }
 
@@ -487,10 +497,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
-                updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeedValue));
-                if (gustInfoContainer) updateCardColors(gustInfoContainer, getWindyColorClasses(windGustValue));
+                
+                // USO DE LA NUEVA FUNCIÓN UNIFICADA (Con Dirección)
+                updateCardColors(unifiedWindDataCardEl, getUnifiedWindColorClasses(windSpeedValue, windDirDegrees));
+                if (gustInfoContainer) updateCardColors(gustInfoContainer, getUnifiedWindColorClasses(windGustValue, windDirDegrees));
 
-                // MODIFICACIÓN IMPORTANTE: Insertar KTS via JS de forma segura
                 highlightWindSpeedEl.innerHTML = windSpeedValue 
                     ? `${windSpeedValue} <span class="text-xl font-bold align-baseline">kts</span>` 
                     : 'N/A';
