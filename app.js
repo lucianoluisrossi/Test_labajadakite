@@ -69,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
             viewDashboard.classList.add('hidden');
             viewCommunity.classList.remove('hidden');
             if(fabCommunity) fabCommunity.classList.add('hidden'); // Ocultar botón flotante en comunidad
-            
             markMessagesAsRead(); // Marcar mensajes como leídos al entrar
         }
 
@@ -81,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA DEL MENÚ HAMBURGUESA ---
     function toggleMenu() {
-        // Nota: Usamos '-translate-x-full' (negativo) porque el menú está a la izquierda
         if (mobileMenu.classList.contains('-translate-x-full')) {
             mobileMenu.classList.remove('-translate-x-full'); 
             menuBackdrop.classList.remove('hidden'); 
@@ -177,21 +175,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: serverTimestamp()
             });
 
-            // Opcional: alert("Foto subida"); 
-
         } catch (error) {
             console.error("Error subiendo foto:", error);
             alert("Error al subir la foto.");
         } finally {
-            // Restaurar botón original para permitir nueva subida
-            // Nota: Es importante restaurar la estructura exacta que espera el CSS/HTML
             parent.innerHTML = `
                 <span class="hidden md:inline">Subir Foto</span>
                 <span class="md:hidden">Subir</span>
                 <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
             `;
-            
-            // Reasignar listener al nuevo input creado
             const newInput = document.getElementById('gallery-upload-input');
             if (newInput) {
                 newInput.addEventListener('change', handleGalleryUpload);
@@ -203,7 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
         galleryUploadInput.addEventListener('change', handleGalleryUpload);
     }
 
-    // Renderizar Galería
     if (galleryGrid && db) {
         const q = query(galleryCollection, orderBy("timestamp", "desc"), limit(20));
 
@@ -330,15 +321,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!hasMessages) {
                 messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes.</p>';
             } else {
-                // Notificaciones
                 if (newestMessageTime > lastReadTime && lastReadTime > 0) {
-                    // Solo mostrar si NO estamos ya en la vista comunidad
                     if (viewCommunity.classList.contains('hidden')) {
                         if(newMessageToast) newMessageToast.classList.remove('hidden');
                         const badge = document.getElementById('notification-badge');
                         if(badge) badge.classList.remove('hidden');
                     } else {
-                        markMessagesAsRead(); // Si estamos en comunidad, marcar como leído
+                        markMessagesAsRead();
                     }
                 } else if (lastReadTime === 0 && newestMessageTime > 0) {
                     localStorage.setItem('lastReadTime', now);
@@ -466,12 +455,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return ['bg-gray-100', 'border-gray-300']; 
     }
+
+    // --- MOCK DATA (DATOS DE PRUEBA) ---
+    // Se usa cuando la API real falla (común en previews)
+    function getMockWeatherData() {
+        return {
+            code: 0,
+            msg: "success",
+            data: {
+                outdoor: { temperature: { value: "24.5", unit: "°C" }, humidity: { value: "55", unit: "%" } },
+                wind: { 
+                    wind_speed: { value: "19.5", unit: "kts" }, 
+                    wind_gust: { value: "24.2", unit: "kts" }, 
+                    wind_direction: { value: "95", unit: "deg" } 
+                },
+                pressure: { relative: { value: "1015", unit: "hPa" } },
+                rainfall: { daily: { value: "0.0", unit: "mm" } },
+                solar_and_uvi: { uvi: { value: "7" } }
+            }
+        };
+    }
+    
+    async function fetchWithBackoff(url, options, retries = 2, delay = 500) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) throw new Error("Network error");
+            return response.json();
+        } catch (error) {
+            if (retries > 0) {
+                await new Promise(res => setTimeout(res, delay));
+                return fetchWithBackoff(url, options, retries - 1, delay * 2);
+            }
+            throw error;
+        }
+    }
     
     async function fetchWeatherData() {
         showSkeletons(true);
         errorEl.classList.add('hidden'); 
+        
+        let json;
+        
         try {
-            const json = await fetchWithBackoff(weatherApiUrl, {});
+            // Intentar fetch real
+            try {
+                json = await fetchWithBackoff(weatherApiUrl, {});
+            } catch (e) {
+                console.warn("API real falló, usando datos MOCK para demostración.");
+                // Fallback a Mock Data
+                json = getMockWeatherData();
+            }
+
             if (json.code === 0 && json.data) {
                 const data = json.data;
                 const windSpeedValue = (data.wind?.wind_speed?.value) ? parseFloat(data.wind.wind_speed.value) : null;
@@ -488,6 +522,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     windArrowEl.style.transform = `rotate(${windDirDegrees}deg)`;
                     const isOffshore = (windDirDegrees > 292.5 || windDirDegrees <= 67.5);
                     const isCross = (windDirDegrees > 67.5 && windDirDegrees <= 112.5) || (windDirDegrees > 247.5 && windDirDegrees <= 292.5);
+                    const isOnshore = !isOffshore && !isCross;
+
                     windArrowEl.classList.remove('text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900');
                     if (isOffshore) windArrowEl.classList.add('text-red-600');
                     else if (isCross) windArrowEl.classList.add('text-yellow-600');
