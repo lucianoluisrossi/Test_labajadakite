@@ -159,12 +159,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- ELEMENTOS DEL DOM (Viento Resaltado) ---
     const windHighlightCard = document.getElementById('wind-highlight-card');
+    // NUEVO: Referencia a la tarjeta unificada
+    const unifiedWindDataCardEl = document.getElementById('unified-wind-data-card');
+    
     const highlightWindDirEl = document.getElementById('highlight-wind-dir-data');
     const highlightWindSpeedEl = document.getElementById('highlight-wind-speed-data');
     const highlightGustEl = document.getElementById('highlight-gust-data');
     const windArrowEl = document.getElementById('wind-arrow'); 
-    const windSpeedSubCardEl = document.getElementById('wind-speed-sub-card'); 
-    const windGustSubCardEl = document.getElementById('wind-gust-sub-card'); 
+    // (Se eliminaron referencias a windSpeedSubCardEl y windGustSubCardEl porque ya no existen)
     
     // --- ELEMENTOS DEL DOM (Veredicto EN VIVO) ---
     const verdictCardEl = document.getElementById('verdict-card');
@@ -389,8 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 updateCardColors(windHighlightCard, getMainCardColorClasses(windSpeedValue));
-                updateCardColors(windSpeedSubCardEl, getWindyColorClasses(windSpeedValue));
-                updateCardColors(windGustSubCardEl, getWindyColorClasses(windGustValue));
+                // AHORA: Actualizar el color de la tarjeta unificada completa
+                updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeedValue));
 
                 highlightWindSpeedEl.textContent = windSpeed ? `${windSpeed.value} ${windSpeed.unit}` : 'N/A';
                 highlightGustEl.textContent = windGust ? `${windGust.value} ${windGust.unit}` : 'N/A';
