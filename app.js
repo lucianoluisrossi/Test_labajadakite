@@ -139,12 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA GALERÍA DEL DÍA ---
+    // --- LÓGICA GALERÍA DEL DÍA (CORREGIDA Y ROBUSTA) ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
     const imageModal = document.getElementById('image-modal');
     const modalImg = document.getElementById('modal-img');
 
+    // Función para manejar la subida sin destruir el DOM
     const handleGalleryUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -154,40 +155,47 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const parent = e.target.parentElement;
-        // Guardar contenido original para restaurar
-        const originalContent = parent.innerHTML;
+        const inputElement = e.target;
+        const labelElement = inputElement.parentElement;
         
-        // Feedback visual
-        parent.innerHTML = `<span class="animate-pulse">Subiendo...</span>`;
+        // Obtenemos los textos (spans) dentro del botón para cambiarlos temporalmente
+        const spans = labelElement.querySelectorAll('span');
+        const originalTexts = Array.from(spans).map(s => s.textContent); // Guardamos textos originales
+
+        // 1. Feedback Visual: Cambiar texto a "Subiendo..." y deshabilitar
+        spans.forEach(s => s.textContent = "Subiendo...");
+        labelElement.classList.add('opacity-50', 'cursor-wait');
+        inputElement.disabled = true; 
         
         try {
+            // 2. Comprimir
             const compressedBlob = await compressImage(file);
+            
+            // 3. Subir a Storage
             const fileName = `gallery/${Date.now()}_${Math.floor(Math.random()*1000)}.jpg`;
             const storageRef = ref(storage, fileName);
             
             await uploadBytes(storageRef, compressedBlob);
             const downloadURL = await getDownloadURL(storageRef);
 
+            // 4. Guardar en Base de Datos
             await addDoc(galleryCollection, {
                 url: downloadURL,
                 path: fileName,
                 timestamp: serverTimestamp()
             });
 
+            // Éxito (sin alert invasivo, el feedback visual se restaura solo)
+
         } catch (error) {
             console.error("Error subiendo foto:", error);
-            alert("Error al subir la foto.");
+            alert("Hubo un error al subir la foto. Intenta nuevamente.");
         } finally {
-            parent.innerHTML = `
-                <span class="hidden md:inline">Subir Foto</span>
-                <span class="md:hidden">Subir</span>
-                <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
-            `;
-            const newInput = document.getElementById('gallery-upload-input');
-            if (newInput) {
-                newInput.addEventListener('change', handleGalleryUpload);
-            }
+            // 5. Restaurar el botón a su estado original
+            spans.forEach((s, index) => s.textContent = originalTexts[index]);
+            labelElement.classList.remove('opacity-50', 'cursor-wait');
+            inputElement.disabled = false;
+            inputElement.value = ''; // Limpiar el input para permitir subir la misma foto si se quiere
         }
     };
 
