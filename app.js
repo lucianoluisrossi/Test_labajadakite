@@ -1,5 +1,5 @@
 // app.js
-// Importamos SOLO las funciones de Firestore (Quitamos Storage para evitar líos de facturación)
+// Importamos SOLO las funciones de Firestore (Base64 directo)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -24,7 +24,7 @@ try {
     db = getFirestore(app);
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
-    console.log("✅ Firebase (Solo DB) inicializado.");
+    console.log("✅ Firebase inicializado.");
 } catch (e) {
     console.error("❌ Error crítico inicializando Firebase:", e);
 }
@@ -37,12 +37,63 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- GESTIÓN DE VISTAS (SPA) ---
+    const viewDashboard = document.getElementById('view-dashboard');
+    const viewCommunity = document.getElementById('view-community');
+    const navHomeBtn = document.getElementById('nav-home');
+    const navCommunityBtn = document.getElementById('nav-community');
+    const backToHomeBtn = document.getElementById('back-to-home');
+    const fabCommunity = document.getElementById('fab-community');
+    const notificationBadge = document.getElementById('notification-badge');
+    const newMessageToast = document.getElementById('new-message-toast');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const menuBackdrop = document.getElementById('menu-backdrop');
+
+    // Estado
+    let currentView = 'dashboard'; // 'dashboard' | 'community'
+
+    function switchView(viewName) {
+        currentView = viewName;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        if (viewName === 'dashboard') {
+            viewDashboard.classList.remove('hidden');
+            viewCommunity.classList.add('hidden');
+            fabCommunity.classList.remove('hidden'); // Mostrar botón flotante en Home
+            
+            // Actualizar estilo menú
+            navHomeBtn.classList.add('bg-blue-50', 'text-blue-700');
+            navCommunityBtn.classList.remove('bg-blue-50', 'text-blue-700');
+        } else {
+            viewDashboard.classList.add('hidden');
+            viewCommunity.classList.remove('hidden');
+            fabCommunity.classList.add('hidden'); // Ocultar botón flotante en Comunidad
+            
+            // Actualizar estilo menú
+            navHomeBtn.classList.remove('bg-blue-50', 'text-blue-700');
+            navCommunityBtn.classList.add('bg-blue-50', 'text-blue-700');
+
+            // Al entrar a comunidad, limpiamos notificaciones
+            markMessagesAsRead();
+        }
+
+        // Cerrar menú móvil si está abierto
+        if (mobileMenu.classList.contains('translate-x-full') === false) {
+            toggleMenu();
+        }
+    }
+
+    // Listeners de Navegación
+    navHomeBtn.addEventListener('click', () => switchView('dashboard'));
+    navCommunityBtn.addEventListener('click', () => switchView('community'));
+    backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
+    fabCommunity.addEventListener('click', () => switchView('community'));
+    newMessageToast.addEventListener('click', () => switchView('community'));
+
+
     // --- LÓGICA DEL MENÚ HAMBURGUESA ---
     const menuButton = document.getElementById('menu-button');
     const menuCloseButton = document.getElementById('menu-close-button');
-    const mobileMenu = document.getElementById('mobile-menu');
-    const menuBackdrop = document.getElementById('menu-backdrop');
-    const btnPizarraMenu = document.getElementById('btn-pizarra-menu');
 
     function toggleMenu() {
         if (mobileMenu.classList.contains('translate-x-full')) {
@@ -54,27 +105,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function goToPizarra() {
-        if (!mobileMenu.classList.contains('translate-x-full')) {
-            toggleMenu();
-        }
-        const pizarraSection = document.getElementById('pizarra-section');
-        if (pizarraSection) {
-            pizarraSection.scrollIntoView({ behavior: 'smooth' });
-            markMessagesAsRead();
-        }
-    }
-
     if (menuButton) menuButton.addEventListener('click', toggleMenu);
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
-    if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', goToPizarra);
 
-    // --- FUNCIÓN 1: COMPRESIÓN DE IMÁGENES (Vital para este método) ---
+
+    // --- FUNCIÓN DE COMPRESIÓN DE IMÁGENES ---
     async function compressImage(file) {
         return new Promise((resolve, reject) => {
-            const MAX_WIDTH = 800; // Reducimos un poco más para asegurar que quepa en DB
-            const QUALITY = 0.6;   // Calidad media/buena
+            const MAX_WIDTH = 800; 
+            const QUALITY = 0.6;   
 
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -96,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // Convertimos directamente a Base64 (String) en lugar de Blob
                     const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
                     resolve(dataUrl);
                 };
@@ -106,13 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA GALERÍA DEL DÍA ---
+    // --- LÓGICA GALERÍA ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
     const imageModal = document.getElementById('image-modal');
     const modalImg = document.getElementById('modal-img');
 
-    // Subida de Imagen (Método Directo a DB)
     if (galleryUploadInput && db) {
         galleryUploadInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -123,50 +161,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Feedback visual
-            galleryUploadInput.parentElement.innerHTML = `Procesando...`;
+            galleryUploadInput.parentElement.innerHTML = `...`;
             
             try {
-                // 1. Comprimir y obtener String Base64
                 const base64String = await compressImage(file);
-                
-                // 2. Guardar directamente en Firestore
-                // NOTA: Firestore tiene límite de 1MB por documento. 
-                // Con la compresión a 800px/0.6, la imagen pesará unos 50kb-100kb. Perfecto.
                 await addDoc(galleryCollection, {
-                    url: base64String, // Guardamos la imagen aquí mismo
+                    url: base64String,
                     type: 'base64',
                     timestamp: serverTimestamp()
                 });
-
-                alert("¡Foto subida con éxito!");
-
+                alert("¡Foto subida!");
             } catch (error) {
-                console.error("Error subiendo foto:", error);
-                alert("Error al subir. Intenta con una foto más simple.");
+                console.error("Error:", error);
+                alert("Error al subir.");
             } finally {
-                // Restaurar botón
-                const parent = document.querySelector('label[for="gallery-upload-input"]') || galleryUploadInput.parentElement;
-                if (parent) {
-                     parent.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Subir Foto
-                        <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
-                    `;
-                    // Re-attach listener
-                    document.getElementById('gallery-upload-input').addEventListener('change', arguments.callee);
-                } else {
-                    // Fallback por si el DOM cambió demasiado, recargar página es una opción segura
-                    window.location.reload();
-                }
+                window.location.reload(); // Simple reload para resetear input
             }
         });
     }
 
-    // Renderizar Galería
     if (galleryGrid && db) {
         const q = query(galleryCollection, orderBy("timestamp", "desc"), limit(20));
 
@@ -178,17 +191,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                // Aceptamos 'url' tradicional o Base64 directa
                 if (data.timestamp && data.url) {
                     const imgDate = data.timestamp.toDate();
-                    
                     if (now - imgDate.getTime() < oneDay) {
                         hasImages = true;
                         const imgContainer = document.createElement('div');
-                        imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-md bg-gray-100 hover:opacity-90 transition-opacity";
+                        imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-sm bg-gray-200";
+                        // Lazy loading nativo para performance
                         imgContainer.innerHTML = `
-                            <img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto del spot">
-                            <div class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-tl-lg">
+                            <img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto">
+                            <div class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 rounded-tl">
                                 ${timeAgo(imgDate)}
                             </div>
                         `;
@@ -202,36 +214,32 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!hasImages) {
-                galleryGrid.innerHTML = '<div class="col-span-full flex flex-col items-center justify-center py-6 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-lg"><span class="text-2xl mb-2">📷</span><p>Sin fotos hoy. ¡Sube la primera!</p></div>';
+                galleryGrid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4 text-sm">Sin fotos recientes.</div>';
             }
         });
     }
 
 
-    // --- LÓGICA DE PIZARRA KITERA ---
+    // --- LÓGICA PIZARRA KITERA + NOTIFICACIONES ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
     const authorInput = document.getElementById('message-author');
     const textInput = document.getElementById('message-text');
-    const newMessageToast = document.getElementById('new-message-toast');
 
     function timeAgo(date) {
         const seconds = Math.floor((new Date() - date) / 1000);
         let interval = seconds / 3600;
-        if (interval > 1) return "hace " + Math.floor(interval) + " horas";
+        if (interval > 1) return Math.floor(interval) + "h";
         interval = seconds / 60;
-        if (interval > 1) return "hace " + Math.floor(interval) + " min";
-        return "hace un momento";
+        if (interval > 1) return Math.floor(interval) + "m";
+        return "ahora";
     }
 
     function markMessagesAsRead() {
         const now = Date.now();
         localStorage.setItem('lastReadTime', now);
-        if (newMessageToast) newMessageToast.classList.add('hidden');
-    }
-
-    if (newMessageToast) {
-        newMessageToast.addEventListener('click', goToPizarra);
+        notificationBadge.classList.add('hidden');
+        newMessageToast.classList.add('hidden');
     }
 
     if (messageForm && db) {
@@ -249,14 +257,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     textInput.value = ''; 
                     localStorage.setItem('kiterName', author);
-                    markMessagesAsRead();
+                    markMessagesAsRead(); // Si yo escribo, he leído todo
                 } catch (e) {
-                    console.error("Error detallado al enviar:", e);
-                    alert(`Error al enviar: ${e.message}.`);
+                    console.error(e);
                 }
             }
         });
-
         const savedName = localStorage.getItem('kiterName');
         if (savedName) authorInput.value = savedName;
     }
@@ -279,20 +285,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     const msgDate = data.timestamp.toDate();
                     const msgTime = msgDate.getTime();
                     
-                    if (msgTime > newestMessageTime) {
-                        newestMessageTime = msgTime;
-                    }
+                    if (msgTime > newestMessageTime) newestMessageTime = msgTime;
 
                     if (now - msgTime < oneDay) {
                         hasMessages = true;
                         const div = document.createElement('div');
-                        div.className = "bg-gray-50 p-3 rounded border border-gray-100 text-sm";
+                        div.className = "bg-gray-50 p-2 rounded border border-gray-100 text-sm mb-2";
                         div.innerHTML = `
-                            <div class="flex justify-between items-baseline mb-1">
-                                <span class="font-bold text-blue-900">${data.author}</span>
-                                <span class="text-xs text-gray-400">${timeAgo(msgDate)}</span>
+                            <div class="flex justify-between items-baseline">
+                                <span class="font-bold text-blue-900 text-xs">${data.author}</span>
+                                <span class="text-[10px] text-gray-400">${timeAgo(msgDate)}</span>
                             </div>
-                            <p class="text-gray-700 break-words">${data.text}</p>
+                            <p class="text-gray-800 text-sm leading-tight">${data.text}</p>
                         `;
                         messagesContainer.appendChild(div);
                     }
@@ -300,18 +304,29 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!hasMessages) {
-                messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes. ¡Sé el primero!</p>';
+                messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">Sé el primero en escribir.</p>';
             } else {
+                // Lógica de Notificación
                 if (newestMessageTime > lastReadTime && lastReadTime > 0) {
-                    if(newMessageToast) newMessageToast.classList.remove('hidden');
+                    // Hay mensajes nuevos no leídos
+                    if (currentView === 'dashboard') {
+                        // Si estoy en dashboard, mostrar avisos
+                        notificationBadge.classList.remove('hidden');
+                        newMessageToast.classList.remove('hidden');
+                        // Ocultar el toast flotante después de 5 seg para no molestar, dejar solo el badge
+                        setTimeout(() => {
+                            newMessageToast.classList.add('hidden');
+                        }, 5000);
+                    } else {
+                        // Si estoy en comunidad, se marca como leído al instante
+                        markMessagesAsRead();
+                    }
                 } else if (lastReadTime === 0 && newestMessageTime > 0) {
-                    localStorage.setItem('lastReadTime', now);
+                    localStorage.setItem('lastReadTime', now); // Primera visita no notifica
                 }
             }
 
-        }, (error) => {
-            console.error("Error escuchando mensajes:", error);
-        });
+        }, (error) => console.error(error));
     }
 
 
@@ -320,10 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- ELEMENTOS DEL DOM (Datos Generales) ---
     const tempEl = document.getElementById('temp-data');
-    const humidityEl = document.getElementById('humidity-data');
-    const pressureEl = document.getElementById('pressure-data');
     const rainfallDailyEl = document.getElementById('rainfall-daily-data'); 
-    const uviEl = document.getElementById('uvi-data'); 
     const errorEl = document.getElementById('error-message');
     const lastUpdatedEl = document.getElementById('last-updated');
 
@@ -348,15 +360,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const skeletonLoaderIds = [
         'verdict-data-loader',
         'highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader',
-        'temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 
-        'rainfall-daily-data-loader', 'uvi-data-loader',
         'stability-data-loader'
     ];
     const dataContentIds = [
         'verdict-data',
         'highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data',
-        'temp-data', 'humidity-data', 'pressure-data',
-        'rainfall-daily-data', 'uvi-data',
         'stability-data'
     ];
 
@@ -373,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (isLoading && lastUpdatedEl) {
-            lastUpdatedEl.textContent = 'Actualizando datos...';
+            lastUpdatedEl.textContent = 'Actualizando...';
         }
     }
     
@@ -382,13 +390,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         const secondsAgo = Math.round((now - lastUpdateTime) / 1000);
         
-        if (secondsAgo < 5) {
-            lastUpdatedEl.textContent = "Actualizado ahora";
-        } else if (secondsAgo < 60) {
-            lastUpdatedEl.textContent = `Actualizado hace ${secondsAgo} seg.`;
-        } else {
-            lastUpdatedEl.textContent = `Actualizado: ${lastUpdateTime.toLocaleTimeString('es-AR')}`;
-        }
+        if (secondsAgo < 5) lastUpdatedEl.textContent = "Ahora";
+        else if (secondsAgo < 60) lastUpdatedEl.textContent = `Hace ${secondsAgo}s`;
+        else lastUpdatedEl.textContent = `${lastUpdateTime.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}`;
     }
 
     function convertDegreesToCardinal(degrees) {
@@ -426,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getSpotVerdict(speed, gust, degrees) {
         if (degrees !== null) {
             if ((degrees > 292.5 || degrees <= 67.5)) { 
-                return ["¡PELIGRO! VIENTO OFFSHORE", ['bg-red-400', 'border-red-600']];
+                return ["¡PELIGRO! OFFSHORE", ['bg-red-400', 'border-red-600']];
             }
         }
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
@@ -436,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (speed <= 22) return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
         else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
         else { 
-            if (speed > 33) return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
+            if (speed > 33) return ["¡DEMASIADO!", ['bg-purple-400', 'border-purple-600']];
             else return ["¡MUY FUERTE!", ['bg-red-400', 'border-red-600']];
         }
     }
@@ -457,10 +461,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!element) return;
         element.classList.remove(...allColorClasses);
         element.classList.add(...newClasses);
-    }
-
-    function getMainCardColorClasses(speedInKnots) {
-        return ['bg-gray-100', 'border-gray-300'];
     }
 
     function getWindyColorClasses(speedInKnots) {
@@ -507,7 +507,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let windSpeedValue = null; 
         let windGustValue = null; 
         let windDirDegrees = null;
-        let tempValue = null;
 
         try {
             const json = await fetchWithBackoff(weatherApiUrl, {});
@@ -517,15 +516,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const outdoor = data.outdoor || {};
                 const wind = data.wind || {};
-                const pressure = data.pressure || {};
                 const rainfall = data.rainfall || {}; 
-                const solarUVI = data.solar_and_uvi || {}; 
                 
                 const temp = outdoor.temperature;
-                const humidity = outdoor.humidity;
-                const pressureRel = pressure.relative;
                 const rainfallDaily = rainfall.daily; 
-                const uvi = solarUVI.uvi; 
                 
                 const windSpeed = wind.wind_speed;
                 const windGust = wind.wind_gust;
@@ -534,7 +528,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 windSpeedValue = (windSpeed && windSpeed.value !== null) ? parseFloat(windSpeed.value) : null;
                 windGustValue = (windGust && windGust.value !== null) ? parseFloat(windGust.value) : null; 
                 windDirDegrees = (windDir && windDir.value !== null) ? parseFloat(windDir.value) : null;
-                tempValue = (temp && temp.value !== null) ? parseFloat(temp.value) : null;
                 const windDirCardinal = windDirDegrees !== null ? convertDegreesToCardinal(windDirDegrees) : 'N/A';
                 
                 const stability = calculateGustFactor(windSpeedValue, windGustValue);
@@ -562,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     else windArrowEl.classList.add('text-gray-900');
                 }
 
-                updateCardColors(windHighlightCard, getMainCardColorClasses(windSpeedValue));
+                updateCardColors(windHighlightCard, ['bg-white', 'border-gray-200']); 
                 updateCardColors(unifiedWindDataCardEl, getWindyColorClasses(windSpeedValue));
 
                 highlightWindSpeedEl.textContent = windSpeed ? `${windSpeed.value} ${windSpeed.unit}` : 'N/A';
@@ -570,10 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 highlightWindDirEl.textContent = windDirCardinal; 
 
                 tempEl.textContent = temp ? `${temp.value} ${temp.unit}` : 'N/A';
-                humidityEl.textContent = humidity ? `${humidity.value} ${humidity.unit}` : 'N/A';
-                pressureEl.textContent = pressureRel ? `${pressureRel.value} ${pressureRel.unit}` : 'N/A'; 
                 rainfallDailyEl.textContent = rainfallDaily ? `${rainfallDaily.value} ${rainfallDaily.unit}` : 'N/A'; 
-                uviEl.textContent = uvi ? uvi.value : 'N/A'; 
                 
                 showSkeletons(false); 
                 lastUpdateTime = new Date(); 
@@ -584,12 +574,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error al obtener datos del clima:', error);
-            errorEl.textContent = `Error: No se pudieron cargar los datos. (${error.message})`;
+            errorEl.textContent = `Error: ${error.message}`;
             errorEl.classList.remove('hidden');
             showSkeletons(false);
             updateCardColors(verdictCardEl, ['bg-red-400', 'border-red-600']);
-            verdictDataEl.textContent = 'Error en API (Ecowitt)';
-            if (lastUpdatedEl) lastUpdatedEl.textContent = "Error en la actualización.";
+            verdictDataEl.textContent = 'Error API';
+            if (lastUpdatedEl) lastUpdatedEl.textContent = "Error";
         }
     }
     
