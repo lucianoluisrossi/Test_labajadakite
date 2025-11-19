@@ -5,14 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>La Bajada</title>
     
+    <!-- Configuración PWA y Manifiesto -->
     <meta name="theme-color" content="#1f2937">
     <link rel="manifest" href="manifest.json">
+
+    <!-- Tailwind CSS -->
     <link rel="stylesheet" href="style.css">
 
     <style>
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.9); }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Estilo para quitar el triángulo por defecto del details */
         details > summary { list-style: none; }
         details > summary::-webkit-details-marker { display: none; }
     </style>
@@ -21,31 +26,38 @@
 
     <div class="max-w-6xl mx-auto">
         
-        <!-- ENCABEZADO PRINCIPAL (RECUPERADO: DOBLE LOGO) -->
-        <div class="flex justify-between items-start mb-4 mt-4 md:mt-8 relative">
-            <!-- Espaciador para centrar -->
-            <div class="w-10 md:w-12"></div>
+        <!-- ENCABEZADO PRINCIPAL -->
+        <div class="relative flex justify-center items-start mb-6 mt-4 md:mt-8">
+            
+            <!-- BOTÓN MENÚ (AHORA A LA IZQUIERDA) -->
+            <!-- Posición absolute left-0. Cambiamos el orden flex para accesibilidad visual -->
+            <button id="menu-button" class="absolute top-0 left-0 bg-blue-600 text-white px-3 py-2 md:px-4 md:py-2 rounded-full shadow-lg hover:bg-blue-700 hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-2 z-50 group">
+                <!-- Icono primero, texto después -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span class="font-bold text-xs md:text-sm uppercase tracking-wider hidden md:inline group-hover:text-blue-100">Menú</span>
+            </button>
 
             <!-- LOGOS CENTRALES -->
-            <div class="flex flex-col items-center">
-                <a href="https://wa.me/#NUMERO_DE_TELEFONO_PRINCIPAL#" target="blank" class="flex items-center justify-center gap-4">
+            <div class="flex flex-col items-center z-10">
+                <a href="https://wa.me/#NUMERO_DE_TELEFONO_PRINCIPAL#?text=Hola%2C%20vi%20el%20reporte%20del%20viento%20en%20La%20Bajada%20y%20me%20gustaria%20contactarlos." 
+                   target="blank" 
+                   class="flex items-center justify-center gap-2 md:gap-4 transition-transform hover:scale-105">
+                    
                     <!-- Logo Palmera -->
-                    <img src="logo_palmera.png" alt="Logo Palmera" class="h-28 md:h-32 w-auto" onerror="this.style.display='none'">
+                    <img src="logo_palmera.png" alt="Logo Palmera Kitesurf" class="h-24 md:h-32 w-auto" onerror="this.style.display='none'">
+                    
                     <!-- Logo La Bajada -->
-                    <img src="logo2.png" alt="Logo La Bajada" class="h-24 md:h-28 w-auto" onerror="this.style.display='none'">
+                    <img src="logo2.png" alt="Logo La Bajada Principal" class="h-20 md:h-28 w-auto" onerror="this.style.display='none'">
                 </a>
             </div>
 
-            <!-- BOTÓN MENÚ -->
-            <button id="menu-button" class="p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none z-50 mt-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
         </div>
 
-        <!-- MENÚ OFF-CANVAS -->
-        <div id="mobile-menu" class="fixed inset-y-0 right-0 w-72 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col h-full border-l border-gray-200">
+        <!-- MENÚ OFF-CANVAS (DESDE LA IZQUIERDA) -->
+        <!-- Cambios clave: left-0, -translate-x-full (negativo para esconder a la izq), border-r -->
+        <div id="mobile-menu" class="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl transform -translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col h-full border-r border-gray-200">
             <div class="p-4 flex justify-between items-center border-b border-gray-200 bg-gray-50">
                 <h3 class="font-bold text-lg text-gray-800">Menú</h3>
                 <button id="menu-close-button" class="text-gray-500 hover:text-red-500 focus:outline-none">
@@ -67,73 +79,80 @@
                 <div class="flex flex-col items-center text-center space-y-2">
                     <p class="text-sm text-gray-600 font-medium">¿Te sirve la app? ¡Ayudanos!</p>
                     <a href='https://cafecito.app/labajadakite' rel='noopener' target='_blank' class="transition-transform hover:scale-105 block">
-                        <img src='https://cdn.cafecito.app/imgs/buttons/button_6.png' alt='Invitame un café' />
+                        <img src='https://cdn.cafecito.app/imgs/buttons/button_6.png' alt='Invitame un café en cafecito.app' />
                     </a>
                 </div>
             </div>
-            <div class="p-4 border-t border-gray-200 text-center text-xs text-gray-400">La Bajada App v3.1</div>
+            <div class="p-4 border-t border-gray-200 text-center text-xs text-gray-400">La Bajada App v3.4 (Left)</div>
         </div>
+        
         <div id="menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
 
         <!-- VISTA DASHBOARD -->
         <div id="view-dashboard" class="fade-in">
             
-            <!-- LiveCam (Estilo Restaurado) -->
+            <!-- Video (LiveCam) -->
             <div class="bg-gray-100 rounded-xl shadow-2xl overflow-hidden mb-6 lg:mb-8 border border-gray-300">
-                <iframe class="w-full aspect-video" src="https://www.youtube.com/embed/QWo36gCzZEo?si=hftjioeg4y-dP4FT&autoplay=1&mute=1" title="LiveCam" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                <iframe class="w-full aspect-video" src="https://www.youtube.com/embed/QWo36gCzZEo?si=hftjioeg4y-dP4FT&autoplay=1&mute=1" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
             </div>
 
-            <!-- Tarjeta Viento -->
-            <div id="wind-highlight-card" class="mt-4 lg:mt-6 p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
+            <!-- Sección de Viento Resaltado -->
+            <div id="wind-highlight-card" class="mt-6 lg:mt-8 p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
                 <div id="verdict-card" class="mb-4 p-3 rounded-lg border border-gray-300 transition-colors duration-300">
                     <p class="text-gray-600 text-xs font-medium text-center">Status del Spot</p>
                     <div id="verdict-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 70%;"></div>
                     <p id="verdict-data" class="data-content text-xl font-extrabold text-gray-900 text-center">Calculando...</p>
                 </div>
                 
-                <div id="unified-wind-data-card" class="flex flex-row items-center justify-between p-4 rounded-lg border border-gray-300 transition-colors duration-300 bg-gray-100">
-                    <div class="flex flex-col items-center justify-center w-[35%] border-r border-gray-400/30 pr-2">
-                        <p class="text-gray-600 text-[10px] uppercase font-bold mb-1">Dirección</p>
-                        <div class="flex flex-col items-center justify-center">
-                            <svg id="wind-arrow" class="w-10 h-10 text-gray-900 transition-transform duration-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L6 8h3v12h6V8h3l-6-6z"/></svg>
-                            <div id="highlight-wind-dir-data-loader" class="skeleton-loader skeleton-text-xl w-12 mt-1"></div>
-                            <p class="text-xl font-extrabold text-gray-900 data-content mt-1" id="highlight-wind-dir-data">N/A</p>
+                <!-- Datos de Viento -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div class="p-3 bg-gray-100 rounded-lg flex flex-col justify-center items-center h-full border border-gray-300">
+                        <p class="text-gray-600 text-xs mb-1 font-medium">Direccion del viento</p>
+                        <div class="flex items-center justify-center gap-2">
+                            <svg id="wind-arrow" class="wind-arrow w-10 h-10 text-gray-900" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L6 8h3v12h6V8h3l-6-6z"/></svg>
+                            <div id="highlight-wind-dir-data-loader" class="skeleton-loader skeleton-text-xl"></div>
+                            <p class="text-xl font-extrabold text-gray-900 data-content" id="highlight-wind-dir-data">N/A</p>
                         </div>
                     </div>
-                    <div class="flex flex-col items-center justify-center w-[65%] pl-2">
-                        <div class="flex flex-col items-center">
-                            <p class="text-gray-600 text-[10px] uppercase font-bold">Velocidad Prom.</p>
-                            <div id="highlight-wind-speed-data-loader" class="skeleton-loader skeleton-text-4xl w-24 mt-1"></div>
-                            <p class="text-5xl font-black text-gray-900 data-content leading-none tracking-tight" id="highlight-wind-speed-data">N/A</p>
-                        </div>
-                        <div class="mt-3 flex items-center justify-center gap-2 opacity-80 bg-white/30 px-3 py-1 rounded-full">
-                            <span class="text-xs text-gray-700 font-medium uppercase">Racha:</span>
-                            <div id="highlight-gust-data-loader" class="skeleton-loader skeleton-text-sm w-8 inline-block"></div>
-                            <span class="text-lg font-bold text-gray-900 data-content" id="highlight-gust-data">N/A</span>
-                        </div>
+                    <div id="wind-speed-sub-card" class="p-3 bg-gray-100 rounded-lg border border-gray-300 transition-colors duration-300">
+                        <p class="text-gray-600 text-xs font-medium">Velocidad (Prom.)</p>
+                        <div id="highlight-wind-speed-data-loader" class="skeleton-loader skeleton-text-3xl mx-auto mt-1"></div>
+                        <p class="text-3xl font-extrabold text-gray-900 data-content" id="highlight-wind-speed-data">N/A</p>
                     </div>
-                </div>
-
-                <div id="stability-card" class="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-300 transition-colors duration-300 text-center">
-                    <p class="text-gray-600 text-xs font-medium">Índice de Estabilidad (Racheo)</p>
-                    <div id="stability-data-loader" class="skeleton-loader skeleton-text-3xl mx-auto mt-1" style="width: 50%;"></div>
-                    <p class="text-2xl font-extrabold text-gray-900 data-content" id="stability-data">N/A</p>
+                    <div id="wind-gust-sub-card" class="p-3 bg-gray-100 rounded-lg border border-gray-300 transition-colors duration-300">
+                        <p class="text-gray-600 text-xs font-medium">RACHA</p> 
+                        <div id="highlight-gust-data-loader" class="skeleton-loader skeleton-text-3xl mx-auto mt-1"></div>
+                        <p class="text-3xl font-extrabold text-gray-900 data-content" id="highlight-gust-data">N/A</p>
+                    </div>
                 </div>
                 
+                <!-- Estabilidad -->
+                <div id="stability-card" class="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-300 transition-colors duration-300 text-center">
+                    <p class="text-gray-600 text-xs font-medium">Índice de Estabilidad (Racheo)</p>
+                    <div id="stability-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 50%;"></div>
+                    <p class="text-xl font-extrabold text-gray-900 data-content" id="stability-data">N/A</p>
+                </div>
+
                 <div id="error-message" class="hidden mt-6 p-4 bg-red-600 text-white rounded-lg text-center">Error al cargar los datos del clima.</div>
             </div>
 
-            <!-- Windguru (Desplegable) -->
+            <!-- WINDGURU -->
             <details class="group bg-gray-100 rounded-xl shadow-2xl border border-gray-300 overflow-hidden mt-6 lg:mt-8 transition-all duration-300">
                 <summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-gray-200 transition-colors">
                     <h3 class="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
                         Pronóstico Windguru
                     </h3>
                     <span class="transform group-open:rotate-180 transition-transform duration-300 text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
                     </span>
                 </summary>
-                <div class="p-4 bg-gray-50 overflow-x-auto border-t border-gray-300">
+                <div class="p-4 bg-gray-50 overflow-x-auto border-t border-gray-300 animate-fadeIn">
+                    <p class="text-xs text-gray-500 mb-2 text-center">Desliza para ver más días -></p>
                     <script id="wg_fwdg_1312667_29_1762638808878">
                         (function (window, document) {
                             var loader = function () {
@@ -149,16 +168,16 @@
                 </div>
             </details>
 
-            <!-- DATOS EN VIVO (RECUPERADOS TODOS) -->
+            <!-- DATOS EN VIVO (COLUMNA) -->
             <div class="bg-gray-100 p-6 rounded-xl shadow-2xl flex flex-col mt-6 lg:mt-8 border border-gray-300">
                 <ul class="space-y-4 text-lg">
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2">🌡️ Temperatura:</span><div id="temp-data-loader" class="skeleton-loader"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="temp-data">--</span></li>
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2">💧 Humedad:</span><div id="humidity-data-loader" class="skeleton-loader"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="humidity-data">--</span></li>
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2">⏲️ Presión:</span><div id="pressure-data-loader" class="skeleton-loader"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="pressure-data">--</span></li>
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2">🌧️ Lluvia Hoy:</span><div id="rainfall-daily-data-loader" class="skeleton-loader"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="rainfall-daily-data">--</span></li>
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2">☀️ Índice UV:</span><div id="uvi-data-loader" class="skeleton-loader"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="uvi-data">--</span></li>
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048l-1.096 1.096A11.25 11.25 0 0012 21a11.25 11.25 0 006.058-20.957l-1.096 1.096z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75v12.75A3 3 0 0015 13.5a3 3 0 00-3-2.25z" /></svg>Temperatura (Ext.):</span><div id="temp-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="temp-data">Cargando...</span></li>
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048l-1.096 1.096A11.25 11.25 0 0012 21a11.25 11.25 0 006.058-20.957l-1.096 1.096z" /></svg>Humedad:</span><div id="humidity-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="humidity-data">Cargando...</span></li>
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>Presión (Relativa):</span><div id="pressure-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="pressure-data">Cargando...</span></li>
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m-3-3h6M15 12.75H9" /></svg>Lluvia (Diaria):</span><div id="rainfall-daily-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="rainfall-daily-data">Cargando...</span></li>
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-6.364-.386l1.591-1.591M3 12H.75m.386-6.364l1.591 1.591M12 12a2.25 2.25 0 00-2.25 2.25c0 .543.19 1.04.5 1.414.31.374.724.665 1.184.876.46.211.956.314 1.466.314.51 0 1.006-.103 1.466-.314.46-.211.874-.502 1.184-.876.31-.374.5-1.04.5-1.414A2.25 2.25 0 0012 12z" /></svg>Índice UV:</span><div id="uvi-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="uvi-data">Cargando...</span></li>
                 </ul>
-                <div class="mt-4 pt-4 border-t border-gray-300 text-right"><p id="last-updated" class="text-xs text-gray-500">Actualizando...</p></div>
+                <div class="mt-4 pt-4 border-t border-gray-300 text-right"><p id="last-updated" class="text-xs text-gray-500">Actualizando datos...</p></div>
             </div>
         </div>
 
@@ -221,7 +240,7 @@
             <button class="absolute top-4 right-4 text-white text-4xl font-bold focus:outline-none">&times;</button>
         </div>
 
-        <!-- FOOTER (RECUPERADO) -->
+        <!-- FOOTER -->
         <footer class="mt-8 pt-4 pb-2 border-t border-gray-300">
             <h3 class="text-center text-sm font-semibold text-gray-600 mb-4 flex justify-center items-center gap-2">
                 Contactar Escuelas (WhatsApp)

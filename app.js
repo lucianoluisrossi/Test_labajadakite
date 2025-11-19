@@ -1,6 +1,7 @@
 // app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
@@ -13,15 +14,17 @@ const firebaseConfig = {
 };
 
 let db;
+let storage;
 let messagesCollection;
 let galleryCollection;
 
 try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    storage = getStorage(app);
     messagesCollection = collection(db, "kiter_board");
-    galleryCollection = collection(db, "daily_gallery_meta"); 
-    console.log("✅ Firebase inicializado.");
+    galleryCollection = collection(db, "daily_gallery_meta");
+    console.log("✅ Firebase (DB + Storage) inicializado.");
 } catch (e) {
     console.error("❌ Error crítico inicializando Firebase:", e);
 }
@@ -43,8 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const fabCommunity = document.getElementById('fab-community');
     const notificationBadge = document.getElementById('notification-badge');
     const newMessageToast = document.getElementById('new-message-toast');
+    
+    // ELEMENTOS DEL MENÚ (SIDE DRAWER IZQUIERDO)
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
+    const menuButton = document.getElementById('menu-button');
+    const menuCloseButton = document.getElementById('menu-close-button');
 
     let currentView = 'dashboard';
 
@@ -55,42 +62,44 @@ document.addEventListener('DOMContentLoaded', () => {
         if (viewName === 'dashboard') {
             viewDashboard.classList.remove('hidden');
             viewCommunity.classList.add('hidden');
-            fabCommunity.classList.remove('hidden'); 
+            if (fabCommunity) fabCommunity.classList.remove('hidden');
             
-            navHomeBtn.classList.add('bg-blue-50', 'text-blue-700');
-            navCommunityBtn.classList.remove('bg-blue-50', 'text-blue-700');
+            if (navHomeBtn) navHomeBtn.classList.add('bg-blue-50', 'text-blue-700');
+            if (navCommunityBtn) navCommunityBtn.classList.remove('bg-blue-50', 'text-blue-700');
         } else {
             viewDashboard.classList.add('hidden');
             viewCommunity.classList.remove('hidden');
-            fabCommunity.classList.add('hidden'); 
+            if (fabCommunity) fabCommunity.classList.add('hidden');
             
-            navHomeBtn.classList.remove('bg-blue-50', 'text-blue-700');
-            navCommunityBtn.classList.add('bg-blue-50', 'text-blue-700');
+            if (navHomeBtn) navHomeBtn.classList.remove('bg-blue-50', 'text-blue-700');
+            if (navCommunityBtn) navCommunityBtn.classList.add('bg-blue-50', 'text-blue-700');
 
             markMessagesAsRead();
         }
-
-        if (mobileMenu.classList.contains('translate-x-full') === false) {
+        // Cerrar menú si está abierto (ahora checamos si NO tiene la clase de oculto)
+        if (!mobileMenu.classList.contains('-translate-x-full')) {
             toggleMenu();
         }
     }
 
-    navHomeBtn.addEventListener('click', () => switchView('dashboard'));
-    navCommunityBtn.addEventListener('click', () => switchView('community'));
-    backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
-    fabCommunity.addEventListener('click', () => switchView('community'));
-    newMessageToast.addEventListener('click', () => switchView('community'));
+    if (navHomeBtn) navHomeBtn.addEventListener('click', () => switchView('dashboard'));
+    if (navCommunityBtn) navCommunityBtn.addEventListener('click', () => switchView('community'));
+    if (backToHomeBtn) backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
+    if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
+    if (newMessageToast) newMessageToast.addEventListener('click', () => switchView('community'));
 
 
-    const menuButton = document.getElementById('menu-button');
-    const menuCloseButton = document.getElementById('menu-close-button');
-
+    // --- LÓGICA TOGGLE MENÚ (IZQUIERDA) ---
+    // El menú ahora está oculto con '-translate-x-full' (fuera a la izquierda).
+    // Para mostrarlo, removemos esa clase (vuelve a 0).
     function toggleMenu() {
-        if (mobileMenu.classList.contains('translate-x-full')) {
-            mobileMenu.classList.remove('translate-x-full'); 
+        if (mobileMenu.classList.contains('-translate-x-full')) {
+            // ABRIR
+            mobileMenu.classList.remove('-translate-x-full'); 
             menuBackdrop.classList.remove('hidden'); 
         } else {
-            mobileMenu.classList.add('translate-x-full'); 
+            // CERRAR
+            mobileMenu.classList.add('-translate-x-full'); 
             menuBackdrop.classList.add('hidden'); 
         }
     }
@@ -103,8 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNCIÓN DE COMPRESIÓN DE IMÁGENES ---
     async function compressImage(file) {
         return new Promise((resolve, reject) => {
-            const MAX_WIDTH = 800; 
-            const QUALITY = 0.6;   
+            const MAX_WIDTH = 1024; 
+            const QUALITY = 0.7;   
 
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -126,8 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
-                    resolve(dataUrl);
+                    canvas.toBlob((blob) => {
+                        resolve(blob);
+                    }, 'image/jpeg', QUALITY);
                 };
                 img.onerror = (err) => reject(err);
             };
@@ -141,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageModal = document.getElementById('image-modal');
     const modalImg = document.getElementById('modal-img');
 
-    if (galleryUploadInput && db) {
+    if (galleryUploadInput && storage && db) {
         galleryUploadInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -151,21 +161,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            galleryUploadInput.parentElement.innerHTML = `...`;
+            const parent = galleryUploadInput.parentElement;
+            const originalContent = parent.innerHTML;
+            parent.innerHTML = `<span class="animate-pulse">Subiendo...</span>`;
             
             try {
-                const base64String = await compressImage(file);
+                const compressedBlob = await compressImage(file);
+                const fileName = `gallery/${Date.now()}_${Math.floor(Math.random()*1000)}.jpg`;
+                const storageRef = ref(storage, fileName);
+                
+                await uploadBytes(storageRef, compressedBlob);
+                const downloadURL = await getDownloadURL(storageRef);
+
                 await addDoc(galleryCollection, {
-                    url: base64String,
-                    type: 'base64',
+                    url: downloadURL,
+                    path: fileName, 
                     timestamp: serverTimestamp()
                 });
-                alert("¡Foto subida!");
+
+                console.log("Foto subida");
             } catch (error) {
                 console.error("Error:", error);
-                alert("Error al subir.");
+                alert("Error al subir imagen.");
             } finally {
-                window.location.reload(); 
+                parent.innerHTML = `
+                    <span class="hidden md:inline">Subir Foto</span>
+                    <span class="md:hidden">Subir</span>
+                    <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
+                `;
+                const newInput = document.getElementById('gallery-upload-input');
+                if(newInput) newInput.addEventListener('change', arguments.callee);
+                else window.location.reload(); 
             }
         });
     }
@@ -186,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (now - imgDate.getTime() < oneDay) {
                         hasImages = true;
                         const imgContainer = document.createElement('div');
-                        imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-sm bg-gray-200";
+                        imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-md bg-gray-100 hover:opacity-90 transition-opacity";
                         imgContainer.innerHTML = `
                             <img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto">
                             <div class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 rounded-tl">
@@ -227,8 +253,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function markMessagesAsRead() {
         const now = Date.now();
         localStorage.setItem('lastReadTime', now);
-        notificationBadge.classList.add('hidden');
-        newMessageToast.classList.add('hidden');
+        if (notificationBadge) notificationBadge.classList.add('hidden');
+        if (newMessageToast) newMessageToast.classList.add('hidden');
     }
 
     if (messageForm && db) {
@@ -297,11 +323,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 if (newestMessageTime > lastReadTime && lastReadTime > 0) {
                     if (currentView === 'dashboard') {
-                        notificationBadge.classList.remove('hidden');
-                        newMessageToast.classList.remove('hidden');
-                        setTimeout(() => {
-                            newMessageToast.classList.add('hidden');
-                        }, 5000);
+                        if (notificationBadge) notificationBadge.classList.remove('hidden');
+                        if (newMessageToast) {
+                            newMessageToast.classList.remove('hidden');
+                            setTimeout(() => {
+                                newMessageToast.classList.add('hidden');
+                            }, 5000);
+                        }
                     } else {
                         markMessagesAsRead();
                     }
@@ -319,10 +347,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- ELEMENTOS DEL DOM (RECUPERADOS TODOS) ---
     const tempEl = document.getElementById('temp-data');
-    const humidityEl = document.getElementById('humidity-data'); // RECUPERADO
-    const pressureEl = document.getElementById('pressure-data'); // RECUPERADO
+    const humidityEl = document.getElementById('humidity-data'); 
+    const pressureEl = document.getElementById('pressure-data'); 
     const rainfallDailyEl = document.getElementById('rainfall-daily-data'); 
-    const uviEl = document.getElementById('uvi-data'); // RECUPERADO
+    const uviEl = document.getElementById('uvi-data'); 
     const errorEl = document.getElementById('error-message');
     const lastUpdatedEl = document.getElementById('last-updated');
 
@@ -494,6 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let windSpeedValue = null; 
         let windGustValue = null; 
         let windDirDegrees = null;
+        let tempValue = null;
 
         try {
             const json = await fetchWithBackoff(weatherApiUrl, {});
@@ -520,6 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 windSpeedValue = (windSpeed && windSpeed.value !== null) ? parseFloat(windSpeed.value) : null;
                 windGustValue = (windGust && windGust.value !== null) ? parseFloat(windGust.value) : null; 
                 windDirDegrees = (windDir && windDir.value !== null) ? parseFloat(windDir.value) : null;
+                tempValue = (temp && temp.value !== null) ? parseFloat(temp.value) : null;
                 const windDirCardinal = windDirDegrees !== null ? convertDegreesToCardinal(windDirDegrees) : 'N/A';
                 
                 const stability = calculateGustFactor(windSpeedValue, windGustValue);
