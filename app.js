@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const allColorClasses = [
         'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
-        'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600',
+        'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600','bg-cyan-300', 'border-cyan-500',
         'bg-purple-400', 'border-purple-600', 'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
         'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 'bg-cyan-300', 'border-cyan-500'
     ];
@@ -378,18 +378,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- ESTA ES LA FUNCIÓN QUE FALTABA ---
-    function getUnifiedWindColorClasses(speedInKnots, degrees) {
-        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ['bg-red-400', 'border-red-600'];
-        if (speedInKnots !== null && !isNaN(speedInKnots)) {
-            if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
-            else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500']; 
-            else if (speedInKnots <= 21) return ['bg-yellow-300', 'border-yellow-500']; 
-            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; 
-            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; 
-            else return ['bg-purple-400', 'border-purple-600']; 
+	
+	function getUnifiedWindColorClasses(speedInKnots, degrees) {
+        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA.
+        if (degrees !== null) {
+             if ((degrees > 292.5 || degrees <= 67.5)) { 
+                return ['bg-red-400', 'border-red-600'];
+            }
         }
+    
+        // 2. Escala Kitera (Igualada a Veredicto)
+        if (speedInKnots !== null && !isNaN(speedInKnots)) {
+            if (speedInKnots <= 14) return ['bg-blue-200', 'border-blue-400'];       // Flojo
+            else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500'];  // Aceptable
+            else if (speedInKnots <= 19) return ['bg-green-300', 'border-green-500'];// Ideal
+            else if (speedInKnots <= 22) return ['bg-yellow-300', 'border-yellow-500']; // Muy Bueno
+            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; // Fuerte
+            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600'];    // Muy Fuerte
+            else return ['bg-purple-400', 'border-purple-600'];                      // Demasiado Fuerte
+        }
+        
         return ['bg-gray-100', 'border-gray-300']; 
     }
+	
+
 
     function getWindyColorClasses(speedInKnots) {
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
