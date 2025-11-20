@@ -16,6 +16,8 @@
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.9); }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Estilo para quitar el triángulo por defecto del details */
         details > summary { list-style: none; }
         details > summary::-webkit-details-marker { display: none; }
         
@@ -80,7 +82,7 @@
                     </a>
                 </div>
             </div>
-            <div class="p-4 border-t border-gray-200 text-center text-xs text-gray-400">La Bajada App v4.1</div>
+            <div class="p-4 border-t border-gray-200 text-center text-xs text-gray-400">La Bajada App v4.0</div>
         </div>
         <div id="menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
 
@@ -199,20 +201,7 @@
                 </button>
             </div>
 
-            <div id="gallery-section" class="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-extrabold text-gray-800 flex items-center gap-2">Galería del Día 📸</h3>
-                    <label class="cursor-pointer bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md">
-                        <span class="hidden md:inline">Subir Foto</span>
-                        <span class="md:hidden">Subir</span>
-                        <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
-                    </label>
-                </div>
-                <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[500px] overflow-y-auto p-1">
-                    <p id="gallery-loading" class="col-span-full text-center text-gray-400 text-sm py-4">Cargando fotos...</p>
-                </div>
-            </div>
-
+            <!-- 1. PIZARRA KITERA (ARRIBA) -->
             <div id="pizarra-section" class="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
                 <div class="flex items-center justify-center gap-2 mb-4">
                     <h3 class="text-xl font-extrabold text-gray-800">Pizarra Kitera 🪁</h3>
@@ -228,6 +217,36 @@
                 </form>
                 <div id="messages-container" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1"></div>
             </div>
+
+            <!-- 2. GALERÍA DEL DÍA (ABAJO Y DESPLEGABLE) -->
+            <details id="gallery-section" class="group bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden transition-all duration-300">
+                <summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-gray-50 transition-colors">
+                    <h3 class="text-lg font-extrabold text-gray-800 flex items-center gap-2">Galería del Día 📸</h3>
+                    <span class="transform group-open:rotate-180 transition-transform duration-300 text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </span>
+                </summary>
+                <!-- Contenido desplegable -->
+                <div class="p-6 border-t border-gray-200">
+                    <div class="flex justify-end mb-4">
+                        <label class="cursor-pointer bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span class="hidden md:inline">Subir Foto</span>
+                            <span class="md:hidden">Subir</span>
+                            <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
+                        </label>
+                    </div>
+                    <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[500px] overflow-y-auto p-1">
+                        <p id="gallery-loading" class="col-span-full text-center text-gray-400 text-sm py-4">Cargando fotos...</p>
+                    </div>
+                </div>
+            </details>
+
         </div>
 
         <!-- FLOATERS -->
@@ -281,3 +300,5 @@
     <script type="module" src="app.js"></script>
 </body>
 </html>
+
+### 2. `app.js` (Actualizado con Toast de Foto)
