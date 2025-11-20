@@ -1,7 +1,7 @@
 // app.js
-import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js](https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js)";
-import { getAuth, signInAnonymously } from "[https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js](https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js)";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "[https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js](https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js)";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -14,25 +14,31 @@ const firebaseConfig = {
   measurementId: "G-R926P5WBWW"
 };
 
+// Variables globales
 let db;
 let auth; 
 let messagesCollection;
 let galleryCollection; 
 
+// --- INICIALIZACIÓN ---
 try {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
+    
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
+
     signInAnonymously(auth).catch(e => console.warn("Auth warning:", e));
     console.log("✅ Firebase inicializado.");
+
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    
+    console.log("🚀 App iniciada.");
+
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(console.error);
@@ -47,27 +53,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const backToHomeBtn = document.getElementById('back-to-home');
     const fabCommunity = document.getElementById('fab-community');
     const newMessageToast = document.getElementById('new-message-toast');
-    const newPhotoToast = document.getElementById('new-photo-toast'); // NUEVO
     const menuButton = document.getElementById('menu-button');
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
-    const notificationBadge = document.getElementById('notification-badge'); 
 
-    // --- LÓGICA DE COMUNIDAD LEÍDA ---
-    function markCommunityAsRead() {
-        const now = Date.now();
-        localStorage.setItem('lastReadTime', now); // Mensajes
-        localStorage.setItem('lastReadGalleryTime', now); // Galería
-        
-        if (notificationBadge) notificationBadge.classList.add('hidden');
-        if (newMessageToast) newMessageToast.classList.add('hidden');
-        if (newPhotoToast) newPhotoToast.classList.add('hidden');
-    }
-
-    // --- LÓGICA DE VISTAS ---
     function switchView(viewName) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+
         if (viewName === 'dashboard') {
             viewDashboard.classList.remove('hidden');
             viewCommunity.classList.add('hidden');
@@ -76,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
             viewDashboard.classList.add('hidden');
             viewCommunity.classList.remove('hidden');
             if(fabCommunity) fabCommunity.classList.add('hidden');
-            markCommunityAsRead();
+            markMessagesAsRead();
         }
         if (mobileMenu && !mobileMenu.classList.contains('-translate-x-full')) {
             toggleMenu();
@@ -98,12 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', () => switchView('community'));
     if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
     if (newMessageToast) newMessageToast.addEventListener('click', () => switchView('community'));
-    if (newPhotoToast) newPhotoToast.addEventListener('click', () => switchView('community'));
     if (menuButton) menuButton.addEventListener('click', toggleMenu);
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
 
-    // --- COMPRESIÓN ---
+
+    // --- COMPRESIÓN IMÁGENES ---
     async function compressImageToBase64(file) {
         return new Promise((resolve, reject) => {
             const MAX_WIDTH = 600; 
@@ -134,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- GALERÍA ---
+    // --- LÓGICA GALERÍA ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
     const imageModal = document.getElementById('image-modal');
@@ -183,18 +176,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = Date.now();
             const oneDay = 24 * 60 * 60 * 1000;
             let hasImages = false;
-            
-            const lastReadGalleryTime = parseInt(localStorage.getItem('lastReadGalleryTime') || '0');
-            let newestImageTime = 0;
-
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.timestamp && data.url) {
                     const imgDate = data.timestamp.toDate();
-                    const imgTime = imgDate.getTime();
-                    if (imgTime > newestImageTime) newestImageTime = imgTime;
-
-                    if (now - imgTime < oneDay) {
+                    if (now - imgDate.getTime() < oneDay) {
                         hasImages = true;
                         const imgContainer = document.createElement('div');
                         imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-md bg-gray-100 hover:opacity-90 transition-opacity";
@@ -207,23 +193,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-
             if (!hasImages) galleryGrid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4 text-sm">Sin fotos hoy.</div>';
-            else {
-                // Notificación de FOTO NUEVA
-                if (newestImageTime > lastReadGalleryTime && lastReadGalleryTime > 0) {
-                    if (viewCommunity.classList.contains('hidden')) {
-                        if(newPhotoToast) newPhotoToast.classList.remove('hidden');
-                        if(notificationBadge) notificationBadge.classList.remove('hidden');
-                    } else { markCommunityAsRead(); }
-                } else if (lastReadGalleryTime === 0 && newestImageTime > 0) {
-                    localStorage.setItem('lastReadGalleryTime', now);
-                }
-            }
         });
     }
 
-    // --- PIZARRA ---
+    // --- LÓGICA PIZARRA ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
     const authorInput = document.getElementById('message-author');
@@ -241,9 +215,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function markMessagesAsRead() {
         const now = Date.now();
         localStorage.setItem('lastReadTime', now);
-        // Solo ocultamos los toasts específicos de mensajes aquí
+        const badge = document.getElementById('notification-badge');
+        if (badge) badge.classList.add('hidden');
         if (newMessageToast) newMessageToast.classList.add('hidden');
-        // El badge global se oculta si también se leyeron las fotos (en markCommunityAsRead)
     }
 
     if (messageForm && db) {
@@ -260,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     await addDoc(messagesCollection, { author: author, text: text, timestamp: serverTimestamp() });
                     textInput.value = ''; 
                     localStorage.setItem('kiterName', author);
-                    markCommunityAsRead(); // Al escribir, asumimos que ves la comunidad
+                    markMessagesAsRead();
                 } catch (e) { 
                     console.error(e);
                     alert("Error: " + e.message);
@@ -283,14 +257,12 @@ document.addEventListener('DOMContentLoaded', () => {
             let hasMessages = false;
             const lastReadTime = parseInt(localStorage.getItem('lastReadTime') || '0');
             let newestMessageTime = 0;
-
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.timestamp) {
                     const msgDate = data.timestamp.toDate();
                     const msgTime = msgDate.getTime();
                     if (msgTime > newestMessageTime) newestMessageTime = msgTime;
-
                     if (now - msgTime < oneDay) {
                         hasMessages = true;
                         const div = document.createElement('div');
@@ -300,14 +272,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-
             if (!hasMessages) messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes.</p>';
             else {
                 if (newestMessageTime > lastReadTime && lastReadTime > 0) {
                     if (viewCommunity.classList.contains('hidden')) {
                         if(newMessageToast) newMessageToast.classList.remove('hidden');
-                        if(notificationBadge) notificationBadge.classList.remove('hidden');
-                    } else { markCommunityAsRead(); }
+                        const badge = document.getElementById('notification-badge');
+                        if(badge) badge.classList.remove('hidden');
+                    } else { markMessagesAsRead(); }
                 } else if (lastReadTime === 0 && newestMessageTime > 0) {
                     localStorage.setItem('lastReadTime', now);
                 }
@@ -340,8 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const skeletonLoaderIds = ['verdict-data-loader','highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader','temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 'rainfall-daily-data-loader', 'uvi-data-loader','stability-data-loader'];
     const dataContentIds = ['verdict-data','highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data','temp-data', 'humidity-data', 'pressure-data','rainfall-daily-data', 'uvi-data','stability-data'];
 
-    let lastUpdateTime = null;
-
     function showSkeletons(isLoading) {
         skeletonLoaderIds.forEach(id => {
             const el = document.getElementById(id);
@@ -359,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         const secondsAgo = Math.round((now - lastUpdateTime) / 1000);
         if (secondsAgo < 5) lastUpdatedEl.textContent = "Actualizado ahora";
-        else if (secondsAgo < 60) lastUpdatedEl.textContent = `Hace ${secondsAgo}s`;
+        else if (secondsAgo < 60) lastUpdatedEl.textContent = `Actualizado hace ${secondsAgo} seg.`;
         else lastUpdatedEl.textContent = `Actualizado: ${lastUpdateTime.toLocaleTimeString('es-AR')}`;
     }
 
@@ -381,15 +351,12 @@ document.addEventListener('DOMContentLoaded', () => {
         else return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; 
     }
     
+    // --- FUNCIÓN CORREGIDA (Se cerró la llave faltante) ---
     function getSpotVerdict(speed, gust, degrees) {
-        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA.
-        if (degrees !== null) {
-             if ((degrees > 292.5 || degrees <= 67.5)) { 
-                return ["¡PELIGRO! OFFSHORE", ['bg-red-400', 'border-red-600']];
-            }
-        }
+        // 1. Seguridad Offshore
+        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["¡PELIGRO! OFFSHORE", ['bg-red-400', 'border-red-600']];
         
-        // 2. Escala Kitera
+        // 2. Viento
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
         if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
         else if (speed <= 16) return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
@@ -398,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
         else if (speed > 33) return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
         else return ["¡MUY FUERTE!", ['bg-red-400', 'border-red-600']];
-    }
+    } // <-- Esta llave faltaba
 
     const allColorClasses = [
         'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
@@ -414,12 +381,15 @@ document.addEventListener('DOMContentLoaded', () => {
         element.classList.add(...newClasses);
     }
 
-    // Función unificada de colores para Tarjeta Grande y Racha
     function getUnifiedWindColorClasses(speedInKnots, degrees) {
-        // MODIFICACIÓN: Se eliminó el bloque de seguridad Offshore.
-        // Ahora el color depende exclusivamente de la velocidad.
+        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA.
+        if (degrees !== null) {
+             if ((degrees > 292.5 || degrees <= 67.5)) { 
+                return ['bg-red-400', 'border-red-600'];
+            }
+        }
     
-        // Escala Kitera
+        // 2. Escala Kitera
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
             if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
             else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500']; 
@@ -432,9 +402,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getWindyColorClasses(speedInKnots) {
+        if (speedInKnots !== null && !isNaN(speedInKnots)) {
+            if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
+            else if (speedInKnots <= 16) return ['bg-green-300', 'border-green-500']; 
+            else if (speedInKnots <= 21) return ['bg-yellow-300', 'border-yellow-500']; 
+            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; 
+            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; 
+            else return ['bg-purple-400', 'border-purple-600']; 
+        }
         return ['bg-gray-100', 'border-gray-300']; 
     }
 
+    let lastUpdateTime = null;
+    
+    // --- MOCK ---
     function getMockWeatherData() {
         return {
             code: 0, msg: "success",
@@ -498,10 +479,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
                 
-                // Usamos la función UNIFICADA para ambas tarjetas (Principal y Racha)
-                // Esto asegura que la racha TAMBIÉN se ponga roja si es offshore
+                // Usamos la función UNIFICADA para ambas tarjetas
                 updateCardColors(unifiedWindDataCardEl, getUnifiedWindColorClasses(windSpeedValue, windDirDegrees));
-                if (gustInfoContainer) updateCardColors(gustInfoContainer, getUnifiedWindColorClasses(windGustValue, windDirDegrees));
+                if (gustInfoContainer) updateCardColors(gustInfoContainer, getWindyColorClasses(windGustValue));
 
                 highlightWindSpeedEl.innerHTML = (windSpeedValue !== null) 
                     ? `${windSpeedValue} <span class="text-xl font-bold align-baseline">kts</span>` 
