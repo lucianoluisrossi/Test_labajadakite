@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
                 updateCardColors(unifiedWindDataCardEl, getUnifiedWindColorClasses(windSpeedValue, windDirDegrees));
-                if (gustInfoContainer) updateCardColors(gustInfoContainer, getWindyColorClasses(windGustValue));
+                if (gustInfoContainer) updateCardColors(gustInfoContainer, getUnifiedWindColorClasses(windGustValue, windDirDegrees));
 
                 highlightWindSpeedEl.innerHTML = (windSpeedValue !== null) 
                     ? `${windSpeedValue} <span class="text-xl font-bold align-baseline">kts</span>` 
