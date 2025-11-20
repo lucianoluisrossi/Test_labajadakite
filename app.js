@@ -20,7 +20,6 @@ let auth;
 let messagesCollection;
 let galleryCollection; 
 
-// --- INICIALIZACIÓN ---
 try {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
@@ -60,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function switchView(viewName) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-
         if (viewName === 'dashboard') {
             viewDashboard.classList.remove('hidden');
             viewCommunity.classList.add('hidden');
@@ -95,8 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
 
-
-    // --- COMPRESIÓN IMÁGENES ---
+    // --- COMPRESIÓN ---
     async function compressImageToBase64(file) {
         return new Promise((resolve, reject) => {
             const MAX_WIDTH = 600; 
@@ -127,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA GALERÍA ---
+    // --- GALERÍA ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
     const imageModal = document.getElementById('image-modal');
@@ -197,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LÓGICA PIZARRA ---
+    // --- PIZARRA ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
     const authorInput = document.getElementById('message-author');
@@ -257,12 +254,14 @@ document.addEventListener('DOMContentLoaded', () => {
             let hasMessages = false;
             const lastReadTime = parseInt(localStorage.getItem('lastReadTime') || '0');
             let newestMessageTime = 0;
+
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.timestamp) {
                     const msgDate = data.timestamp.toDate();
                     const msgTime = msgDate.getTime();
                     if (msgTime > newestMessageTime) newestMessageTime = msgTime;
+
                     if (now - msgTime < oneDay) {
                         hasMessages = true;
                         const div = document.createElement('div');
@@ -312,6 +311,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const skeletonLoaderIds = ['verdict-data-loader','highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader','temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 'rainfall-daily-data-loader', 'uvi-data-loader','stability-data-loader'];
     const dataContentIds = ['verdict-data','highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data','temp-data', 'humidity-data', 'pressure-data','rainfall-daily-data', 'uvi-data','stability-data'];
 
+    let lastUpdateTime = null;
+
     function showSkeletons(isLoading) {
         skeletonLoaderIds.forEach(id => {
             const el = document.getElementById(id);
@@ -351,12 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
         else return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; 
     }
     
-    // --- FUNCIÓN CORREGIDA (Se cerró la llave faltante) ---
     function getSpotVerdict(speed, gust, degrees) {
-        // 1. Seguridad Offshore
-        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["¡PELIGRO! OFFSHORE", ['bg-red-400', 'border-red-600']];
-        
-        // 2. Viento
+        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["VIENTO OFFSHORE!", ['bg-red-400', 'border-red-600']];
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
         if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
         else if (speed <= 16) return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
@@ -365,14 +362,13 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
         else if (speed > 33) return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
         else return ["¡MUY FUERTE!", ['bg-red-400', 'border-red-600']];
-    } // <-- Esta llave faltaba
+    }
 
     const allColorClasses = [
         'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
-        'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600',
+        'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600','bg-cyan-300', 'border-cyan-500',
         'bg-purple-400', 'border-purple-600', 'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
-        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 
-        'bg-cyan-300', 'border-cyan-500'
+        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 'bg-cyan-300', 'border-cyan-500'
     ];
 
     function updateCardColors(element, newClasses) {
@@ -381,25 +377,31 @@ document.addEventListener('DOMContentLoaded', () => {
         element.classList.add(...newClasses);
     }
 
-    function getUnifiedWindColorClasses(speedInKnots, degrees) {
-        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA.
-        if (degrees !== null) {
+    // --- ESTA ES LA FUNCIÓN QUE FALTABA ---
+	
+	function getUnifiedWindColorClasses(speedInKnots, degrees) {
+        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA. (desactivado)
+        /*if (degrees !== null) {
              if ((degrees > 292.5 || degrees <= 67.5)) { 
                 return ['bg-red-400', 'border-red-600'];
             }
-        }
+        }*/
     
-        // 2. Escala Kitera
+        // 2. Escala Kitera (Igualada a Veredicto)
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
-            if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
-            else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500']; 
-            else if (speedInKnots <= 21) return ['bg-yellow-300', 'border-yellow-500']; 
-            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; 
-            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; 
-            else return ['bg-purple-400', 'border-purple-600']; 
+            if (speedInKnots <= 14) return ['bg-blue-200', 'border-blue-400'];       // Flojo
+            else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500'];  // Aceptable
+            else if (speedInKnots <= 19) return ['bg-green-300', 'border-green-500'];// Ideal
+            else if (speedInKnots <= 22) return ['bg-yellow-300', 'border-yellow-500']; // Muy Bueno
+            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; // Fuerte
+            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600'];    // Muy Fuerte
+            else return ['bg-purple-400', 'border-purple-600'];                      // Demasiado Fuerte
         }
+        
         return ['bg-gray-100', 'border-gray-300']; 
     }
+	
+
 
     function getWindyColorClasses(speedInKnots) {
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
@@ -412,10 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return ['bg-gray-100', 'border-gray-300']; 
     }
-
-    let lastUpdateTime = null;
     
-    // --- MOCK ---
     function getMockWeatherData() {
         return {
             code: 0, msg: "success",
@@ -478,10 +477,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
-                
-                // Usamos la función UNIFICADA para ambas tarjetas
                 updateCardColors(unifiedWindDataCardEl, getUnifiedWindColorClasses(windSpeedValue, windDirDegrees));
-                if (gustInfoContainer) updateCardColors(gustInfoContainer, getWindyColorClasses(windGustValue));
+                if (gustInfoContainer) updateCardColors(gustInfoContainer, getUnifiedWindColorClasses(windGustValue, windDirDegrees));
 
                 highlightWindSpeedEl.innerHTML = (windSpeedValue !== null) 
                     ? `${windSpeedValue} <span class="text-xl font-bold align-baseline">kts</span>` 
