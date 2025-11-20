@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- API DE CLIMA ---
+    // --- API CLIMA ---
     const weatherApiUrl = 'api/data';
     const tempEl = document.getElementById('temp-data');
     const humidityEl = document.getElementById('humidity-data');
@@ -308,11 +308,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const stabilityCardEl = document.getElementById('stability-card');
     const stabilityDataEl = document.getElementById('stability-data');
 
+    const skeletonLoaderIds = ['verdict-data-loader','highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader','temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 'rainfall-daily-data-loader', 'uvi-data-loader','stability-data-loader'];
+    const dataContentIds = ['verdict-data','highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data','temp-data', 'humidity-data', 'pressure-data','rainfall-daily-data', 'uvi-data','stability-data'];
+
+    let lastUpdateTime = null;
+
     function showSkeletons(isLoading) {
-        const skels = document.querySelectorAll('.skeleton-loader');
-        const contents = document.querySelectorAll('.data-content');
-        skels.forEach(s => s.style.display = isLoading ? 'block' : 'none');
-        contents.forEach(c => c.style.display = isLoading ? 'none' : 'block');
+        skeletonLoaderIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isLoading ? 'block' : 'none';
+        });
+        dataContentIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isLoading ? 'none' : 'block';
+        });
         if (isLoading && lastUpdatedEl) lastUpdatedEl.textContent = 'Actualizando...';
     }
     
@@ -342,14 +351,9 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (factor <= 30) return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] }; 
         else return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; 
     }
-<<<<<<< HEAD
     
-    // FUNCIÓN CORREGIDA (Sintaxis)
     function getSpotVerdict(speed, gust, degrees) {
-        // 1. Seguridad Offshore
         if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["¡PELIGRO! OFFSHORE", ['bg-red-400', 'border-red-600']];
-        
-        // 2. Viento
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
         if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
         else if (speed <= 16) return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
@@ -358,40 +362,13 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
         else if (speed > 33) return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
         else return ["¡MUY FUERTE!", ['bg-red-400', 'border-red-600']];
-=======
-	
-   // --- FUNCIÓN DE VEREDICTO (Lógica de Seguridad de Viento y Potencia) --- 
-    function getSpotVerdict(speed, gust, degrees) {
-		
-		  // 1. Chequeo de Peligro (Offshore) - PRIORIDAD
-        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["¡PELIGRO! OFFSHORE", ['bg-red-400', 'border-red-600']];
-		
-		// 2. Chequeo de Viento (basado en 'speed')
-      if (speed <= 14) {
-            return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
-        } else if (speed <= 16) {
-            return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
-        } else if (speed <= 19) {
-            return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
-        } else if (speed <= 22) {
-            return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
-        } else if (speed <= 27) {
-            return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
-        } else {
-            if (speed > 33) {
-                return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
-            } else {
-                return ["¡MUY FUERTE!", ['bg-red-400', 'border-red-600']];
-            }
->>>>>>> parent of 68c1ef2 (Revert "Cambio lógica velocidad del viento")
     }
 
     const allColorClasses = [
         'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
         'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600',
         'bg-purple-400', 'border-purple-600', 'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
-        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 
-        'bg-cyan-300', 'border-cyan-500'
+        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 'bg-cyan-300', 'border-cyan-500'
     ];
 
     function updateCardColors(element, newClasses) {
@@ -400,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         element.classList.add(...newClasses);
     }
 
+    // --- ESTA ES LA FUNCIÓN QUE FALTABA ---
     function getUnifiedWindColorClasses(speedInKnots, degrees) {
         if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ['bg-red-400', 'border-red-600'];
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
@@ -490,11 +468,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateCardColors(unifiedWindDataCardEl, getUnifiedWindColorClasses(windSpeedValue, windDirDegrees));
                 if (gustInfoContainer) updateCardColors(gustInfoContainer, getWindyColorClasses(windGustValue));
 
-                // FIX: Comprobar si windSpeedValue es válido antes de pintar
-                highlightWindSpeedEl.innerHTML = (windSpeedValue !== null)
+                highlightWindSpeedEl.innerHTML = (windSpeedValue !== null) 
                     ? `${windSpeedValue} <span class="text-xl font-bold align-baseline">kts</span>` 
                     : 'N/A';
-                
                 highlightGustEl.textContent = windGustValue ?? 'N/A';
                 highlightWindDirEl.textContent = convertDegreesToCardinal(windDirDegrees); 
 
