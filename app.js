@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+// --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
   authDomain: "labajadakite.firebaseapp.com",
@@ -13,11 +14,13 @@ const firebaseConfig = {
   measurementId: "G-R926P5WBWW"
 };
 
+// Variables globales
 let db;
 let auth; 
 let messagesCollection;
 let galleryCollection; 
 
+// --- INICIALIZACIÓN SIMPLE Y ROBUSTA ---
 try {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
@@ -26,7 +29,9 @@ try {
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
 
+    // Iniciamos sesión silenciosamente
     signInAnonymously(auth).catch(e => console.warn("Auth warning:", e));
+    console.log("✅ Firebase inicializado correctamente.");
 
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
@@ -53,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
 
+    // --- LÓGICA DE VISTAS ---
     function switchView(viewName) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -90,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
 
+    // --- COMPRESIÓN A BASE64 ---
     async function compressImageToBase64(file) {
         return new Promise((resolve, reject) => {
             const MAX_WIDTH = 600; 
@@ -124,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- LÓGICA GALERÍA ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
     const imageModal = document.getElementById('image-modal');
@@ -210,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- LÓGICA DE PIZARRA ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
     const authorInput = document.getElementById('message-author');
@@ -315,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- API DE CLIMA (MOCK + REAL) ---
+    // --- API DE CLIMA ---
     const weatherApiUrl = 'api/data';
     const tempEl = document.getElementById('temp-data');
     const humidityEl = document.getElementById('humidity-data');
@@ -375,21 +384,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const MIN_KITE_WIND = 12; 
         if (speed < MIN_KITE_WIND) return { factor: null, text: 'No Aplica', color: ['bg-gray-100', 'border-gray-300'] };
         if (gust <= speed) return { factor: 0, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
+        
+        // Lógica inversa solicitada (0% es lo mejor)
         const factor = (1 - (speed / gust)) * 100; 
+        
         if (factor <= 15) return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; 
         else if (factor <= 30) return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] }; 
         else return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; 
     }
     
     function getSpotVerdict(speed, gust, degrees) {
+        // 1. SEGURIDAD PRIMERO (Offshore = Rojo)
         if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["¡PELIGRO! OFFSHORE", ['bg-red-400', 'border-red-600']];
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
+        
+        // 2. Escala de Viento
         if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
-        else if (speed <= 18) return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
+        else if (speed <= 16) return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
+        else if (speed <= 19) return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
         else if (speed <= 22) return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
         else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
         else { 
-            if (speed > 33) return ["¡DEMASIADO!", ['bg-purple-400', 'border-purple-600']];
+            if (speed > 33) return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
             else return ["¡MUY FUERTE!", ['bg-red-400', 'border-red-600']];
         }
     }
@@ -398,7 +414,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
         'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600',
         'bg-purple-400', 'border-purple-600', 'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
-        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30'
+        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 
+        'bg-cyan-300', 'border-cyan-500' // <-- AGREGADO PARA QUE LIMPIE EL CYAN
     ];
 
     function updateCardColors(element, newClasses) {
@@ -407,25 +424,21 @@ document.addEventListener('DOMContentLoaded', () => {
         element.classList.add(...newClasses);
     }
 
-    // FUNCIÓN NUEVA: Lógica Unificada con Prioridad de Seguridad
+    // Misma lógica de colores que el veredicto para la tarjeta unificada
     function getUnifiedWindColorClasses(speedInKnots, degrees) {
-        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA.
-        if (degrees !== null) {
+         if (degrees !== null) {
              if ((degrees > 292.5 || degrees <= 67.5)) { 
                 return ['bg-red-400', 'border-red-600'];
             }
         }
-
-        // 2. Si es dirección segura, usamos la Escala Kitera (igual al Veredicto)
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
-            if (speedInKnots <= 14) return ['bg-blue-200', 'border-blue-400']; // Flojo
-            else if (speedInKnots <= 18) return ['bg-green-300', 'border-green-500']; // Ideal
-            else if (speedInKnots <= 22) return ['bg-yellow-300', 'border-yellow-500']; // Muy Bueno
-            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; // Fuerte
-            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; // Muy Fuerte
-            else return ['bg-purple-400', 'border-purple-600']; // Demasiado
+            if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
+            else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500']; 
+            else if (speedInKnots <= 21) return ['bg-yellow-300', 'border-yellow-500']; 
+            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; 
+            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; 
+            else return ['bg-purple-400', 'border-purple-600']; 
         }
-        
         return ['bg-gray-100', 'border-gray-300']; 
     }
 
@@ -498,9 +511,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
                 
-                // USO DE LA NUEVA FUNCIÓN UNIFICADA (Con Dirección)
+                // Uso de la función unificada con dirección
                 updateCardColors(unifiedWindDataCardEl, getUnifiedWindColorClasses(windSpeedValue, windDirDegrees));
-                if (gustInfoContainer) updateCardColors(gustInfoContainer, getUnifiedWindColorClasses(windGustValue, windDirDegrees));
+                
+                // La pastilla de racha solo por velocidad
+                if (gustInfoContainer) updateCardColors(gustInfoContainer, getWindyColorClasses(windGustValue));
 
                 highlightWindSpeedEl.innerHTML = windSpeedValue 
                     ? `${windSpeedValue} <span class="text-xl font-bold align-baseline">kts</span>` 
