@@ -376,31 +376,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (speed < MIN_KITE_WIND) return { factor: null, text: 'No Aplica', color: ['bg-gray-100', 'border-gray-300'] };
         if (gust <= speed) return { factor: 0, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
         const factor = (1 - (speed / gust)) * 100; 
-        if (factor <= 15) return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; 
-        else if (factor <= 30) return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] }; 
-        else return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; 
-    }
-    
-    function getSpotVerdict(speed, gust, degrees) {
-        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["¡PELIGRO! OFFSHORE", ['bg-red-400', 'border-red-600']];
-        if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
-        if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
-        else if (speed <= 18) return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
-        else if (speed <= 22) return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
-        else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
-        else { 
-            if (speed > 33) return ["¡DEMASIADO!", ['bg-purple-400', 'border-purple-600']];
-            else return ["¡MUY FUERTE!", ['bg-red-400', 'border-red-600']];
-        }
-    }
-
+    // --- CONSTANTES DE CLASES DE COLOR ---
     const allColorClasses = [
-        'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
-        'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600',
-        'bg-purple-400', 'border-purple-600', 'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
-        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30'
+        'bg-gray-100', 'border-gray-300',
+        'bg-blue-200', 'border-blue-400',
+        'bg-green-300', 'border-green-500',
+        'bg-yellow-300', 'border-yellow-500',
+        'bg-orange-300', 'border-orange-500',
+        'bg-red-400', 'border-red-600',
+        'bg-purple-400', 'border-purple-600',
+        // NUEVAS CLASES AGREGADAS (Cyan)
+        'bg-cyan-300', 'border-cyan-500',
+        // Clases de flecha
+        'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
+        // Clases extra para estabilidad
+        'bg-green-400', 'border-green-600'
     ];
 
+    // --- FUNCIÓN DE UTILIDAD: Para actualizar colores de tarjetas ---
     function updateCardColors(element, newClasses) {
         if (!element) return;
         element.classList.remove(...allColorClasses);
@@ -415,15 +408,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 return ['bg-red-400', 'border-red-600'];
             }
         }
-
-        // 2. Si es dirección segura, usamos la Escala Kitera (igual al Veredicto)
+    
+        // 2. Si es dirección segura, usamos la Escala Kitera
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
-            if (speedInKnots <= 14) return ['bg-blue-200', 'border-blue-400']; // Flojo
-            else if (speedInKnots <= 18) return ['bg-green-300', 'border-green-500']; // Ideal
-            else if (speedInKnots <= 22) return ['bg-yellow-300', 'border-yellow-500']; // Muy Bueno
-            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; // Fuerte
-            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; // Muy Fuerte
-            else return ['bg-purple-400', 'border-purple-600']; // Demasiado
+                if (speedInKnots <= 10) {
+                    return ['bg-blue-200', 'border-blue-400']; // Azul (Flojo)
+                } else if (speedInKnots <= 16) {
+                    return ['bg-cyan-300', 'border-cyan-500']; // Cian (Aceptable)
+                } else if (speedInKnots <= 21) {
+                    return ['bg-yellow-300', 'border-yellow-500']; // Amarillo (Bueno/Fuerte)
+                } else if (speedInKnots <= 27) {
+                    return ['bg-orange-300', 'border-orange-500']; // Naranja (Fuerte)
+                } else if (speedInKnots <= 33) {
+                    return ['bg-red-400', 'border-red-600']; // Rojo (Muy Fuerte)
+                } else {
+                    return ['bg-purple-400', 'border-purple-600']; // Púrpura (Demasiado Fuerte)
+                }
         }
         
         return ['bg-gray-100', 'border-gray-300']; 
