@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function getSpotVerdict(speed, gust, degrees) {
-        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["¡PELIGRO! OFFSHORE", ['bg-red-400', 'border-red-600']];
+        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["VIENTO OFFSHORE!", ['bg-red-400', 'border-red-600']];
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
         if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
         else if (speed <= 16) return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
