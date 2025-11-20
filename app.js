@@ -380,12 +380,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ESTA ES LA FUNCIÓN QUE FALTABA ---
 	
 	function getUnifiedWindColorClasses(speedInKnots, degrees) {
-        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA.
-        if (degrees !== null) {
+        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA. (desactivado)
+        /*if (degrees !== null) {
              if ((degrees > 292.5 || degrees <= 67.5)) { 
                 return ['bg-red-400', 'border-red-600'];
             }
-        }
+        }*/
     
         // 2. Escala Kitera (Igualada a Veredicto)
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
