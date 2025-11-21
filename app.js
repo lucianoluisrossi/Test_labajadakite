@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getUnifiedWindColorClasses(speedInKnots, degrees) {
-        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ['bg-red-400', 'border-red-600'];
+        /*if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ['bg-red-400', 'border-red-600'];*/
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
             if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
             else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500']; 
