@@ -216,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const oneDay = 24 * 60 * 60 * 1000;
             let hasImages = false;
             
+            // Variables para notificación
             const lastReadGalleryTime = parseInt(localStorage.getItem('lastReadGalleryTime') || '0');
             let newestImageTime = 0;
 
@@ -225,11 +226,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const imgDate = data.timestamp.toDate();
                     const imgTime = imgDate.getTime();
                     
+                    // Rastrear la foto más nueva
                     if (imgTime > newestImageTime) newestImageTime = imgTime;
 
                     if (now - imgTime < oneDay) {
                         hasImages = true;
                         const imgContainer = document.createElement('div');
+                        // ... (código de creación de imagen igual al anterior) ...
                         imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-md bg-gray-100 hover:opacity-90 transition-opacity";
                         imgContainer.innerHTML = `<img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto"><div class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-tl-lg">${timeAgo(imgDate)}</div>`;
                         imgContainer.addEventListener('click', () => {
@@ -241,22 +244,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            if (!hasImages) galleryGrid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4 text-sm">Sin fotos hoy.</div>';
-            else {
+            if (!hasImages) {
+                galleryGrid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4 text-sm">Sin fotos hoy.</div>';
+            } else {
                 // LÓGICA DE NOTIFICACIÓN DE FOTO
-                if (newestImageTime > lastReadGalleryTime && lastReadGalleryTime > 0) {
-                    // Activar badge interno de la galería
-                    if (galleryNewBadge) galleryNewBadge.classList.remove('hidden');
+                // Si la foto más nueva es posterior a la última lectura y el acordeón está cerrado
+                if (newestImageTime > lastReadGalleryTime && (!gallerySection || !gallerySection.open)) {
                     
-                    // Si estamos en Dashboard, mostrar toast
+                    // 1. Mostrar Badge "NUEVA" en el título
+                    if (galleryNewBadge) galleryNewBadge.classList.remove('hidden');
+
+                    // 2. Si estamos en Dashboard (no viendo la comunidad), mostrar alertas globales
                     if (viewCommunity.classList.contains('hidden')) {
-                        if (newPhotoToast) newPhotoToast.classList.remove('hidden');
+                         if (newPhotoToast) newPhotoToast.classList.remove('hidden');
+                         const badge = document.getElementById('notification-badge');
+                         if (badge) badge.classList.remove('hidden');
                     }
-                } else if (lastReadGalleryTime === 0 && newestImageTime > 0) {
-                    // Primera vez: asumimos leído para no molestar
-                    localStorage.setItem('lastReadGalleryTime', now);
+                } else {
+                    // Si ya lo vimos o está abierto, actualizamos el tiempo de lectura
+                    if (gallerySection && gallerySection.open) {
+                         localStorage.setItem('lastReadGalleryTime', now);
+                    }
                 }
-                checkGlobalNotificationState();
             }
         });
     }
