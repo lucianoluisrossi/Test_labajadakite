@@ -257,6 +257,12 @@
             </div>
         </div>
 
+        <div id="new-photo-toast" class="fixed top-32 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer transition-all duration-300 w-max">
+            <div class="bg-green-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-green-400 text-sm font-bold">
+                📸 Nueva Foto en la Galería
+            </div>
+        </div>
+
         <div id="image-modal" class="fixed inset-0 z-[60] hidden modal-backdrop flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
             <img id="modal-img" src="" alt="Vista completa" class="max-h-full max-w-full rounded shadow-2xl object-contain">
             <button class="absolute top-4 right-4 text-white text-4xl font-bold focus:outline-none">&times;</button>
