@@ -52,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const backToHomeBtn = document.getElementById('back-to-home');
     const fabCommunity = document.getElementById('fab-community');
     const newMessageToast = document.getElementById('new-message-toast');
-    const newImageToast = document.getElementById('new-image-toast');
     const menuButton = document.getElementById('menu-button');
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
@@ -69,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
             viewCommunity.classList.remove('hidden');
             if(fabCommunity) fabCommunity.classList.add('hidden');
             markMessagesAsRead();
-            markImagesAsRead(); // Nueva función para marcar imágenes como leídas
         }
         if (mobileMenu && !mobileMenu.classList.contains('-translate-x-full')) {
             toggleMenu();
@@ -91,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', () => switchView('community'));
     if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
     if (newMessageToast) newMessageToast.addEventListener('click', () => switchView('community'));
-    if (newImageToast) newImageToast.addEventListener('click', () => switchView('community')); // Nueva funcionalidad
     if (menuButton) menuButton.addEventListener('click', toggleMenu);
     if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
     if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
@@ -127,25 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- FUNCIONES DE NOTIFICACIONES PARA GALERÍA ---
-    function markImagesAsRead() {
-        const now = Date.now();
-        localStorage.setItem('lastReadImageTime', now);
-        const galleryBadge = document.getElementById('gallery-notification-badge');
-        if (galleryBadge) galleryBadge.classList.add('hidden');
-        if (newImageToast) newImageToast.classList.add('hidden');
-    }
-
-    function showImageNotification() {
-        if (viewCommunity.classList.contains('hidden')) {
-            if (newImageToast) newImageToast.classList.remove('hidden');
-            const galleryBadge = document.getElementById('gallery-notification-badge');
-            if (galleryBadge) galleryBadge.classList.remove('hidden');
-        } else {
-            markImagesAsRead();
-        }
-    }
-
     // --- GALERÍA ---
     const galleryUploadInput = document.getElementById('gallery-upload-input');
     const galleryGrid = document.getElementById('gallery-grid');
@@ -173,8 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 url: base64String,
                 timestamp: serverTimestamp()
             });
-            // Marcar las imágenes como leídas después de subir una nueva
-            markImagesAsRead();
         } catch (error) {
             console.error("Error subiendo:", error);
             alert("No se pudo subir.");
@@ -197,17 +173,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = Date.now();
             const oneDay = 24 * 60 * 60 * 1000;
             let hasImages = false;
-            const lastReadImageTime = parseInt(localStorage.getItem('lastReadImageTime') || '0');
-            let newestImageTime = 0;
-
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.timestamp && data.url) {
                     const imgDate = data.timestamp.toDate();
-                    const imgTime = imgDate.getTime();
-                    if (imgTime > newestImageTime) newestImageTime = imgTime;
-
-                    if (now - imgTime < oneDay) {
+                    if (now - imgDate.getTime() < oneDay) {
                         hasImages = true;
                         const imgContainer = document.createElement('div');
                         imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-md bg-gray-100 hover:opacity-90 transition-opacity";
@@ -220,18 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-
-            if (!hasImages) {
-                galleryGrid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4 text-sm">Sin fotos hoy.</div>';
-            } else {
-                // Verificar si hay nuevas imágenes
-                if (newestImageTime > lastReadImageTime && lastReadImageTime > 0) {
-                    showImageNotification();
-                } else if (lastReadImageTime === 0 && newestImageTime > 0) {
-                    // Primera vez que se carga la app
-                    localStorage.setItem('lastReadImageTime', now);
-                }
-            }
+            if (!hasImages) galleryGrid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4 text-sm">Sin fotos hoy.</div>';
         });
     }
 
