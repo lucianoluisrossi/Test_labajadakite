@@ -402,9 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function getSpotVerdict(speed, gust, degrees) {
         if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["VIENTO OFFSHORE!", ['bg-red-400', 'border-red-600']];
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
-        if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
+        if (speed <= 13.9) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
         else if (speed <= 16) return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
-        else if (speed <= 19) return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
+        else if (speed <= 18) return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
         else if (speed <= 22) return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
         else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
         else if (speed > 33) return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
@@ -453,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getWindyColorClasses(speedInKnots) {
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
             if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
-            else if (speedInKnots <= 16) return ['bg-green-300', 'border-green-500']; 
+            else if (speedInKnots <= 13.9) return ['bg-green-300', 'border-green-500']; 
             else if (speedInKnots <= 21) return ['bg-yellow-300', 'border-yellow-500']; 
             else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; 
             else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; 
