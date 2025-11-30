@@ -436,9 +436,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
         // 2. Escala Kitera (Igualada a Veredicto)
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
-            if (speedInKnots <= 14) return ['bg-blue-200', 'border-blue-400'];       // Flojo
+            if (speedInKnots <= 13.9) return ['bg-blue-200', 'border-blue-400'];       // Flojo
             else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500'];  // Aceptable
-            else if (speedInKnots <= 19) return ['bg-green-300', 'border-green-500'];// Ideal
+            else if (speedInKnots <= 18) return ['bg-green-300', 'border-green-500'];// Ideal
             else if (speedInKnots <= 22) return ['bg-yellow-300', 'border-yellow-500']; // Muy Bueno
             else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; // Fuerte
             else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600'];    // Muy Fuerte
