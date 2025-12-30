@@ -27,9 +27,85 @@ try {
     
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
+    const checkinsCollection = collection(db, "active_checkins");
 
     signInAnonymously(auth).catch(e => console.warn("Auth warning:", e));
     console.log("✅ Firebase inicializado.");
+
+    // --- LÓGICA DE CHECK-IN ---
+    const btnCheckin = document.getElementById('btn-checkin');
+    const btnCheckinText = document.getElementById('btn-checkin-text');
+    const checkinCount = document.getElementById('checkin-count');
+    const activeKitersContainer = document.getElementById('active-kiters-container');
+
+    if (btnCheckin && db) {
+        const qCheckins = query(checkinsCollection, orderBy("timestamp", "desc"));
+        onSnapshot(qCheckins, (snapshot) => {
+            const now = Date.now();
+            const fourHours = 4 * 60 * 60 * 1000;
+            const activeKiters = [];
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.timestamp) {
+                    const time = data.timestamp.toDate().getTime();
+                    if (now - time < fourHours) {
+                        activeKiters.push({ id: doc.id, name: data.name });
+                    }
+                }
+            });
+
+            if (checkinCount) checkinCount.innerText = `${activeKiters.length} en el agua`;
+            
+            if (activeKitersContainer) {
+                activeKitersContainer.innerHTML = '';
+                if (activeKiters.length > 0) {
+                    activeKitersContainer.classList.remove('hidden');
+                    activeKiters.forEach(kiter => {
+                        const pill = document.createElement('span');
+                        pill.className = "bg-white border border-blue-200 text-blue-700 text-[11px] px-2 py-1 rounded-full font-bold shadow-sm";
+                        pill.innerText = kiter.name;
+                        activeKitersContainer.appendChild(pill);
+                    });
+                } else {
+                    activeKitersContainer.classList.add('hidden');
+                }
+            }
+
+            const myName = localStorage.getItem('kiterName');
+            const alreadyIn = activeKiters.some(k => k.name === myName);
+            if (alreadyIn) {
+                btnCheckin.classList.replace('bg-blue-600', 'bg-green-600');
+                if (btnCheckinText) btnCheckinText.innerText = "¡Ya estás en el agua!";
+                btnCheckin.disabled = true;
+            }
+        });
+
+        btnCheckin.addEventListener('click', async () => {
+            let name = localStorage.getItem('kiterName');
+            if (!name) {
+                name = prompt("Ingresa tu nombre para el Check-in:");
+                if (!name) return;
+                name = name.trim().substring(0, 15);
+                localStorage.setItem('kiterName', name);
+            }
+
+            btnCheckin.disabled = true;
+            if (btnCheckinText) btnCheckinText.innerText = "Registrando...";
+
+            try {
+                await addDoc(checkinsCollection, {
+                    name: name,
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) {
+                console.error(e);
+                alert("Error al hacer check-in");
+                btnCheckin.disabled = false;
+                if (btnCheckinText) btnCheckinText.innerText = "¡Entrando al agua!";
+            }
+        });
+    }
 
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
@@ -394,7 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (speed < MIN_KITE_WIND) return { factor: null, text: 'No Aplica', color: ['bg-gray-100', 'border-gray-300'] };
         if (gust <= speed) return { factor: 0, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
         const factor = (1 - (speed / gust)) * 100; 
-        if (factor <= 20) return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; 
+        if (factor <= 15) return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; 
         else if (factor <= 30) return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] }; 
         else return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; 
     }
@@ -402,9 +478,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function getSpotVerdict(speed, gust, degrees) {
         if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["VIENTO OFFSHORE!", ['bg-red-400', 'border-red-600']];
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
-        if (speed <= 13.9) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
+        if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
         else if (speed <= 16) return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
-        else if (speed <= 18) return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
+        else if (speed <= 19) return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
         else if (speed <= 22) return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
         else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
         else if (speed > 33) return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
@@ -436,9 +512,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
         // 2. Escala Kitera (Igualada a Veredicto)
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
-            if (speedInKnots <= 13.9) return ['bg-blue-200', 'border-blue-400'];       // Flojo
+            if (speedInKnots <= 14) return ['bg-blue-200', 'border-blue-400'];       // Flojo
             else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500'];  // Aceptable
-            else if (speedInKnots <= 18) return ['bg-green-300', 'border-green-500'];// Ideal
+            else if (speedInKnots <= 19) return ['bg-green-300', 'border-green-500'];// Ideal
             else if (speedInKnots <= 22) return ['bg-yellow-300', 'border-yellow-500']; // Muy Bueno
             else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; // Fuerte
             else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600'];    // Muy Fuerte
@@ -453,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getWindyColorClasses(speedInKnots) {
         if (speedInKnots !== null && !isNaN(speedInKnots)) {
             if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
-            else if (speedInKnots <= 13.9) return ['bg-green-300', 'border-green-500']; 
+            else if (speedInKnots <= 16) return ['bg-green-300', 'border-green-500']; 
             else if (speedInKnots <= 21) return ['bg-yellow-300', 'border-yellow-500']; 
             else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; 
             else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; 
@@ -543,6 +619,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (stabilityCardEl) updateCardColors(stabilityCardEl, stability.color);
                 if (stabilityDataEl) stabilityDataEl.textContent = stability.text;
                 
+                // Verificar alertas de viento
+                const windDirCardinal = convertDegreesToCardinal(windDirDegrees);
+                if (typeof window.checkWindAlert === 'function') {
+                    window.checkWindAlert(windSpeedValue, windDirCardinal);
+                }
+                
                 showSkeletons(false); 
                 lastUpdateTime = new Date(); 
                 updateTimeAgo(); 
@@ -561,4 +643,159 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchWeatherData();
     setInterval(fetchWeatherData, 30000);
     setInterval(updateTimeAgo, 5000);
+
+    // --- SISTEMA DE ALERTAS DE VIENTO ---
+    const btnWindAlert = document.getElementById('btn-wind-alert');
+    const btnAlertText = document.getElementById('btn-alert-text');
+    const alertStatus = document.getElementById('alert-status');
+    const alertModal = document.getElementById('alert-modal');
+    const alertModalClose = document.getElementById('alert-modal-close');
+    const alertMinWind = document.getElementById('alert-min-wind');
+    const alertMaxWind = document.getElementById('alert-max-wind');
+    const btnSaveAlert = document.getElementById('btn-save-alert');
+    const btnDisableAlert = document.getElementById('btn-disable-alert');
+
+    let windAlertConfig = JSON.parse(localStorage.getItem('windAlertConfig')) || null;
+    let lastAlertTime = parseInt(localStorage.getItem('lastWindAlertTime')) || 0;
+    const ALERT_COOLDOWN = 30 * 60 * 1000; // 30 minutos entre alertas
+
+    function updateAlertButtonState() {
+        if (windAlertConfig && windAlertConfig.enabled) {
+            btnAlertText.textContent = `Alertas: ${windAlertConfig.min}-${windAlertConfig.max} kts`;
+            btnWindAlert.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'border-orange-600');
+            btnWindAlert.classList.add('bg-green-500', 'hover:bg-green-600', 'border-green-600');
+            alertStatus.textContent = `Recibirás alertas cuando el viento esté entre ${windAlertConfig.min} y ${windAlertConfig.max} nudos`;
+            alertStatus.classList.remove('hidden');
+            btnSaveAlert.textContent = 'Guardar Cambios';
+            btnDisableAlert.classList.remove('hidden');
+        } else {
+            btnAlertText.textContent = 'Activar Alertas de Viento';
+            btnWindAlert.classList.remove('bg-green-500', 'hover:bg-green-600', 'border-green-600');
+            btnWindAlert.classList.add('bg-orange-500', 'hover:bg-orange-600', 'border-orange-600');
+            alertStatus.classList.add('hidden');
+            btnSaveAlert.textContent = 'Activar Alertas';
+            btnDisableAlert.classList.add('hidden');
+        }
+    }
+
+    async function requestNotificationPermission() {
+        if (!('Notification' in window)) {
+            alert('Tu navegador no soporta notificaciones.');
+            return false;
+        }
+        if (Notification.permission === 'granted') {
+            return true;
+        }
+        if (Notification.permission !== 'denied') {
+            const permission = await Notification.requestPermission();
+            return permission === 'granted';
+        }
+        alert('Las notificaciones están bloqueadas. Habilítalas en la configuración del navegador.');
+        return false;
+    }
+
+    function showWindNotification(windSpeed, windDir) {
+        if (Notification.permission !== 'granted') return;
+        
+        const notification = new Notification('La Bajada - Condiciones Ideales!', {
+            body: `Viento: ${windSpeed} nudos del ${windDir}\n¡A navegar!`,
+            icon: 'logo2.png',
+            badge: 'logo2.png',
+            tag: 'wind-alert',
+            renotify: true,
+            vibrate: [200, 100, 200]
+        });
+
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+        };
+
+        // Auto-cerrar después de 10 segundos
+        setTimeout(() => notification.close(), 10000);
+    }
+
+    function checkWindAlert(windSpeed, windDir) {
+        if (!windAlertConfig || !windAlertConfig.enabled) return;
+        if (windSpeed === null) return;
+        
+        const now = Date.now();
+        // Evitar spam de notificaciones
+        if (now - lastAlertTime < ALERT_COOLDOWN) return;
+
+        if (windSpeed >= windAlertConfig.min && windSpeed <= windAlertConfig.max) {
+            showWindNotification(windSpeed, windDir);
+            lastAlertTime = now;
+            localStorage.setItem('lastWindAlertTime', now);
+        }
+    }
+
+    // Event listeners del modal
+    if (btnWindAlert) {
+        btnWindAlert.addEventListener('click', () => {
+            if (windAlertConfig) {
+                alertMinWind.value = windAlertConfig.min;
+                alertMaxWind.value = windAlertConfig.max;
+            }
+            alertModal.classList.remove('hidden');
+        });
+    }
+
+    if (alertModalClose) {
+        alertModalClose.addEventListener('click', () => {
+            alertModal.classList.add('hidden');
+        });
+    }
+
+    if (alertModal) {
+        alertModal.addEventListener('click', (e) => {
+            if (e.target === alertModal) {
+                alertModal.classList.add('hidden');
+            }
+        });
+    }
+
+    if (btnSaveAlert) {
+        btnSaveAlert.addEventListener('click', async () => {
+            const min = parseInt(alertMinWind.value);
+            const max = parseInt(alertMaxWind.value);
+
+            if (isNaN(min) || isNaN(max) || min < 0 || max > 50 || min >= max) {
+                alert('Por favor ingresa un rango válido (mínimo menor que máximo, entre 0 y 50)');
+                return;
+            }
+
+            const hasPermission = await requestNotificationPermission();
+            if (!hasPermission) return;
+
+            windAlertConfig = { enabled: true, min, max };
+            localStorage.setItem('windAlertConfig', JSON.stringify(windAlertConfig));
+            updateAlertButtonState();
+            alertModal.classList.add('hidden');
+
+            // Mostrar confirmación
+            if (Notification.permission === 'granted') {
+                new Notification('Alertas Activadas', {
+                    body: `Te avisaremos cuando el viento esté entre ${min} y ${max} nudos`,
+                    icon: 'logo2.png',
+                    tag: 'alert-config'
+                });
+            }
+        });
+    }
+
+    if (btnDisableAlert) {
+        btnDisableAlert.addEventListener('click', () => {
+            windAlertConfig = null;
+            localStorage.removeItem('windAlertConfig');
+            updateAlertButtonState();
+            alertModal.classList.add('hidden');
+        });
+    }
+
+    // Inicializar estado del botón
+    updateAlertButtonState();
+
+    // Exponer función para uso global (será llamada desde fetchWeatherData)
+    window.checkWindAlert = checkWindAlert;
 });

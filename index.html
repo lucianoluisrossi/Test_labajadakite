@@ -91,7 +91,7 @@
                 
                 <!-- 1. LiveCam -->
                 <div class="bg-black rounded-lg overflow-hidden shadow-lg mb-6 border border-gray-400">
-                    <iframe class="w-full aspect-video" src="https://www.youtube.com/embed/wx6cvQuMMvk?autoplay=1&mute=1&controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                    <iframe id="live-camera" class="w-full aspect-video" src="https://www.youtube.com/embed/wx6cvQuMMvk?autoplay=1&mute=1" title="YouTube Live Camera" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
                 </div>
 
                 <!-- 2. Veredicto -->
@@ -99,6 +99,21 @@
                     <p class="text-gray-600 text-xs font-medium text-center">Status del Spot</p>
                     <div id="verdict-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 70%;"></div>
                     <p id="verdict-data" class="data-content text-xl font-extrabold text-gray-900 text-center">Calculando...</p>
+                </div>
+
+                <!-- SECCIÓN CHECK-IN -->
+                <div id="checkin-section" class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-bold text-blue-800 uppercase tracking-tight">¿Navegando ahora?</h4>
+                        <span id="checkin-count" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">0 en el agua</span>
+                    </div>
+                    <button id="btn-checkin" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <span id="checkin-icon">🤙</span>
+                        <span id="btn-checkin-text">¡Entrando al agua!</span>
+                    </button>
+                    <div id="active-kiters-container" class="mt-3 flex flex-wrap gap-1.5 hidden">
+                        <!-- Nombres de kiteros activos -->
+                    </div>
                 </div>
                 
                 <!-- 3. TARJETA DE VIENTO UNIFICADA -->
@@ -137,6 +152,15 @@
                     <div id="stability-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 50%;"></div>
                     <p class="text-xl font-extrabold text-gray-900 data-content" id="stability-data">N/A</p>
                 </div>
+
+                <!-- 5. Botón de Alertas de Viento -->
+                <button id="btn-wind-alert" class="mt-4 w-full p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg border border-orange-600 transition-colors duration-300 flex items-center justify-center gap-2 font-bold shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    <span id="btn-alert-text">Activar Alertas de Viento</span>
+                </button>
+                <p id="alert-status" class="mt-2 text-center text-xs text-gray-500 hidden"></p>
 
                 <div id="error-message" class="hidden mt-6 p-4 bg-red-600 text-white rounded-lg text-center">Error al cargar los datos del clima.</div>
             </div>
@@ -268,6 +292,42 @@
             <button class="absolute top-4 right-4 text-white text-4xl font-bold focus:outline-none">&times;</button>
         </div>
 
+        <!-- MODAL CONFIGURACIÓN DE ALERTAS -->
+        <div id="alert-modal" class="fixed inset-0 z-[60] hidden modal-backdrop flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative" onclick="event.stopPropagation()">
+                <button id="alert-modal-close" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+                <h3 class="text-xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    Configurar Alertas
+                </h3>
+                <p class="text-sm text-gray-600 mb-4">Recibe una notificacion cuando el viento este en tu rango ideal.</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Viento Minimo (nudos)</label>
+                        <input type="number" id="alert-min-wind" min="0" max="50" value="16" class="w-full p-3 rounded-lg border border-gray-300 text-lg font-bold text-center focus:outline-none focus:border-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Viento Maximo (nudos)</label>
+                        <input type="number" id="alert-max-wind" min="0" max="50" value="24" class="w-full p-3 rounded-lg border border-gray-300 text-lg font-bold text-center focus:outline-none focus:border-orange-500">
+                    </div>
+                </div>
+
+                <div class="mt-6 space-y-3">
+                    <button id="btn-save-alert" class="w-full p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold transition-colors shadow-md">
+                        Activar Alertas
+                    </button>
+                    <button id="btn-disable-alert" class="w-full p-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-bold transition-colors hidden">
+                        Desactivar Alertas
+                    </button>
+                </div>
+                
+                <p class="mt-4 text-xs text-gray-400 text-center">Las alertas funcionan cuando tenes la app abierta o instalada como PWA.</p>
+            </div>
+        </div>
+
         <!-- FOOTER -->
         <footer class="mt-8 pt-4 pb-24 border-t border-gray-300">
             <h3 class="text-center text-sm font-semibold text-gray-600 mb-4 flex justify-center items-center gap-2">
@@ -293,4 +353,3 @@
     <script type="module" src="app.js"></script>
 </body>
 </html>
-
