@@ -133,7 +133,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
-
+// --- LÓGICA DE INSTALACIÓN PWA ---
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    setTimeout(() => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt = null;
+        }
+    }, 3000); // Dispara el cartel a los 3 segundos
+});
     function switchView(viewName) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if (viewName === 'dashboard') {
