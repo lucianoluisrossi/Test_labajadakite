@@ -1,6 +1,6 @@
 // app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInAnonymously, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- CONFIGURACIÓN DE FIREBASE ---
@@ -18,7 +18,9 @@ const firebaseConfig = {
 let db;
 let auth; 
 let messagesCollection;
-let galleryCollection; 
+let galleryCollection;
+let currentUser = null;
+const googleProvider = new GoogleAuthProvider();
 
 try {
     const app = initializeApp(firebaseConfig);
@@ -27,91 +29,80 @@ try {
     
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta"); 
-    const checkinsCollection = collection(db, "active_checkins");
 
-    signInAnonymously(auth).catch(e => console.warn("Auth warning:", e));
     console.log("✅ Firebase inicializado.");
 
-    // --- LÓGICA DE CHECK-IN ---
-    const btnCheckin = document.getElementById('btn-checkin');
-    const btnCheckinText = document.getElementById('btn-checkin-text');
-    const checkinCount = document.getElementById('checkin-count');
-    const activeKitersContainer = document.getElementById('active-kiters-container');
-
-    if (btnCheckin && db) {
-        const qCheckins = query(checkinsCollection, orderBy("timestamp", "desc"));
-        onSnapshot(qCheckins, (snapshot) => {
-            const now = Date.now();
-            const fourHours = 4 * 60 * 60 * 1000;
-            const activeKiters = [];
-
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                if (data.timestamp) {
-                    const time = data.timestamp.toDate().getTime();
-                    if (now - time < fourHours) {
-                        activeKiters.push({ id: doc.id, name: data.name });
-                    }
-                }
-            });
-
-            if (checkinCount) checkinCount.innerText = `${activeKiters.length} en el agua`;
-            
-            if (activeKitersContainer) {
-                activeKitersContainer.innerHTML = '';
-                if (activeKiters.length > 0) {
-                    activeKitersContainer.classList.remove('hidden');
-                    activeKiters.forEach(kiter => {
-                        const pill = document.createElement('span');
-                        pill.className = "bg-white border border-blue-200 text-blue-700 text-[11px] px-2 py-1 rounded-full font-bold shadow-sm";
-                        pill.innerText = kiter.name;
-                        activeKitersContainer.appendChild(pill);
-                    });
-                } else {
-                    activeKitersContainer.classList.add('hidden');
-                }
+    // --- FUNCIONES DE LOGIN/LOGOUT ---
+    async function loginWithGoogle() {
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            console.log("✅ Login exitoso:", result.user.displayName);
+        } catch (error) {
+            console.error("❌ Error en login:", error);
+            if (error.code === 'auth/popup-blocked') {
+                alert('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para esta página.');
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                // Usuario cerró el popup, no hacer nada
+            } else {
+                alert('Error al iniciar sesión: ' + error.message);
             }
-
-            const myName = localStorage.getItem('kiterName');
-            const alreadyIn = activeKiters.some(k => k.name === myName);
-            if (alreadyIn) {
-                btnCheckin.classList.replace('bg-blue-600', 'bg-green-600');
-                if (btnCheckinText) btnCheckinText.innerText = "¡Ya estás en el agua!";
-                btnCheckin.disabled = true;
-            }
-        });
-
-        btnCheckin.addEventListener('click', async () => {
-            let name = localStorage.getItem('kiterName');
-            if (!name) {
-                name = prompt("Ingresa tu nombre para el Check-in:");
-                if (!name) return;
-                name = name.trim().substring(0, 15);
-                localStorage.setItem('kiterName', name);
-            }
-
-            btnCheckin.disabled = true;
-            if (btnCheckinText) btnCheckinText.innerText = "Registrando...";
-
-            try {
-                await addDoc(checkinsCollection, {
-                    name: name,
-                    timestamp: serverTimestamp()
-                });
-            } catch (e) {
-                console.error(e);
-                alert("Error al hacer check-in");
-                btnCheckin.disabled = false;
-                if (btnCheckinText) btnCheckinText.innerText = "¡Entrando al agua!";
-            }
-        });
+        }
     }
 
-} catch (e) {
-    console.error("❌ Error inicializando Firebase:", e);
-}
+    async function logout() {
+        try {
+            await signOut(auth);
+            console.log("✅ Sesión cerrada");
+        } catch (error) {
+            console.error("❌ Error al cerrar sesión:", error);
+        }
+    }
 
-document.addEventListener('DOMContentLoaded', () => {
+    // Exponer funciones globalmente para uso en eventos
+    window.loginWithGoogle = loginWithGoogle;
+    window.logout = logout;
+
+    document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- FUNCIÓN PARA ACTUALIZAR UI DE AUTH ---
+    function updateAuthUI(user) {
+        const authLogin = document.getElementById('auth-login');
+        const authUser = document.getElementById('auth-user');
+        const userPhoto = document.getElementById('user-photo');
+        const userName = document.getElementById('user-name');
+        const messageForm = document.getElementById('kiter-board-form');
+        const loginPromptMessages = document.getElementById('login-prompt-messages');
+        const galleryUploadContainer = document.getElementById('gallery-upload-container');
+        const loginPromptGallery = document.getElementById('login-prompt-gallery');
+
+        if (user) {
+            // Usuario logueado
+            if (authLogin) authLogin.classList.add('hidden');
+            if (authUser) authUser.classList.remove('hidden');
+            if (userPhoto) userPhoto.src = user.photoURL || 'https://via.placeholder.com/40';
+            if (userName) userName.textContent = user.displayName || 'Kiter';
+            if (messageForm) messageForm.classList.remove('hidden');
+            if (loginPromptMessages) loginPromptMessages.classList.add('hidden');
+            if (galleryUploadContainer) galleryUploadContainer.classList.remove('hidden');
+            if (loginPromptGallery) loginPromptGallery.classList.add('hidden');
+            console.log("✅ Usuario logueado:", user.displayName);
+        } else {
+            // Usuario no logueado
+            if (authLogin) authLogin.classList.remove('hidden');
+            if (authUser) authUser.classList.add('hidden');
+            if (messageForm) messageForm.classList.add('hidden');
+            if (loginPromptMessages) loginPromptMessages.classList.remove('hidden');
+            if (galleryUploadContainer) galleryUploadContainer.classList.add('hidden');
+            if (loginPromptGallery) loginPromptGallery.classList.remove('hidden');
+            console.log("ℹ️ Usuario no logueado");
+        }
+    }
+
+    // --- LISTENER DE ESTADO DE AUTENTICACIÓN (dentro de DOMContentLoaded) ---
+    onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        updateAuthUI(user);
+    });
     console.log("🚀 App iniciada.");
 
     if ('serviceWorker' in navigator) {
@@ -133,18 +124,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
-// --- LÓGICA DE INSTALACIÓN PWA ---
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    setTimeout(() => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            deferredPrompt = null;
-        }
-    }, 3000); // Dispara el cartel a los 3 segundos
-});
+
+    // --- LÓGICA DE INSTALACIÓN PWA ---
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevenir que Chrome 76+ muestre el prompt automáticamente
+        e.preventDefault();
+        // Guardar el evento para dispararlo más tarde
+        deferredPrompt = e;
+        
+        // Opcional: Mostrar un botón o mensaje propio de "Instalar App"
+        console.log("PWA lista para ser instalada");
+        
+        // Intentar disparar el prompt automáticamente después de 3 segundos de navegación
+        setTimeout(() => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Usuario aceptó la instalación');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }, 3000);
+    });
+
+    window.addEventListener('appinstalled', (e) => {
+        console.log('PWA instalada correctamente');
+    });
+
     function switchView(viewName) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if (viewName === 'dashboard') {
@@ -240,6 +249,14 @@ window.addEventListener('beforeinstallprompt', (e) => {
     const handleGalleryUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        
+        // Verificar que el usuario esté logueado
+        if (!currentUser) {
+            alert('Debes iniciar sesion para subir fotos');
+            e.target.value = '';
+            return;
+        }
+        
         if (!file.type.startsWith('image/')) { alert("Solo imágenes."); return; }
 
         const inputElement = e.target;
@@ -256,7 +273,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
             const base64String = await compressImageToBase64(file);
             await addDoc(galleryCollection, {
                 url: base64String,
-                timestamp: serverTimestamp()
+                timestamp: serverTimestamp(),
+                userId: currentUser.uid,
+                userName: currentUser.displayName || 'Kiter'
             });
         } catch (error) {
             console.error("Error subiendo:", error);
@@ -325,8 +344,23 @@ window.addEventListener('beforeinstallprompt', (e) => {
     // --- PIZARRA ---
     const messageForm = document.getElementById('kiter-board-form');
     const messagesContainer = document.getElementById('messages-container');
-    const authorInput = document.getElementById('message-author');
     const textInput = document.getElementById('message-text');
+
+    // --- BOTONES DE LOGIN/LOGOUT ---
+    const btnGoogleLogin = document.getElementById('btn-google-login');
+    const btnLogout = document.getElementById('btn-logout');
+    
+    if (btnGoogleLogin) {
+        btnGoogleLogin.addEventListener('click', () => {
+            window.loginWithGoogle();
+        });
+    }
+    
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            window.logout();
+        });
+    }
 
     function timeAgo(date) {
         const seconds = Math.floor((new Date() - date) / 1000);
@@ -354,17 +388,30 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (messageForm && db) {
         messageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const author = authorInput.value.trim();
+            
+            // Verificar que el usuario esté logueado
+            if (!currentUser) {
+                alert('Debes iniciar sesion para enviar mensajes');
+                return;
+            }
+            
+            const author = currentUser.displayName || 'Kiter';
             const text = textInput.value.trim();
-            if (author && text) {
+            
+            if (text) {
                 const btn = messageForm.querySelector('button');
                 const originalText = btn.innerText;
                 btn.innerText = '...';
                 btn.disabled = true;
                 try {
-                    await addDoc(messagesCollection, { author: author, text: text, timestamp: serverTimestamp() });
+                    await addDoc(messagesCollection, { 
+                        author: author, 
+                        text: text, 
+                        timestamp: serverTimestamp(),
+                        userId: currentUser.uid,
+                        userPhoto: currentUser.photoURL || null
+                    });
                     textInput.value = ''; 
-                    localStorage.setItem('kiterName', author);
                     markMessagesAsRead();
                 } catch (e) { 
                     console.error(e);
@@ -375,8 +422,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
                 }
             }
         });
-        const savedName = localStorage.getItem('kiterName');
-        if (savedName) authorInput.value = savedName;
     }
 
     if (messagesContainer && db) {
@@ -810,3 +855,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
     // Exponer función para uso global (será llamada desde fetchWeatherData)
     window.checkWindAlert = checkWindAlert;
 });
+} catch (e) {
+    console.error("❌ Error inicializando Firebase:", e);
+}
