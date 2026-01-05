@@ -91,7 +91,7 @@
                 
                 <!-- 1. LiveCam -->
                 <div class="bg-black rounded-lg overflow-hidden shadow-lg mb-6 border border-gray-400">
-                    <iframe id="live-camera" class="w-full aspect-video" src="https://www.youtube.com/embed/wx6cvQuMMvk?autoplay=1&mute=1" title="YouTube Live Camera" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                    <iframe id="live-camera" class="w-full aspect-video" src="https://www.youtube.com/embed/XAH0nAxRIpQ?autoplay=1&mute=1&controls=0" title="YouTube Live Camera" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
                 </div>
 
                 <!-- 2. Veredicto -->
@@ -99,21 +99,6 @@
                     <p class="text-gray-600 text-xs font-medium text-center">Status del Spot</p>
                     <div id="verdict-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 70%;"></div>
                     <p id="verdict-data" class="data-content text-xl font-extrabold text-gray-900 text-center">Calculando...</p>
-                </div>
-
-                <!-- SECCIÓN CHECK-IN -->
-                <div id="checkin-section" class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="text-sm font-bold text-blue-800 uppercase tracking-tight">¿Navegando ahora?</h4>
-                        <span id="checkin-count" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">0 en el agua</span>
-                    </div>
-                    <button id="btn-checkin" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
-                        <span id="checkin-icon">🤙</span>
-                        <span id="btn-checkin-text">¡Entrando al agua!</span>
-                    </button>
-                    <div id="active-kiters-container" class="mt-3 flex flex-wrap gap-1.5 hidden">
-                        <!-- Nombres de kiteros activos -->
-                    </div>
                 </div>
                 
                 <!-- 3. TARJETA DE VIENTO UNIFICADA -->
@@ -152,15 +137,6 @@
                     <div id="stability-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 50%;"></div>
                     <p class="text-xl font-extrabold text-gray-900 data-content" id="stability-data">N/A</p>
                 </div>
-
-                <!-- 5. Botón de Alertas de Viento -->
-                <button id="btn-wind-alert" class="mt-4 w-full p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg border border-orange-600 transition-colors duration-300 flex items-center justify-center gap-2 font-bold shadow-md">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                    <span id="btn-alert-text">Activar Alertas de Viento</span>
-                </button>
-                <p id="alert-status" class="mt-2 text-center text-xs text-gray-500 hidden"></p>
 
                 <div id="error-message" class="hidden mt-6 p-4 bg-red-600 text-white rounded-lg text-center">Error al cargar los datos del clima.</div>
             </div>
@@ -220,20 +196,57 @@
                 </button>
             </div>
 
+            <!-- SECCIÓN DE LOGIN/USUARIO -->
+            <div id="auth-section" class="p-4 bg-white rounded-xl shadow-lg border border-gray-200">
+                <!-- Estado: No logueado -->
+                <div id="auth-login" class="text-center">
+                    <p class="text-sm text-gray-600 mb-3">Inicia sesion para participar en la comunidad</p>
+                    <button id="btn-google-login" class="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-bold text-sm hover:bg-gray-50 transition-colors shadow-md flex items-center justify-center gap-3 mx-auto">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Continuar con Google
+                    </button>
+                </div>
+                <!-- Estado: Logueado -->
+                <div id="auth-user" class="hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img id="user-photo" src="" alt="Foto" class="w-10 h-10 rounded-full border-2 border-blue-500">
+                            <div>
+                                <p class="font-bold text-gray-800 text-sm" id="user-name">Usuario</p>
+                                <p class="text-xs text-gray-500">Conectado</p>
+                            </div>
+                        </div>
+                        <button id="btn-logout" class="text-red-500 hover:text-red-700 text-sm font-bold flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Salir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- 1. PIZARRA KITERA (ARRIBA) -->
             <div id="pizarra-section" class="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
                 <div class="flex items-center justify-center gap-2 mb-4">
-                    <h3 class="text-xl font-extrabold text-gray-800">Pizarra Kitera 🪁</h3>
+                    <h3 class="text-xl font-extrabold text-gray-800">Pizarra Kitera</h3>
                 </div>
-                <form id="kiter-board-form" class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-inner">
-                    <div class="flex flex-col gap-3">
-                        <input type="text" id="message-author" placeholder="Tu Nombre" maxlength="20" class="p-2 rounded border border-gray-300 text-sm focus:outline-none focus:border-blue-500 bg-white" required>
-                        <div class="flex gap-2">
-                            <input type="text" id="message-text" placeholder="Escribe un mensaje..." maxlength="140" class="flex-grow p-2 rounded border border-gray-300 text-sm focus:outline-none focus:border-blue-500 bg-white" required>
-                            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-blue-700 transition-colors shadow-md">Enviar</button>
-                        </div>
+                <!-- Formulario (solo visible si está logueado) -->
+                <form id="kiter-board-form" class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-inner hidden">
+                    <div class="flex gap-2">
+                        <input type="text" id="message-text" placeholder="Escribe un mensaje..." maxlength="140" class="flex-grow p-2 rounded border border-gray-300 text-sm focus:outline-none focus:border-blue-500 bg-white" required>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-blue-700 transition-colors shadow-md">Enviar</button>
                     </div>
                 </form>
+                <!-- Mensaje si no está logueado -->
+                <div id="login-prompt-messages" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center text-sm text-yellow-800">
+                    Inicia sesion con Google para enviar mensajes
+                </div>
                 <div id="messages-container" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1"></div>
             </div>
 
@@ -249,7 +262,8 @@
                 </summary>
                 <!-- Contenido desplegable -->
                 <div class="p-6 border-t border-gray-200">
-                    <div class="flex justify-end mb-4">
+                    <!-- Botón subir foto (solo visible si está logueado) -->
+                    <div id="gallery-upload-container" class="flex justify-end mb-4 hidden">
                         <label class="cursor-pointer bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -259,6 +273,10 @@
                             <span class="md:hidden">Subir</span>
                             <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
                         </label>
+                    </div>
+                    <!-- Mensaje si no está logueado -->
+                    <div id="login-prompt-gallery" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center text-sm text-yellow-800">
+                        Inicia sesion con Google para subir fotos
                     </div>
                     <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[500px] overflow-y-auto p-1">
                         <p id="gallery-loading" class="col-span-full text-center text-gray-400 text-sm py-4">Cargando fotos...</p>
@@ -290,42 +308,6 @@
         <div id="image-modal" class="fixed inset-0 z-[60] hidden modal-backdrop flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
             <img id="modal-img" src="" alt="Vista completa" class="max-h-full max-w-full rounded shadow-2xl object-contain">
             <button class="absolute top-4 right-4 text-white text-4xl font-bold focus:outline-none">&times;</button>
-        </div>
-
-        <!-- MODAL CONFIGURACIÓN DE ALERTAS -->
-        <div id="alert-modal" class="fixed inset-0 z-[60] hidden modal-backdrop flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative" onclick="event.stopPropagation()">
-                <button id="alert-modal-close" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
-                <h3 class="text-xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                    Configurar Alertas
-                </h3>
-                <p class="text-sm text-gray-600 mb-4">Recibe una notificacion cuando el viento este en tu rango ideal.</p>
-                
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Viento Minimo (nudos)</label>
-                        <input type="number" id="alert-min-wind" min="0" max="50" value="16" class="w-full p-3 rounded-lg border border-gray-300 text-lg font-bold text-center focus:outline-none focus:border-orange-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Viento Maximo (nudos)</label>
-                        <input type="number" id="alert-max-wind" min="0" max="50" value="24" class="w-full p-3 rounded-lg border border-gray-300 text-lg font-bold text-center focus:outline-none focus:border-orange-500">
-                    </div>
-                </div>
-
-                <div class="mt-6 space-y-3">
-                    <button id="btn-save-alert" class="w-full p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold transition-colors shadow-md">
-                        Activar Alertas
-                    </button>
-                    <button id="btn-disable-alert" class="w-full p-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-bold transition-colors hidden">
-                        Desactivar Alertas
-                    </button>
-                </div>
-                
-                <p class="mt-4 text-xs text-gray-400 text-center">Las alertas funcionan cuando tenes la app abierta o instalada como PWA.</p>
-            </div>
         </div>
 
         <!-- FOOTER -->
