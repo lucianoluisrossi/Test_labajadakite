@@ -729,14 +729,26 @@ try {
 
     // --- FIX WINDGURU WIDGET EN DETAILS ---
     // Forzar recálculo del widget cuando se abre el desplegable
-    const windguruDetails = document.querySelector('details:has(#wg_fwdg_1312667_29_1762638808878)');
+    const windguruScript = document.getElementById('wg_fwdg_1312667_29_1762638808878');
+    const windguruDetails = windguruScript ? windguruScript.closest('details') : null;
+    
     if (windguruDetails) {
         windguruDetails.addEventListener('toggle', () => {
             if (windguruDetails.open) {
-                // Disparar resize para que Windguru recalcule
+                // Múltiples intentos de forzar recálculo
                 setTimeout(() => {
                     window.dispatchEvent(new Event('resize'));
-                }, 100);
+                    // También intentar scroll para forzar repaint
+                    const container = windguruDetails.querySelector('.overflow-x-auto');
+                    if (container) {
+                        container.scrollLeft = 1;
+                        container.scrollLeft = 0;
+                    }
+                }, 150);
+                
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 500);
             }
         });
     }
