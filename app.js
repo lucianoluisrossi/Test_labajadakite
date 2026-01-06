@@ -726,6 +726,20 @@ try {
     if (totalSponsors > 1) {
         setInterval(nextSponsor, 4000);
     }
+
+    // --- FIX WINDGURU WIDGET EN DETAILS ---
+    // Forzar recálculo del widget cuando se abre el desplegable
+    const windguruDetails = document.querySelector('details:has(#wg_fwdg_1312667_29_1762638808878)');
+    if (windguruDetails) {
+        windguruDetails.addEventListener('toggle', () => {
+            if (windguruDetails.open) {
+                // Disparar resize para que Windguru recalcule
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 100);
+            }
+        });
+    }
 });
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
