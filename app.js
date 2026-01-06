@@ -727,28 +727,44 @@ try {
         setInterval(nextSponsor, 4000);
     }
 
-    // --- FIX WINDGURU WIDGET EN DETAILS ---
-    // Forzar recálculo del widget cuando se abre el desplegable
-    const windguruScript = document.getElementById('wg_fwdg_1312667_29_1762638808878');
-    const windguruDetails = windguruScript ? windguruScript.closest('details') : null;
+    // --- LAZY LOAD WINDGURU WIDGET ---
+    // Cargar el widget solo cuando el usuario abre el desplegable
+    const windguruContainer = document.getElementById('windguru-container');
+    const windguruDetails = windguruContainer ? windguruContainer.closest('details') : null;
+    let windguruLoaded = false;
     
-    if (windguruDetails) {
+    if (windguruDetails && windguruContainer) {
         windguruDetails.addEventListener('toggle', () => {
-            if (windguruDetails.open) {
-                // Múltiples intentos de forzar recálculo
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                    // También intentar scroll para forzar repaint
-                    const container = windguruDetails.querySelector('.overflow-x-auto');
-                    if (container) {
-                        container.scrollLeft = 1;
-                        container.scrollLeft = 0;
-                    }
-                }, 150);
+            if (windguruDetails.open && !windguruLoaded) {
+                windguruLoaded = true;
+                // Crear el widget con un ID único basado en timestamp
+                const uid = 'wg_fwdg_1312667_29_' + Date.now();
+                const arg = [
+                    "s=1312667",
+                    "m=29",
+                    "uid=" + uid,
+                    "wj=knots",
+                    "tj=c",
+                    "waj=m",
+                    "tij=cm",
+                    "odh=0",
+                    "doh=24",
+                    "fhours=240",
+                    "hrsm=2",
+                    "vt=forecasts",
+                    "lng=es",
+                    "ts=1",
+                    "idbs=1",
+                    "p=WINDSPD,GUST,MWINDSPD,SMER,TMPE,FLHGT,CDC,APCP1s,RATING"
+                ];
                 
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                }, 500);
+                // Limpiar contenedor y agregar script placeholder
+                windguruContainer.innerHTML = '<script id="' + uid + '"></script>';
+                
+                // Cargar el widget
+                const script = document.createElement('script');
+                script.src = 'https://www.windguru.cz/js/widget.php?' + arg.join('&');
+                document.head.appendChild(script);
             }
         });
     }
