@@ -39,7 +39,7 @@
 
             <!-- LOGOS CENTRALES -->
             <div class="flex flex-col items-center z-10">
-                <a href="http://labajada.com.ar/" 
+                <a href="https://wa.me/#NUMERO_DE_TELEFONO_PRINCIPAL#?text=Hola%2C%20vi%20el%20reporte%20del%20viento%20en%20La%20Bajada%20y%20me%20gustaria%20contactarlos." 
                    target="blank" 
                    class="flex items-center justify-center gap-2 md:gap-4 transition-transform hover:scale-105">
                     
@@ -94,11 +94,32 @@
                     <iframe id="live-camera" class="w-full aspect-video" src="https://www.youtube.com/embed/wx6cvQuMMvk?autoplay=1&mute=1" title="YouTube Live Camera" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
                 </div>
 
-                <!-- SPONSOR BANNER -->
-                <a href="https://naishargentina.com/" target="_blank" rel="noopener" class="block text-center mb-4 hover:opacity-80 transition-opacity duration-300">
-                    <p class="text-[9px] text-gray-500 uppercase tracking-wider mb-1">Sponsor oficial del Spot</p>
-                    <img src="naish-logo.png" alt="Naish Argentina - Sponsor" class="h-10 md:h-12 mx-auto object-contain">
-                </a>
+                <!-- SPONSOR CAROUSEL -->
+                <div class="text-center mb-4">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wider mb-2">Sponsors oficiales del Spot</p>
+                    <div id="sponsor-carousel" class="relative overflow-hidden">
+                        <div id="sponsor-track" class="flex transition-transform duration-500 ease-in-out">
+                            <!-- Sponsor 1: Naish -->
+                            <a href="https://naishargentina.com/" target="_blank" rel="noopener" class="sponsor-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
+                                <img src="naish-logo.png" alt="Naish Argentina" class="h-10 md:h-12 object-contain">
+                            </a>
+                            <!-- Sponsor 2: Placeholder -->
+                            <a href="#" target="_blank" rel="noopener" class="sponsor-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
+                                <span class="text-gray-400 text-sm">Tu marca aquí</span>
+                            </a>
+                            <!-- Sponsor 3: Placeholder -->
+                            <a href="#" target="_blank" rel="noopener" class="sponsor-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
+                                <span class="text-gray-400 text-sm">Tu marca aquí</span>
+                            </a>
+                        </div>
+                        <!-- Indicadores -->
+                        <div id="sponsor-dots" class="flex justify-center gap-1.5 mt-2">
+                            <button class="sponsor-dot w-2 h-2 rounded-full bg-gray-400 transition-colors" data-index="0"></button>
+                            <button class="sponsor-dot w-2 h-2 rounded-full bg-gray-300 transition-colors" data-index="1"></button>
+                            <button class="sponsor-dot w-2 h-2 rounded-full bg-gray-300 transition-colors" data-index="2"></button>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- 2. Veredicto -->
                 <div id="verdict-card" class="mb-4 p-3 rounded-lg border border-gray-300 transition-colors duration-300">

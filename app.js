@@ -693,6 +693,39 @@ try {
     fetchWeatherData();
     setInterval(fetchWeatherData, 30000);
     setInterval(updateTimeAgo, 5000);
+
+    // --- SPONSOR CAROUSEL ---
+    const sponsorTrack = document.getElementById('sponsor-track');
+    const sponsorDots = document.querySelectorAll('.sponsor-dot');
+    let currentSponsor = 0;
+    const totalSponsors = document.querySelectorAll('.sponsor-slide').length;
+
+    function goToSponsor(index) {
+        currentSponsor = index;
+        if (sponsorTrack) {
+            sponsorTrack.style.transform = `translateX(-${index * 100}%)`;
+        }
+        sponsorDots.forEach((dot, i) => {
+            dot.classList.toggle('bg-gray-400', i === index);
+            dot.classList.toggle('bg-gray-300', i !== index);
+        });
+    }
+
+    function nextSponsor() {
+        goToSponsor((currentSponsor + 1) % totalSponsors);
+    }
+
+    // Click en indicadores
+    sponsorDots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            goToSponsor(parseInt(dot.dataset.index));
+        });
+    });
+
+    // Auto-rotate cada 4 segundos
+    if (totalSponsors > 1) {
+        setInterval(nextSponsor, 4000);
+    }
 });
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
