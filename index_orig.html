@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Bajada</title>
+    
+    <!-- Configuración PWA y Manifiesto -->
+    <meta name="theme-color" content="#0c4a6e">
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Google Fonts - Tipografía dinámica -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        :root {
+            --kite-ocean: #0891b2;
+            --kite-ocean-dark: #0e7490;
+            --kite-sky: #06b6d4;
+            --kite-accent: #f97316;
+            --kite-accent-light: #fb923c;
+            --kite-sand: #fef3c7;
+            --kite-deep: #164e63;
+        }
+        
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.9); }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Estilo para quitar el triángulo por defecto del details */
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        
+        /* Tipografía Kitera */
+        .font-kite-heading {
+            font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Fondo con textura sutil de agua */
+        .bg-ocean-texture {
+            background: linear-gradient(180deg, #f0fdfa 0%, #ecfeff 50%, #e0f2fe 100%);
+        }
+        
+        /* Sombras con tinte azul */
+        .shadow-ocean {
+            box-shadow: 0 10px 25px -5px rgba(8, 145, 178, 0.15), 0 4px 6px -2px rgba(8, 145, 178, 0.1);
+        }
+        .shadow-ocean-lg {
+            box-shadow: 0 20px 40px -10px rgba(8, 145, 178, 0.2), 0 8px 16px -4px rgba(8, 145, 178, 0.15);
+        }
+        
+        /* Gradiente kite para cards */
+        .bg-kite-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+            border: 1px solid rgba(8, 145, 178, 0.2);
+        }
+        
+        /* Botón estilo kite */
+        .btn-kite {
+            background: linear-gradient(135deg, var(--kite-ocean) 0%, var(--kite-sky) 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-kite:hover {
+            background: linear-gradient(135deg, var(--kite-ocean-dark) 0%, var(--kite-ocean) 100%);
+            transform: translateY(-2px);
+        }
+        
+        /* Acento naranja para CTAs */
+        .btn-kite-accent {
+            background: linear-gradient(135deg, var(--kite-accent) 0%, var(--kite-accent-light) 100%);
+        }
+        .btn-kite-accent:hover {
+            background: linear-gradient(135deg, #ea580c 0%, var(--kite-accent) 100%);
+        }
+        
+        /* Animación de pulso para estabilidad */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(8, 145, 178, 0.4); }
+            50% { box-shadow: 0 0 20px 5px rgba(8, 145, 178, 0.2); }
+        }
+        .animate-pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        /* Animación de rotación suave para rosa de vientos */
+        @keyframes wind-rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(var(--wind-rotation, 0deg)); }
+        }
+        .animate-wind-dir {
+            animation: wind-rotate 0.8s ease-out forwards;
+        }
+        
+        /* Separador de olas */
+        .wave-separator {
+            height: 20px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z' fill='%230891b2' fill-opacity='0.1'%3E%3C/path%3E%3C/svg%3E");
+            background-size: cover;
+        }
+        
+        /* Bordes más suaves estilo flow */
+        .rounded-flow { border-radius: 1rem; }
+        .rounded-flow-lg { border-radius: 1.5rem; }
+        
+        /* Icono de kite SVG inline */
+        .kite-icon {
+            display: inline-block;
+            width: 1.5em;
+            height: 1.5em;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230891b2'%3E%3Cpath d='M12 2L4 12l8 10 8-10L12 2zm0 3.5L17.5 12 12 18.5 6.5 12 12 5.5z'/%3E%3Cpath d='M12 8v8M8 12h8' stroke='%230891b2' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+    </style>
+</head>
+<body class="bg-ocean-texture text-gray-900 min-h-screen p-4 md:p-8 relative overflow-x-hidden">
+
+    <div class="max-w-6xl mx-auto">
+        
+        <!-- ENCABEZADO PRINCIPAL -->
+        <div class="relative flex justify-center items-start mb-6 mt-4 md:mt-8">
+            
+            <!-- BOTÓN MENÚ (IZQUIERDA) -->
+            <button id="menu-button" class="absolute top-0 left-0 btn-kite text-white px-3 py-2 md:px-4 md:py-2 rounded-full shadow-ocean hover:shadow-ocean-lg transition-all duration-300 flex items-center gap-2 z-50 group">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span class="font-bold text-xs md:text-sm uppercase tracking-wider hidden md:inline">Menú</span>
+            </button>
+
+            <!-- LOGOS CENTRALES -->
+            <div class="flex flex-col items-center z-10">
+                <a href="https://wa.me/#NUMERO_DE_TELEFONO_PRINCIPAL#?text=Hola%2C%20vi%20el%20reporte%20del%20viento%20en%20La%20Bajada%20y%20me%20gustaria%20contactarlos." 
+                   target="blank" 
+                   class="flex items-center justify-center gap-2 md:gap-4 transition-transform hover:scale-105">
+                    
+                    <!-- Logo Palmera -->
+                    <img src="logo_palmera.png" alt="Logo Palmera Kitesurf" class="h-24 md:h-32 w-auto" onerror="this.style.display='none'">
+                    
+                    <!-- Logo La Bajada -->
+                    <img src="logo2.png" alt="Logo La Bajada Principal" class="h-20 md:h-28 w-auto" onerror="this.style.display='none'">
+                </a>
+            </div>
+        </div>
+
+        <!-- MENÚ OFF-CANVAS -->
+        <div id="mobile-menu" class="fixed inset-y-0 left-0 w-72 bg-gradient-to-b from-cyan-900 to-cyan-950 shadow-2xl transform -translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col h-full border-r border-cyan-700">
+            <div class="p-4 flex justify-between items-center border-b border-cyan-700 bg-cyan-900/50">
+                <h3 class="font-kite-heading text-xl text-white tracking-wide">MENÚ</h3>
+                <button id="menu-close-button" class="text-cyan-300 hover:text-white focus:outline-none transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 flex-grow overflow-y-auto flex flex-col gap-4">
+                <nav class="flex flex-col gap-2">
+                    <button id="nav-home" class="text-left w-full px-4 py-3 rounded-flow hover:bg-cyan-700/50 font-semibold text-white flex items-center gap-3 transition-colors bg-cyan-700/70">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                        Inicio / Clima
+                    </button>
+                    <button id="btn-pizarra-menu" class="text-left w-full px-4 py-3 rounded-flow hover:bg-cyan-700/50 font-semibold text-cyan-100 flex items-center gap-3 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
+                        Comunidad (Fotos/Chat)
+                    </button>
+                </nav>
+                <hr class="border-cyan-700 my-2">
+                <div class="flex flex-col items-center text-center space-y-2">
+                    <p class="text-sm text-cyan-200 font-medium">¿Te sirve la app? ¡Ayudanos!</p>
+                    <a href='https://cafecito.app/labajadakite' rel='noopener' target='_blank' class="transition-transform hover:scale-105 block">
+                        <img src='https://cdn.cafecito.app/imgs/buttons/button_6.png' alt='Invitame un café en cafecito.app' />
+                    </a>
+                </div>
+            </div>
+            <div class="p-4 border-t border-cyan-700 text-center text-xs text-cyan-400">La Bajada App v3.9.2</div>
+        </div>
+        <div id="menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
+
+        <!-- VISTA DASHBOARD (CLIMA) -->
+        <div id="view-dashboard" class="fade-in">
+            
+            <!-- CONTENEDOR PRINCIPAL DE VIENTO Y VIDEO (Unificado) -->
+            <div id="wind-highlight-card" class="mt-6 lg:mt-8 p-4 md:p-6 rounded-flow-lg shadow-ocean-lg transition-all duration-300 bg-kite-card">
+                
+                <!-- 1. LiveCam -->
+                <div class="bg-black rounded-flow overflow-hidden shadow-ocean mb-4 border-2 border-cyan-600/30">
+                    <iframe id="live-camera" class="w-full aspect-video" src="https://www.youtube.com/embed/wx6cvQuMMvk?autoplay=1&mute=1" title="YouTube Live Camera" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                </div>
+
+                <!-- 2. Veredicto -->
+                <div id="verdict-card" class="mb-4 p-3 rounded-flow border-2 border-cyan-500/20 transition-colors duration-300 bg-gradient-to-r from-cyan-50/50 to-teal-50/50">
+                    <p class="text-cyan-700 text-xs font-semibold text-center uppercase tracking-wide">Status del Spot</p>
+                    <div id="verdict-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 70%;"></div>
+                    <p id="verdict-data" class="data-content text-xl font-extrabold text-gray-900 text-center">Calculando...</p>
+                </div>
+                
+                <!-- 3. TARJETA DE VIENTO UNIFICADA -->
+                <div id="unified-wind-data-card" class="flex flex-row items-center justify-between p-4 rounded-flow border-2 border-cyan-500/20 transition-colors duration-300 bg-gradient-to-br from-white to-cyan-50/50">
+                    
+                    <!-- Columna Dirección (35%) -->
+                    <div class="flex flex-col items-center justify-center w-[35%] border-r border-gray-400/30 pr-2">
+                        <p class="text-gray-600 text-[10px] uppercase font-bold mb-1">Dirección</p>
+                        <div class="flex flex-col items-center justify-center">
+                            <!-- FLECHA: Borde ajustado a 0.5px -->
+                            <svg id="wind-arrow" class="w-20 h-20 text-gray-900 transition-transform duration-500 drop-shadow-md" style="stroke: black; stroke-width: 0.5px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L6 8h3v12h6V8h3l-6-6z"/></svg>
+                            
+                            <div id="highlight-wind-dir-data-loader" class="skeleton-loader skeleton-text-xl w-12 mt-1"></div>
+                            <p class="text-4xl font-black text-gray-900 data-content mt-1 text-shadow" id="highlight-wind-dir-data">N/A</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Columna Velocidad (65%) -->
+                    <div class="flex flex-col items-center justify-center w-[65%] pl-2">
+                        <div class="flex flex-col items-center">
+                            <p class="text-gray-600 text-[10px] uppercase font-bold">Velocidad Prom.</p>
+                            <div id="highlight-wind-speed-data-loader" class="skeleton-loader skeleton-text-4xl w-24 mt-1"></div>
+                            <p class="text-5xl font-black text-gray-900 data-content leading-none tracking-tight" id="highlight-wind-speed-data">N/A</p>
+                        </div>
+                        <div id="gust-info-container" class="mt-3 flex items-center justify-center gap-2 opacity-90 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-1 rounded-full shadow-sm transition-colors duration-300 border border-orange-200/50">
+                            <span class="text-xs text-gray-800 font-bold uppercase">Racha:</span>
+                            <div id="highlight-gust-data-loader" class="skeleton-loader skeleton-text-sm w-8 inline-block"></div>
+                            <span class="text-lg font-black text-gray-900 data-content" id="highlight-gust-data">N/A</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Estabilidad -->
+                <div id="stability-card" class="mt-4 p-3 bg-gradient-to-r from-cyan-50 to-teal-50 rounded-flow border-2 border-cyan-500/20 transition-colors duration-300 text-center animate-pulse-glow">
+                    <p class="text-cyan-700 text-xs font-semibold uppercase tracking-wide">Índice de Estabilidad (Racheo)</p>
+                    <div id="stability-data-loader" class="skeleton-loader skeleton-text-xl mx-auto mt-1" style="width: 50%;"></div>
+                    <p class="text-xl font-extrabold text-gray-900 data-content" id="stability-data">N/A</p>
+                </div>
+
+                <div id="error-message" class="hidden mt-6 p-4 bg-red-600 text-white rounded-lg text-center">Error al cargar los datos del clima.</div>
+            </div>
+
+            <!-- Separador de olas -->
+            <div class="wave-separator mt-6 lg:mt-8"></div>
+
+            <!-- SPONSOR CAROUSEL -->
+            <div class="text-center mt-4">
+                <p class="text-[11px] text-cyan-600 uppercase tracking-wider mb-2 font-semibold">Sponsors oficiales del Spot</p>
+                <div id="sponsor-carousel" class="relative overflow-hidden">
+                    <div id="sponsor-track" class="flex transition-transform duration-500 ease-in-out">
+                        <!-- Sponsor 1: Maccarone -->
+                        <a href="https://linktr.ee/dmaccarone" target="_blank" rel="noopener" class="sponsor-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
+                            <img src="logo-maccarone.jpeg" alt="Maccarone" class="w-full max-h-[150px] object-contain">
+                        </a>
+                        <!-- Sponsor 2: CORE -->
+                        <a href="https://ridecore.com/es" target="_blank" rel="noopener" class="sponsor-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
+                            <img src="logo-core.jpeg" alt="CORE Kiteboarding" class="w-full max-h-[150px] object-contain">
+                        </a>
+                        <!-- Placeholder 3 -->
+                        <div class="sponsor-slide flex-shrink-0 w-full flex flex-col items-center justify-center py-6">
+                            <div class="border-2 border-dashed border-cyan-300 rounded-flow px-6 py-4 text-center bg-cyan-50/30">
+                                <p class="text-cyan-500 text-sm font-medium">Tu marca puede estar aquí</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Indicadores -->
+                    <div id="sponsor-dots" class="flex justify-center gap-1.5 mt-2">
+                        <button class="sponsor-dot w-2 h-2 rounded-full bg-cyan-500 transition-colors" data-index="0"></button>
+                        <button class="sponsor-dot w-2 h-2 rounded-full bg-cyan-300 transition-colors" data-index="1"></button>
+                        <button class="sponsor-dot w-2 h-2 rounded-full bg-cyan-300 transition-colors" data-index="2"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WINDGURU -->
+            <details class="group bg-kite-card rounded-flow-lg shadow-ocean-lg overflow-hidden mt-6 lg:mt-8 transition-all duration-300">
+                <summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-cyan-50/50 transition-colors">
+                    <h3 class="text-xl font-kite-heading text-cyan-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                        PRONÓSTICO WINDGURU
+                    </h3>
+                    <span class="transform group-open:rotate-180 transition-transform duration-300 text-cyan-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </span>
+                </summary>
+                <div class="p-4 bg-gradient-to-b from-cyan-50/30 to-white overflow-x-auto border-t border-cyan-200 animate-fadeIn">
+                    <p class="text-xs text-gray-500 mb-2 text-center">Desliza para ver más días -></p>
+                    <div id="windguru-container">
+                        <p class="text-center text-gray-400 py-4">Cargando pronóstico...</p>
+                    </div>
+                </div>
+            </details>
+
+            <!-- DATOS EN VIVO (COLUMNA) -->
+            <div class="bg-kite-card p-6 rounded-flow-lg shadow-ocean-lg flex flex-col mt-6 lg:mt-8">
+                <ul class="space-y-4 text-lg">
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048l-1.096 1.096A11.25 11.25 0 0012 21a11.25 11.25 0 006.058-20.957l-1.096 1.096z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75v12.75A3 3 0 0015 13.5a3 3 0 00-3-2.25z" /></svg>Temperatura (Ext.):</span><div id="temp-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="temp-data">Cargando...</span></li>
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048l-1.096 1.096A11.25 11.25 0 0012 21a11.25 11.25 0 006.058-20.957l-1.096 1.096z" /></svg>Humedad:</span><div id="humidity-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="humidity-data">Cargando...</span></li>
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>Presión (Relativa):</span><div id="pressure-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="pressure-data">Cargando...</span></li>
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m-3-3h6M15 12.75H9" /></svg>Lluvia (Diaria):</span><div id="rainfall-daily-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="rainfall-daily-data">Cargando...</span></li>
+                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-6.364-.386l1.591-1.591M3 12H.75m.386-6.364l1.591 1.591M12 12a2.25 2.25 0 00-2.25 2.25c0 .543.19 1.04.5 1.414.31.374.724.665 1.184.876.46.211.956.314 1.466.314.51 0 1.006-.103 1.466-.314.46-.211.874-.502 1.184-.876.31-.374.5-1.04.5-1.414A2.25 2.25 0 0012 12z" /></svg>Índice UV:</span><div id="uvi-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="uvi-data">Cargando...</span></li>
+                </ul>
+                <div class="wave-separator mt-4"></div>
+                <div class="pt-2 text-right"><p id="last-updated" class="text-xs text-cyan-600">Actualizando datos...</p></div>
+            </div>
+        </div>
+
+        <!-- VISTA COMUNIDAD -->
+        <div id="view-community" class="hidden fade-in space-y-6 mt-6">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-3xl font-kite-heading text-cyan-800 tracking-wide">COMUNIDAD</h2>
+                <button id="back-to-home" class="text-sm text-cyan-600 font-bold hover:text-cyan-800 flex items-center gap-1 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Volver al Clima
+                </button>
+            </div>
+
+            <!-- SECCIÓN DE LOGIN/USUARIO -->
+            <div id="auth-section" class="p-4 bg-kite-card rounded-flow-lg shadow-ocean">
+                <!-- Estado: No logueado -->
+                <div id="auth-login" class="text-center">
+                    <p class="text-sm text-gray-600 mb-3">Inicia sesion para participar en la comunidad</p>
+                    <button id="btn-google-login" class="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-bold text-sm hover:bg-gray-50 transition-colors shadow-md flex items-center justify-center gap-3 mx-auto">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Continuar con Google
+                    </button>
+                </div>
+                <!-- Estado: Logueado -->
+                <div id="auth-user" class="hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img id="user-photo" src="" alt="Foto" class="w-10 h-10 rounded-full border-2 border-cyan-500">
+                            <div>
+                                <p class="font-bold text-gray-800 text-sm" id="user-name">Usuario</p>
+                                <p class="text-xs text-gray-500">Conectado</p>
+                            </div>
+                        </div>
+                        <button id="btn-logout" class="text-orange-500 hover:text-orange-700 text-sm font-bold flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Salir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1. PIZARRA KITERA (ARRIBA) -->
+            <div id="pizarra-section" class="p-6 bg-kite-card rounded-flow-lg shadow-ocean">
+                <div class="flex items-center justify-center gap-2 mb-4">
+                    <h3 class="text-2xl font-kite-heading text-cyan-800 tracking-wide">PIZARRA KITERA</h3>
+                </div>
+                <!-- Formulario (solo visible si está logueado) -->
+                <form id="kiter-board-form" class="mb-6 bg-gradient-to-r from-cyan-50 to-teal-50 p-4 rounded-flow border border-cyan-200 shadow-inner hidden">
+                    <div class="flex gap-2">
+                        <input type="text" id="message-text" placeholder="Escribe un mensaje..." maxlength="140" class="flex-grow p-2 rounded-flow border border-cyan-300 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 bg-white" required>
+                        <button type="submit" class="btn-kite text-white px-4 py-2 rounded-flow font-bold text-sm shadow-md">Enviar</button>
+                    </div>
+                </form>
+                <!-- Mensaje si no está logueado -->
+                <div id="login-prompt-messages" class="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-flow text-center text-sm text-orange-700">
+                    Inicia sesion con Google para enviar mensajes
+                </div>
+                <div id="messages-container" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1"></div>
+            </div>
+
+            <!-- 2. GALERÍA DEL DÍA (ABAJO Y DESPLEGABLE) -->
+            <details id="gallery-section" class="group bg-kite-card rounded-flow-lg shadow-ocean overflow-hidden transition-all duration-300">
+                <summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-cyan-50/50 transition-colors">
+                    <h3 class="text-xl font-kite-heading text-cyan-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        GALERÍA DEL DÍA
+                    </h3>
+                    <span class="transform group-open:rotate-180 transition-transform duration-300 text-cyan-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </span>
+                </summary>
+                <!-- Contenido desplegable -->
+                <div class="p-6 border-t border-cyan-200">
+                    <!-- Botón subir foto (solo visible si está logueado) -->
+                    <div id="gallery-upload-container" class="flex justify-end mb-4 hidden">
+                        <label class="cursor-pointer btn-kite-accent text-white px-3 py-2 rounded-flow font-bold text-sm flex items-center gap-2 shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span class="hidden md:inline">Subir Foto</span>
+                            <span class="md:hidden">Subir</span>
+                            <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
+                        </label>
+                    </div>
+                    <!-- Mensaje si no está logueado -->
+                    <div id="login-prompt-gallery" class="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-flow text-center text-sm text-orange-700">
+                        Inicia sesion con Google para subir fotos
+                    </div>
+                    <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[500px] overflow-y-auto p-1">
+                        <p id="gallery-loading" class="col-span-full text-center text-gray-400 text-sm py-4">Cargando fotos...</p>
+                    </div>
+                </div>
+            </details>
+
+        </div>
+
+        <!-- FLOATERS -->
+        <button id="fab-community" class="fixed bottom-6 right-6 btn-kite-accent text-white p-4 rounded-full shadow-ocean-lg z-40 transition-transform hover:scale-110 active:scale-95 border-2 border-white flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
+            <span class="font-bold text-sm">Comunidad</span>
+            <span id="notification-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden border border-white animate-bounce">1</span>
+        </button>
+
+        <div id="new-message-toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer transition-all duration-300 w-max">
+            <div class="btn-kite text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-cyan-400 text-sm font-bold">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                Nuevo Mensaje
+            </div>
+        </div>
+
+        <div id="new-photo-toast" class="fixed top-32 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer transition-all duration-300 w-max">
+            <div class="bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-teal-400 text-sm font-bold">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
+                Nueva Foto en la Galería
+            </div>
+        </div>
+
+        <div id="image-modal" class="fixed inset-0 z-[60] hidden modal-backdrop flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
+            <img id="modal-img" src="" alt="Vista completa" class="max-h-full max-w-full rounded shadow-2xl object-contain">
+            <button class="absolute top-4 right-4 text-white text-4xl font-bold focus:outline-none">&times;</button>
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="mt-8 pt-4 pb-24">
+            <div class="wave-separator mb-4"></div>
+            <h3 class="text-center text-sm font-semibold text-cyan-700 mb-4 flex justify-center items-center gap-2">
+                Contactar Escuelas (WhatsApp)
+                <img class="w-6 h-6" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/1200px-WhatsApp.svg.png" alt="Logo WhatsApp">
+            </h3>
+            <div class="flex justify-center items-center gap-6">
+                <a href="https://wa.me/542983595133" target="blank" class="transition-transform duration-300 hover:scale-105">
+                    <img src="logo.png" alt="Logo Claromeco" class="h-16 md:h-20 w-auto opacity-75 hover:opacity-100" onerror="this.style.display='none'">
+                </a>
+                <a href="https://wa.me/5492223575161" target="blank" class="transition-transform duration-300 hover:scale-105">
+                    <img src="logo3.jpg" alt="Logo Kukulkan" class="h-16 md:h-20 w-auto opacity-75 hover:opacity-100" onerror="this.style.display='none'">
+                </a>
+            </div>
+            <div class="mt-6 text-center text-xs text-cyan-600">
+                <p>¿Sugerencias? <a href="https://wa.me/5492983500324" target="_blank" class="underline hover:text-cyan-800 font-medium">Contactar desarrollador</a></p>
+            </div>
+        </footer>
+
+    </div>
+    
+    <script src="/_vercel/insights/script.js"></script>
+    <script type="module" src="app-kite-test.js"></script>
+</body>
+</html>
