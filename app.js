@@ -724,7 +724,7 @@ try {
 
     // Auto-rotate cada 4 segundos
     if (totalSponsors > 1) {
-        setInterval(nextSponsor, 7000);
+        setInterval(nextSponsor, 4000);
     }
 
     // --- LAZY LOAD WINDGURU WIDGET ---
@@ -765,6 +765,132 @@ try {
                 const script = document.createElement('script');
                 script.src = 'https://www.windguru.cz/js/widget.php?' + arg.join('&');
                 document.head.appendChild(script);
+            }
+        });
+    }
+
+    // --- HISTORIAL DE VIENTO (72hs) ---
+    const windHistorySection = document.getElementById('wind-history-section');
+    const windHistoryCanvas = document.getElementById('wind-history-chart');
+    const windHistoryLoading = document.getElementById('wind-history-loading');
+    let windHistoryLoaded = false;
+
+    async function fetchWindHistory() {
+        try {
+            const response = await fetch('api/history');
+            const json = await response.json();
+            
+            if (json.code === 0 && json.data?.history) {
+                return json.data;
+            }
+            throw new Error('Invalid history data');
+        } catch (error) {
+            console.error('Error fetching wind history:', error);
+            return null;
+        }
+    }
+
+    function renderWindHistoryChart(historyData) {
+        if (!windHistoryCanvas || !historyData?.history?.length) return;
+
+        const ctx = windHistoryCanvas.getContext('2d');
+        const canvas = windHistoryCanvas;
+        const history = historyData.history;
+        
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = rect.height * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        
+        const width = rect.width;
+        const height = rect.height;
+        const padding = { top: 20, right: 10, bottom: 30, left: 35 };
+        const chartWidth = width - padding.left - padding.right;
+        const chartHeight = height - padding.top - padding.bottom;
+
+        const maxSpeed = Math.max(...history.map(d => d.speed), ...history.map(d => d.gust));
+        const yMax = Math.ceil(maxSpeed / 5) * 5 + 5;
+
+        ctx.clearRect(0, 0, width, height);
+
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.font = '10px Inter, sans-serif';
+        ctx.fillStyle = '#9ca3af';
+        ctx.textAlign = 'right';
+
+        for (let i = 0; i <= 4; i++) {
+            const y = padding.top + (chartHeight / 4) * i;
+            const value = Math.round(yMax - (yMax / 4) * i);
+            ctx.beginPath();
+            ctx.moveTo(padding.left, y);
+            ctx.lineTo(width - padding.right, y);
+            ctx.stroke();
+            ctx.fillText(value + '', padding.left - 5, y + 3);
+        }
+
+        const xScale = (i) => padding.left + (i / (history.length - 1)) * chartWidth;
+        const yScale = (v) => padding.top + chartHeight - (v / yMax) * chartHeight;
+
+        ctx.beginPath();
+        ctx.moveTo(xScale(0), yScale(0));
+        history.forEach((d, i) => ctx.lineTo(xScale(i), yScale(d.speed)));
+        ctx.lineTo(xScale(history.length - 1), yScale(0));
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 2;
+        history.forEach((d, i) => {
+            if (i === 0) ctx.moveTo(xScale(i), yScale(d.speed));
+            else ctx.lineTo(xScale(i), yScale(d.speed));
+        });
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 2]);
+        history.forEach((d, i) => {
+            if (i === 0) ctx.moveTo(xScale(i), yScale(d.gust));
+            else ctx.lineTo(xScale(i), yScale(d.gust));
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.textAlign = 'center';
+        const labelCount = 6;
+        for (let i = 0; i <= labelCount; i++) {
+            const idx = Math.floor((history.length - 1) * (i / labelCount));
+            const date = new Date(history[idx].time);
+            const label = date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
+            ctx.fillText(label, xScale(idx), height - 8);
+        }
+
+        ctx.fillStyle = '#6b7280';
+        ctx.textAlign = 'left';
+        ctx.fillText('kts', padding.left, padding.top - 5);
+
+        if (windHistoryLoading) windHistoryLoading.classList.add('hidden');
+        windHistoryCanvas.classList.remove('hidden');
+    }
+
+    if (windHistorySection) {
+        windHistorySection.addEventListener('toggle', async () => {
+            if (windHistorySection.open && !windHistoryLoaded) {
+                windHistoryLoaded = true;
+                const data = await fetchWindHistory();
+                if (data) {
+                    renderWindHistoryChart(data);
+                } else {
+                    if (windHistoryLoading) {
+                        windHistoryLoading.textContent = 'Error al cargar historial';
+                        windHistoryLoading.classList.add('text-red-500');
+                    }
+                }
             }
         });
     }
