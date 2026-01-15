@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     start_date: formatDate(startDate),
     end_date: formatDate(now),
     cycle_type: '30min',
-    call_back: 'all'
+    call_back: 'outdoor,wind'
   });
 
   try {
