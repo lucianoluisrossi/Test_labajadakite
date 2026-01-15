@@ -862,18 +862,34 @@ try {
         ctx.stroke();
         ctx.setLineDash([]);
 
+        // Etiquetas del eje X: mostrar horas cada 4 horas
         ctx.fillStyle = '#9ca3af';
         ctx.textAlign = 'center';
-        const labelCount = 6;
-        for (let i = 0; i <= labelCount; i++) {
-            const idx = Math.floor((history.length - 1) * (i / labelCount));
-            const date = new Date(history[idx].time);
-            const label = date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
-            ctx.fillText(label, xScale(idx), height - 8);
-        }
+        const hoursToShow = [0, 4, 8, 12, 16, 20];
+        const shownHours = new Set();
+        
+        history.forEach((d, i) => {
+            const date = new Date(d.time);
+            const hour = date.getHours();
+            if (hoursToShow.includes(hour) && !shownHours.has(hour)) {
+                shownHours.add(hour);
+                const label = hour.toString().padStart(2, '0') + ':00';
+                ctx.fillText(label, xScale(i), height - 8);
+            }
+        });
 
+        // Mostrar día en la parte superior derecha
+        const firstDate = new Date(history[0].time);
+        const dayLabel = firstDate.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
+        ctx.fillStyle = '#6b7280';
+        ctx.textAlign = 'right';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.fillText(dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), width - padding.right, padding.top - 5);
+
+        // Unidad kts
         ctx.fillStyle = '#6b7280';
         ctx.textAlign = 'left';
+        ctx.font = '10px Inter, sans-serif';
         ctx.fillText('kts', padding.left, padding.top - 5);
 
         if (windHistoryLoading) windHistoryLoading.classList.add('hidden');
