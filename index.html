@@ -70,6 +70,10 @@
                     <button id="btn-pizarra-menu" class="text-left w-full px-4 py-3 rounded-lg hover:bg-blue-50 font-semibold text-gray-700 flex items-center gap-3 transition-colors">
                         <span>💬</span> Comunidad (Fotos/Chat)
                     </button>
+                    <button id="btn-clasificados-menu" class="text-left w-full px-4 py-3 rounded-lg hover:bg-blue-50 font-semibold text-gray-700 flex items-center gap-3 transition-colors relative">
+                        <span>🏷️</span> Clasificados Kiteros
+                        <span id="clasificados-menu-badge" class="absolute right-3 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">!</span>
+                    </button>
                 </nav>
                 <hr class="border-gray-200 my-2">
                 <div class="flex flex-col items-center text-center space-y-2">
@@ -369,100 +373,100 @@
                 </div>
             </details>
 
-            <!-- 3. CLASIFICADOS KITE -->
-            <details id="classifieds-section" class="group bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden transition-all duration-300">
-                <summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-gray-50 transition-colors">
-                    <h3 class="text-lg font-extrabold text-gray-800 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+        </div>
+
+        <!-- VISTA CLASIFICADOS (SEPARADA) -->
+        <div id="view-classifieds" class="hidden fade-in space-y-6 mt-6">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-2xl font-black text-gray-800 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    Clasificados Kiteros
+                </h2>
+                <button id="back-to-home-classifieds" class="text-sm text-blue-600 font-bold hover:underline flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Volver
+                </button>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden p-6">
+                <!-- Filtros de categoría -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button data-filter="todos" class="filter-btn active px-3 py-1 text-xs font-bold rounded-full bg-orange-500 text-white transition-colors">Todos</button>
+                    <button data-filter="kites" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Kites</button>
+                    <button data-filter="tablas" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Tablas</button>
+                    <button data-filter="barras" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Barras</button>
+                    <button data-filter="arneses" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Arneses</button>
+                    <button data-filter="otros" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Otros</button>
+                </div>
+
+                <!-- Botón publicar (solo logueados) -->
+                <div id="classifieds-publish-container" class="flex justify-end mb-4 hidden">
+                    <button id="btn-new-classified" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700 transition-colors flex items-center gap-2 shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        Clasificados Kite
-                    </h3>
-                    <span class="transform group-open:rotate-180 transition-transform duration-300 text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </span>
-                </summary>
-                <div class="p-6 border-t border-gray-200">
-                    <!-- Filtros de categoría -->
-                    <div class="flex flex-wrap gap-2 mb-4">
-                        <button data-filter="todos" class="filter-btn active px-3 py-1 text-xs font-bold rounded-full bg-blue-600 text-white transition-colors">Todos</button>
-                        <button data-filter="kites" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Kites</button>
-                        <button data-filter="tablas" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Tablas</button>
-                        <button data-filter="barras" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Barras</button>
-                        <button data-filter="arneses" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Arneses</button>
-                        <button data-filter="otros" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Otros</button>
-                    </div>
+                        Publicar
+                    </button>
+                </div>
 
-                    <!-- Botón publicar (solo logueados) -->
-                    <div id="classifieds-publish-container" class="flex justify-end mb-4 hidden">
-                        <button id="btn-new-classified" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700 transition-colors flex items-center gap-2 shadow-md">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Publicar
-                        </button>
-                    </div>
+                <!-- Mensaje si no está logueado -->
+                <div id="login-prompt-classifieds" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center text-sm text-yellow-800">
+                    Inicia sesion con Google para publicar anuncios
+                </div>
 
-                    <!-- Mensaje si no está logueado -->
-                    <div id="login-prompt-classifieds" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center text-sm text-yellow-800">
-                        Inicia sesion con Google para publicar anuncios
-                    </div>
-
-                    <!-- Modal formulario de publicación -->
-                    <div id="classified-form-modal" class="hidden fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
-                        <div class="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-lg font-bold text-gray-800">Nuevo Anuncio</h4>
-                                <button id="btn-close-classified-form" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-                            </div>
-                            <form id="classified-form" class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Título</label>
-                                    <input type="text" id="classified-title" maxlength="60" required class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" placeholder="Ej: Kite Core XR7 12m">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-                                    <select id="classified-category" required class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                                        <option value="">Seleccionar...</option>
-                                        <option value="kites">Kites</option>
-                                        <option value="tablas">Tablas</option>
-                                        <option value="barras">Barras</option>
-                                        <option value="arneses">Arneses</option>
-                                        <option value="otros">Otros</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Precio (ARS)</label>
-                                    <input type="number" id="classified-price" required min="0" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" placeholder="Ej: 350000">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                                    <textarea id="classified-description" maxlength="200" rows="3" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 resize-none" placeholder="Estado, detalles, etc."></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp (con código país)</label>
-                                    <input type="tel" id="classified-whatsapp" required class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" placeholder="Ej: 5492983500324">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Foto del producto</label>
-                                    <input type="file" id="classified-photo" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg text-sm">
-                                </div>
-                                <button type="submit" id="btn-submit-classified" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors">
-                                    Publicar Anuncio
-                                </button>
-                            </form>
+                <!-- Modal formulario de publicación -->
+                <div id="classified-form-modal" class="hidden fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-bold text-gray-800">Nuevo Anuncio</h4>
+                            <button id="btn-close-classified-form" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
                         </div>
-                    </div>
-
-                    <!-- Lista de clasificados -->
-                    <div id="classifieds-list" class="space-y-3 max-h-[60vh] overflow-y-auto">
-                        <p id="classifieds-loading" class="text-center text-gray-400 text-sm py-4">Cargando clasificados...</p>
+                        <form id="classified-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Titulo</label>
+                                <input type="text" id="classified-title" maxlength="60" required class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" placeholder="Ej: Kite Core XR7 12m">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                                <select id="classified-category" required class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                                    <option value="">Seleccionar...</option>
+                                    <option value="kites">Kites</option>
+                                    <option value="tablas">Tablas</option>
+                                    <option value="barras">Barras</option>
+                                    <option value="arneses">Arneses</option>
+                                    <option value="otros">Otros</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Precio (ARS)</label>
+                                <input type="number" id="classified-price" required min="0" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" placeholder="Ej: 350000">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
+                                <textarea id="classified-description" maxlength="200" rows="3" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 resize-none" placeholder="Estado, detalles, etc."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp (con codigo pais)</label>
+                                <input type="tel" id="classified-whatsapp" required class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" placeholder="Ej: 5492983500324">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Foto del producto</label>
+                                <input type="file" id="classified-photo" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg text-sm">
+                            </div>
+                            <button type="submit" id="btn-submit-classified" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors">
+                                Publicar Anuncio
+                            </button>
+                        </form>
                     </div>
                 </div>
-            </details>
 
+                <!-- Lista de clasificados -->
+                <div id="classifieds-list" class="space-y-3 max-h-[70vh] overflow-y-auto">
+                    <p id="classifieds-loading" class="text-center text-gray-400 text-sm py-4">Cargando clasificados...</p>
+                </div>
+            </div>
         </div>
 
         <!-- FLOATERS -->
@@ -470,6 +474,13 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
             <span class="font-bold text-sm">Comunidad</span>
             <span id="notification-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden border border-white animate-bounce">1</span>
+        </button>
+
+        <!-- FAB Clasificados Kiteros -->
+        <button id="fab-clasificados" class="fixed bottom-6 left-6 bg-orange-500 text-white p-4 rounded-full shadow-2xl z-40 hover:bg-orange-600 transition-transform hover:scale-110 active:scale-95 border-2 border-white flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+            <span class="font-bold text-sm">Clasificados</span>
+            <span id="clasificados-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden border border-white animate-bounce">!</span>
         </button>
 
         <div id="new-message-toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer transition-all duration-300 w-max">
@@ -480,7 +491,13 @@
 
         <div id="new-photo-toast" class="fixed top-32 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer transition-all duration-300 w-max">
             <div class="bg-green-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-green-400 text-sm font-bold">
-                📸 Nueva Foto en la Galería
+                Nueva Foto en la Galeria
+            </div>
+        </div>
+
+        <div id="new-classified-toast" class="fixed top-44 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer transition-all duration-300 w-max">
+            <div class="bg-orange-500 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-orange-400 text-sm font-bold">
+                Nuevo Clasificado
             </div>
         </div>
 

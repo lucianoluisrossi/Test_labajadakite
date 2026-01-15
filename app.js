@@ -122,12 +122,19 @@ try {
     // --- ELEMENTOS DE NAVEGACIÓN ---
     const viewDashboard = document.getElementById('view-dashboard');
     const viewCommunity = document.getElementById('view-community');
+    const viewClassifieds = document.getElementById('view-classifieds');
     const navHomeBtn = document.getElementById('nav-home');
     const btnPizarraMenu = document.getElementById('btn-pizarra-menu');
+    const btnClasificadosMenu = document.getElementById('btn-clasificados-menu');
     const backToHomeBtn = document.getElementById('back-to-home');
+    const backToHomeClassifieds = document.getElementById('back-to-home-classifieds');
     const fabCommunity = document.getElementById('fab-community');
+    const fabClasificados = document.getElementById('fab-clasificados');
     const newMessageToast = document.getElementById('new-message-toast');
     const newPhotoToast = document.getElementById('new-photo-toast');
+    const newClassifiedToast = document.getElementById('new-classified-toast');
+    const clasificadosBadge = document.getElementById('clasificados-badge');
+    const clasificadosMenuBadge = document.getElementById('clasificados-menu-badge');
     const menuButton = document.getElementById('menu-button');
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
@@ -164,19 +171,40 @@ try {
 
     function switchView(viewName) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Ocultar todas las vistas
+        if(viewDashboard) viewDashboard.classList.add('hidden');
+        if(viewCommunity) viewCommunity.classList.add('hidden');
+        if(viewClassifieds) viewClassifieds.classList.add('hidden');
+        
+        // Mostrar FABs por defecto
+        if(fabCommunity) fabCommunity.classList.remove('hidden');
+        if(fabClasificados) fabClasificados.classList.remove('hidden');
+        
         if (viewName === 'dashboard') {
-            viewDashboard.classList.remove('hidden');
-            viewCommunity.classList.add('hidden');
-            if(fabCommunity) fabCommunity.classList.remove('hidden');
-        } else {
-            viewDashboard.classList.add('hidden');
-            viewCommunity.classList.remove('hidden');
+            if(viewDashboard) viewDashboard.classList.remove('hidden');
+        } else if (viewName === 'community') {
+            if(viewCommunity) viewCommunity.classList.remove('hidden');
             if(fabCommunity) fabCommunity.classList.add('hidden');
             markMessagesAsRead();
+        } else if (viewName === 'classifieds') {
+            if(viewClassifieds) viewClassifieds.classList.remove('hidden');
+            if(fabClasificados) fabClasificados.classList.add('hidden');
+            markClassifiedsAsRead();
         }
+        
         if (mobileMenu && !mobileMenu.classList.contains('-translate-x-full')) {
             toggleMenu();
         }
+    }
+    
+    // Marcar clasificados como leidos
+    function markClassifiedsAsRead() {
+        const now = Date.now();
+        localStorage.setItem('lastClassifiedReadTime', now);
+        if (clasificadosBadge) clasificadosBadge.classList.add('hidden');
+        if (clasificadosMenuBadge) clasificadosMenuBadge.classList.add('hidden');
+        if (newClassifiedToast) newClassifiedToast.classList.add('hidden');
     }
 
     function toggleMenu() {
@@ -191,9 +219,13 @@ try {
 
     if (navHomeBtn) navHomeBtn.addEventListener('click', () => switchView('dashboard'));
     if (backToHomeBtn) backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
+    if (backToHomeClassifieds) backToHomeClassifieds.addEventListener('click', () => switchView('dashboard'));
     if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', () => switchView('community'));
+    if (btnClasificadosMenu) btnClasificadosMenu.addEventListener('click', () => switchView('classifieds'));
     if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
+    if (fabClasificados) fabClasificados.addEventListener('click', () => switchView('classifieds'));
     if (newMessageToast) newMessageToast.addEventListener('click', () => switchView('community'));
+    if (newClassifiedToast) newClassifiedToast.addEventListener('click', () => switchView('classifieds'));
     if (newPhotoToast) {
         newPhotoToast.addEventListener('click', () => {
             switchView('community');
@@ -816,11 +848,11 @@ try {
         btn.addEventListener('click', () => {
             currentFilter = btn.dataset.filter;
             filterBtns.forEach(b => {
-                b.classList.remove('bg-blue-600', 'text-white');
+                b.classList.remove('bg-orange-500', 'text-white');
                 b.classList.add('bg-gray-200', 'text-gray-700');
             });
             btn.classList.remove('bg-gray-200', 'text-gray-700');
-            btn.classList.add('bg-blue-600', 'text-white');
+            btn.classList.add('bg-orange-500', 'text-white');
             renderClassifieds();
         });
     });
@@ -850,7 +882,7 @@ try {
                 <div class="flex-grow min-w-0">
                     <div class="flex items-start justify-between gap-2">
                         <h4 class="font-bold text-gray-800 text-sm truncate">${c.title}</h4>
-                        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium flex-shrink-0">${c.category}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium flex-shrink-0">${c.category}</span>
                     </div>
                     <p class="text-green-600 font-bold text-lg">$${c.price.toLocaleString('es-AR')}</p>
                     ${c.description ? `<p class="text-gray-600 text-xs mt-1 line-clamp-2">${c.description}</p>` : ''}
@@ -888,6 +920,9 @@ try {
             
             if (classifiedsLoading) classifiedsLoading.classList.add('hidden');
             renderClassifieds();
+            
+            // Verificar si hay nuevos clasificados
+            checkNewClassifieds();
         }, (error) => {
             console.error('Error cargando clasificados:', error);
             if (classifiedsLoading) {
@@ -895,6 +930,29 @@ try {
                 classifiedsLoading.classList.add('text-red-500');
             }
         });
+    }
+    
+    // Verificar nuevos clasificados y mostrar notificacion
+    function checkNewClassifieds() {
+        if (allClassifieds.length === 0) return;
+        
+        const lastReadTime = parseInt(localStorage.getItem('lastClassifiedReadTime') || '0');
+        const newestClassified = allClassifieds[0];
+        const newestTime = newestClassified?.createdAt?.toDate?.()?.getTime() || 0;
+        
+        if (newestTime > lastReadTime && lastReadTime > 0) {
+            // Hay nuevos clasificados y no estamos en la vista de clasificados
+            if (viewClassifieds && viewClassifieds.classList.contains('hidden')) {
+                if (newClassifiedToast) newClassifiedToast.classList.remove('hidden');
+                if (clasificadosBadge) clasificadosBadge.classList.remove('hidden');
+                if (clasificadosMenuBadge) clasificadosMenuBadge.classList.remove('hidden');
+            } else {
+                markClassifiedsAsRead();
+            }
+        } else if (lastReadTime === 0 && newestTime > 0) {
+            // Primera vez - marcar como leido
+            localStorage.setItem('lastClassifiedReadTime', newestTime);
+        }
     }
 
     // Eliminar clasificado (solo el dueño)
