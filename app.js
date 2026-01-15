@@ -653,6 +653,30 @@ try {
         };
     }
 
+    // Buffer circular para promedio de viento (4 minutos = 8 lecturas cada 30 seg)
+    const WIND_BUFFER_SIZE = 8;
+    const windSpeedBuffer = [];
+    const windGustBuffer = [];
+    
+    function addToBuffer(buffer, value, maxSize) {
+        if (value === null) return;
+        buffer.push(value);
+        if (buffer.length > maxSize) {
+            buffer.shift();
+        }
+    }
+    
+    function getBufferAverage(buffer) {
+        if (buffer.length === 0) return null;
+        const sum = buffer.reduce((a, b) => a + b, 0);
+        return Math.round((sum / buffer.length) * 10) / 10; // 1 decimal
+    }
+    
+    function getBufferMax(buffer) {
+        if (buffer.length === 0) return null;
+        return Math.max(...buffer);
+    }
+
     async function fetchWithBackoff(url, options, retries = 2, delay = 500) {
         try {
             const response = await fetch(url, options);
@@ -681,9 +705,16 @@ try {
 
             if (json.code === 0 && json.data) {
                 const data = json.data;
-                const windSpeedValue = (data.wind?.wind_speed?.value) ? parseFloat(data.wind.wind_speed.value) : null;
-                const windGustValue = (data.wind?.wind_gust?.value) ? parseFloat(data.wind.wind_gust.value) : null; 
+                const windSpeedRaw = (data.wind?.wind_speed?.value) ? parseFloat(data.wind.wind_speed.value) : null;
+                const windGustRaw = (data.wind?.wind_gust?.value) ? parseFloat(data.wind.wind_gust.value) : null; 
                 const windDirDegrees = (data.wind?.wind_direction?.value) ? parseFloat(data.wind.wind_direction.value) : null;
+                
+                // Agregar al buffer y calcular promedios (4 min)
+                addToBuffer(windSpeedBuffer, windSpeedRaw, WIND_BUFFER_SIZE);
+                addToBuffer(windGustBuffer, windGustRaw, WIND_BUFFER_SIZE);
+                
+                const windSpeedValue = getBufferAverage(windSpeedBuffer) ?? windSpeedRaw;
+                const windGustValue = getBufferMax(windGustBuffer) ?? windGustRaw;
                 
                 const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
                 updateCardColors(verdictCardEl, verdictColors);
