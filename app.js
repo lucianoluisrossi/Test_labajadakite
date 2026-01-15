@@ -777,13 +777,15 @@ try {
 
     async function fetchWindHistory() {
         try {
-            const response = await fetch('api/history');
+            const response = await fetch('/api/history');
             const json = await response.json();
+            
+            console.log('History API response:', json);
             
             if (json.code === 0 && json.data?.history) {
                 return json.data;
             }
-            throw new Error('Invalid history data');
+            throw new Error(json.error || 'Invalid history data');
         } catch (error) {
             console.error('Error fetching wind history:', error);
             return null;
