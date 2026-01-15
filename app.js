@@ -883,25 +883,36 @@ try {
         });
     }
 
-    // Subir imagen a imgbb (gratis)
-    async function uploadImageToImgbb(file) {
-        const formData = new FormData();
-        formData.append('image', file);
+    // Comprimir imagen para clasificados (usa la misma funcion que galeria)
+    async function compressImageForClassified(file) {
+        const MAX_WIDTH = 800;
+        const QUALITY = 0.7;
         
-        try {
-            const response = await fetch('https://api.imgbb.com/1/upload?key=a7c649f44723489e2571e4de31bc9e64', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
-            if (data.success) {
-                return data.data.url;
-            }
-            throw new Error('Error subiendo imagen');
-        } catch (error) {
-            console.error('Error subiendo imagen:', error);
-            return null;
-        }
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+                    resolve(dataUrl);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
     }
 
     // Enviar clasificado
@@ -928,8 +939,14 @@ try {
                 const photoInput = document.getElementById('classified-photo');
                 
                 let photoURL = null;
-                if (photoInput.files.length > 0) {
-                    photoURL = await uploadImageToImgbb(photoInput.files[0]);
+                if (photoInput && photoInput.files && photoInput.files.length > 0) {
+                    try {
+                        photoURL = await compressImageForClassified(photoInput.files[0]);
+                        console.log('Imagen comprimida correctamente');
+                    } catch (err) {
+                        console.error('Error comprimiendo imagen:', err);
+                        alert('Error procesando la imagen. Intenta con otra.');
+                    }
                 }
 
                 await addDoc(classifiedsCollection, {
