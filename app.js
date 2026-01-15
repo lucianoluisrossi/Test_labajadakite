@@ -128,8 +128,10 @@ try {
     const btnClasificadosMenu = document.getElementById('btn-clasificados-menu');
     const backToHomeBtn = document.getElementById('back-to-home');
     const backToHomeClassifieds = document.getElementById('back-to-home-classifieds');
+    const fabContainer = document.getElementById('fab-container');
     const fabCommunity = document.getElementById('fab-community');
     const fabClasificados = document.getElementById('fab-clasificados');
+    const fabBackWeather = document.getElementById('fab-back-weather');
     const newMessageToast = document.getElementById('new-message-toast');
     const newPhotoToast = document.getElementById('new-photo-toast');
     const newClassifiedToast = document.getElementById('new-classified-toast');
@@ -177,19 +179,22 @@ try {
         if(viewCommunity) viewCommunity.classList.add('hidden');
         if(viewClassifieds) viewClassifieds.classList.add('hidden');
         
-        // Mostrar FABs por defecto
-        if(fabCommunity) fabCommunity.classList.remove('hidden');
-        if(fabClasificados) fabClasificados.classList.remove('hidden');
-        
         if (viewName === 'dashboard') {
             if(viewDashboard) viewDashboard.classList.remove('hidden');
+            // Mostrar FABs de comunidad y clasificados, ocultar boton volver
+            if(fabContainer) fabContainer.classList.remove('hidden');
+            if(fabBackWeather) fabBackWeather.classList.add('hidden');
         } else if (viewName === 'community') {
             if(viewCommunity) viewCommunity.classList.remove('hidden');
-            if(fabCommunity) fabCommunity.classList.add('hidden');
+            // Ocultar FABs, mostrar boton volver verde
+            if(fabContainer) fabContainer.classList.add('hidden');
+            if(fabBackWeather) fabBackWeather.classList.remove('hidden');
             markMessagesAsRead();
         } else if (viewName === 'classifieds') {
             if(viewClassifieds) viewClassifieds.classList.remove('hidden');
-            if(fabClasificados) fabClasificados.classList.add('hidden');
+            // Ocultar FABs, mostrar boton volver verde
+            if(fabContainer) fabContainer.classList.add('hidden');
+            if(fabBackWeather) fabBackWeather.classList.remove('hidden');
             markClassifiedsAsRead();
         }
         
@@ -224,6 +229,7 @@ try {
     if (btnClasificadosMenu) btnClasificadosMenu.addEventListener('click', () => switchView('classifieds'));
     if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
     if (fabClasificados) fabClasificados.addEventListener('click', () => switchView('classifieds'));
+    if (fabBackWeather) fabBackWeather.addEventListener('click', () => switchView('dashboard'));
     if (newMessageToast) newMessageToast.addEventListener('click', () => switchView('community'));
     if (newClassifiedToast) newClassifiedToast.addEventListener('click', () => switchView('classifieds'));
     if (newPhotoToast) {
