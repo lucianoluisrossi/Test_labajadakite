@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
   // Formato de fecha YYYY-MM-DD HH:MM:SS
   const now = new Date();
-  const startDate = new Date(now.getTime() - (72 * 60 * 60 * 1000));
+  const startDate = new Date(now.getTime() - (24 * 60 * 60 * 1000));
   
   const formatDate = (date) => {
     const year = date.getFullYear();
