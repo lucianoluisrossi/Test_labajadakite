@@ -462,6 +462,38 @@
                     </div>
                 </div>
 
+                <!-- Modal editar clasificado -->
+                <div id="edit-classified-modal" class="hidden fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-bold text-gray-800">Editar Anuncio</h4>
+                            <button onclick="closeEditClassified()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Titulo</label>
+                                <input type="text" id="edit-classified-title" maxlength="60" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Precio (ARS)</label>
+                                <input type="number" id="edit-classified-price" min="0" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
+                                <textarea id="edit-classified-description" maxlength="200" rows="3" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="closeEditClassified()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-bold hover:bg-gray-300 transition-colors">
+                                    Cancelar
+                                </button>
+                                <button onclick="saveEditClassified()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">
+                                    Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Lista de clasificados -->
                 <div id="classifieds-list" class="space-y-3 max-h-[70vh] overflow-y-auto">
                     <p id="classifieds-loading" class="text-center text-gray-400 text-sm py-4">Cargando clasificados...</p>
