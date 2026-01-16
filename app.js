@@ -936,7 +936,7 @@ try {
                             <span class="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">${c.category}</span>
                         </div>
                     </div>
-                    <p class="text-green-600 font-bold text-lg ${isVendido ? 'line-through text-gray-400' : ''}">\$${c.price.toLocaleString('es-AR')}</p>
+                    <p class="text-green-600 font-bold text-lg ${isVendido ? 'line-through text-gray-400' : ''}">${c.currency === 'USD' ? 'U$D' : '$'} ${c.price.toLocaleString('es-AR')}</p>
                     ${c.description ? `<p class="text-gray-600 text-xs mt-1 line-clamp-2">${c.description}</p>` : ''}
                     <div class="flex items-center gap-2 mt-1 text-xs text-gray-400">
                         <span>${c.userName || 'Usuario'}</span>
@@ -1087,10 +1087,12 @@ try {
         const modal = document.getElementById('edit-classified-modal');
         const titleInput = document.getElementById('edit-classified-title');
         const priceInput = document.getElementById('edit-classified-price');
+        const currencyInput = document.getElementById('edit-classified-currency');
         const descInput = document.getElementById('edit-classified-description');
         
         if (titleInput) titleInput.value = classified.title || '';
         if (priceInput) priceInput.value = classified.price || '';
+        if (currencyInput) currencyInput.value = classified.currency || 'ARS';
         if (descInput) descInput.value = classified.description || '';
         
         if (modal) modal.classList.remove('hidden');
@@ -1109,10 +1111,12 @@ try {
         
         const titleInput = document.getElementById('edit-classified-title');
         const priceInput = document.getElementById('edit-classified-price');
+        const currencyInput = document.getElementById('edit-classified-currency');
         const descInput = document.getElementById('edit-classified-description');
         
         const newTitle = titleInput?.value?.trim();
         const newPrice = parseInt(priceInput?.value) || 0;
+        const newCurrency = currencyInput?.value || 'ARS';
         const newDesc = descInput?.value?.trim();
         
         if (!newTitle || newPrice <= 0) {
@@ -1124,6 +1128,7 @@ try {
             await updateDoc(doc(db, 'classifieds', editingClassifiedId), {
                 title: newTitle,
                 price: newPrice,
+                currency: newCurrency,
                 description: newDesc
             });
             console.log('Clasificado actualizado');
@@ -1209,16 +1214,20 @@ try {
                     }
                 }
 
+                const currency = document.getElementById('classified-currency').value || 'ARS';
+                
                 await addDoc(classifiedsCollection, {
                     title,
                     category,
                     price,
+                    currency,
                     description,
                     whatsapp,
                     photoURL,
                     userId: currentUser.uid,
                     userName: currentUser.displayName || 'Usuario',
                     userPhoto: currentUser.photoURL || null,
+                    status: 'disponible',
                     createdAt: serverTimestamp()
                 });
 
