@@ -840,11 +840,17 @@ try {
     // --- MODAL BIENVENIDA CLASIFICADOS ---
     const welcomeClasificadosModal = document.getElementById('welcome-clasificados-modal');
     const btnWelcomeClasificadosClose = document.getElementById('btn-welcome-clasificados-close');
+    const btnWelcomeClasificadosNever = document.getElementById('btn-welcome-clasificados-never');
     const WELCOME_CLASIFICADOS_KEY = 'welcomeClasificadosStartV2';
+    const WELCOME_CLASIFICADOS_DISABLED = 'welcomeClasificadosDisabled';
     const WELCOME_CLASIFICADOS_DAYS = 4; // Días que se mostrará el modal
 
     // Verificar si debemos mostrar el modal (durante 4 días desde la primera vez)
     function shouldShowWelcomeModal() {
+        // Si el usuario deshabilitó el modal, no mostrar
+        if (localStorage.getItem(WELCOME_CLASIFICADOS_DISABLED) === 'true') {
+            return false;
+        }
         const startDate = localStorage.getItem(WELCOME_CLASIFICADOS_KEY);
         if (!startDate) {
             // Primera vez - guardar fecha de inicio
@@ -864,10 +870,18 @@ try {
         }, 2000);
     }
 
-    // Cerrar modal (sin deshabilitar - aparecerá de nuevo hasta que pasen 4 días)
+    // Cerrar modal (aparecerá de nuevo hasta que pasen 4 días)
     if (btnWelcomeClasificadosClose) {
         btnWelcomeClasificadosClose.addEventListener('click', () => {
             welcomeClasificadosModal.classList.add('hidden');
+        });
+    }
+
+    // No volver a mostrar - deshabilitar permanentemente
+    if (btnWelcomeClasificadosNever) {
+        btnWelcomeClasificadosNever.addEventListener('click', () => {
+            welcomeClasificadosModal.classList.add('hidden');
+            localStorage.setItem(WELCOME_CLASIFICADOS_DISABLED, 'true');
         });
     }
 
