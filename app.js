@@ -804,6 +804,39 @@ try {
         setInterval(nextSponsor, 7000);
     }
 
+    // --- ESCUELAS CAROUSEL ---
+    const escuelasTrack = document.getElementById('escuelas-track');
+    const escuelasDots = document.querySelectorAll('.escuela-dot');
+    let currentEscuela = 0;
+    const totalEscuelas = document.querySelectorAll('.escuela-slide').length;
+
+    function goToEscuela(index) {
+        currentEscuela = index;
+        if (escuelasTrack) {
+            escuelasTrack.style.transform = `translateX(-${index * 100}%)`;
+        }
+        escuelasDots.forEach((dot, i) => {
+            dot.classList.toggle('bg-gray-400', i === index);
+            dot.classList.toggle('bg-gray-300', i !== index);
+        });
+    }
+
+    function nextEscuela() {
+        goToEscuela((currentEscuela + 1) % totalEscuelas);
+    }
+
+    // Click en indicadores de escuelas
+    escuelasDots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            goToEscuela(parseInt(dot.dataset.index));
+        });
+    });
+
+    // Auto-rotate cada 5 segundos
+    if (totalEscuelas > 1) {
+        setInterval(nextEscuela, 5000);
+    }
+
     // --- LAZY LOAD WINDGURU WIDGET ---
     // Cargar el widget solo cuando el usuario abre el desplegable
     const windguruContainer = document.getElementById('windguru-container');
