@@ -840,7 +840,7 @@ try {
     // --- MODAL BIENVENIDA CLASIFICADOS ---
     const welcomeClasificadosModal = document.getElementById('welcome-clasificados-modal');
     const btnWelcomeClasificadosClose = document.getElementById('btn-welcome-clasificados-close');
-    const WELCOME_CLASIFICADOS_KEY = 'welcomeClasificadosStart';
+    const WELCOME_CLASIFICADOS_KEY = 'welcomeClasificadosStartV2';
     const WELCOME_CLASIFICADOS_DAYS = 4; // Días que se mostrará el modal
 
     // Verificar si debemos mostrar el modal (durante 4 días desde la primera vez)
