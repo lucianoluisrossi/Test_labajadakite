@@ -1,605 +1,1316 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Bajada</title>
+// app.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// --- CONFIGURACIÓN DE FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
+  authDomain: "labajadakite.firebaseapp.com",
+  projectId: "labajadakite",
+  storageBucket: "labajadakite.firebasestorage.app", 
+  messagingSenderId: "982938582037",
+  appId: "1:982938582037:web:7141082f9ca601e9aa221c",
+  measurementId: "G-R926P5WBWW"
+};
+
+// Variables globales
+let db;
+let auth; 
+let messagesCollection;
+let galleryCollection;
+let classifiedsCollection;
+let currentUser = null;
+const googleProvider = new GoogleAuthProvider();
+
+try {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
     
-    <!-- Configuración PWA y Manifiesto -->
-    <meta name="theme-color" content="#1f2937">
-    <link rel="manifest" href="manifest.json">
+    messagesCollection = collection(db, "kiter_board");
+    galleryCollection = collection(db, "daily_gallery_meta");
+    classifiedsCollection = collection(db, "classifieds");
 
-    <!-- Tailwind CSS -->
-    <link rel="stylesheet" href="style.css">
+    console.log("✅ Firebase inicializado.");
 
-    <style>
-        .modal-backdrop { background-color: rgba(0, 0, 0, 0.9); }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    // --- FUNCIONES DE LOGIN/LOGOUT ---
+    async function loginWithGoogle() {
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            console.log("✅ Login exitoso:", result.user.displayName);
+        } catch (error) {
+            console.error("❌ Error en login:", error);
+            if (error.code === 'auth/popup-blocked') {
+                alert('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para esta página.');
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                // Usuario cerró el popup, no hacer nada
+            } else {
+                alert('Error al iniciar sesión: ' + error.message);
+            }
+        }
+    }
+
+    async function logout() {
+        try {
+            await signOut(auth);
+            console.log("✅ Sesión cerrada");
+        } catch (error) {
+            console.error("❌ Error al cerrar sesión:", error);
+        }
+    }
+
+    // Exponer funciones globalmente para uso en eventos
+    window.loginWithGoogle = loginWithGoogle;
+    window.logout = logout;
+
+    document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- FUNCIÓN PARA ACTUALIZAR UI DE AUTH ---
+    function updateAuthUI(user) {
+        const authLogin = document.getElementById('auth-login');
+        const authUser = document.getElementById('auth-user');
+        const userPhoto = document.getElementById('user-photo');
+        const userName = document.getElementById('user-name');
+        const messageForm = document.getElementById('kiter-board-form');
+        const loginPromptMessages = document.getElementById('login-prompt-messages');
+        const galleryUploadContainer = document.getElementById('gallery-upload-container');
+        const loginPromptGallery = document.getElementById('login-prompt-gallery');
+        const classifiedsPublishContainer = document.getElementById('classifieds-publish-container');
+        const loginPromptClassifieds = document.getElementById('login-prompt-classifieds');
+
+        if (user) {
+            // Usuario logueado
+            if (authLogin) authLogin.classList.add('hidden');
+            if (authUser) authUser.classList.remove('hidden');
+            if (userPhoto) userPhoto.src = user.photoURL || 'https://via.placeholder.com/40';
+            if (userName) userName.textContent = user.displayName || 'Kiter';
+            if (messageForm) messageForm.classList.remove('hidden');
+            if (loginPromptMessages) loginPromptMessages.classList.add('hidden');
+            if (galleryUploadContainer) galleryUploadContainer.classList.remove('hidden');
+            if (loginPromptGallery) loginPromptGallery.classList.add('hidden');
+            if (classifiedsPublishContainer) classifiedsPublishContainer.classList.remove('hidden');
+            if (loginPromptClassifieds) loginPromptClassifieds.classList.add('hidden');
+            console.log("✅ Usuario logueado:", user.displayName);
+        } else {
+            // Usuario no logueado
+            if (authLogin) authLogin.classList.remove('hidden');
+            if (authUser) authUser.classList.add('hidden');
+            if (messageForm) messageForm.classList.add('hidden');
+            if (loginPromptMessages) loginPromptMessages.classList.remove('hidden');
+            if (galleryUploadContainer) galleryUploadContainer.classList.add('hidden');
+            if (loginPromptGallery) loginPromptGallery.classList.remove('hidden');
+            if (classifiedsPublishContainer) classifiedsPublishContainer.classList.add('hidden');
+            if (loginPromptClassifieds) loginPromptClassifieds.classList.remove('hidden');
+            console.log("ℹ️ Usuario no logueado");
+        }
+    }
+
+    // --- LISTENER DE ESTADO DE AUTENTICACIÓN (dentro de DOMContentLoaded) ---
+    onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        updateAuthUI(user);
+    });
+    console.log("🚀 App iniciada.");
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(console.error);
+        });
+    }
+
+    // --- ELEMENTOS DE NAVEGACIÓN ---
+    const viewDashboard = document.getElementById('view-dashboard');
+    const viewCommunity = document.getElementById('view-community');
+    const viewClassifieds = document.getElementById('view-classifieds');
+    const navHomeBtn = document.getElementById('nav-home');
+    const btnPizarraMenu = document.getElementById('btn-pizarra-menu');
+    const btnClasificadosMenu = document.getElementById('btn-clasificados-menu');
+    const backToHomeBtn = document.getElementById('back-to-home');
+    const backToHomeClassifieds = document.getElementById('back-to-home-classifieds');
+    const fabContainer = document.getElementById('fab-container');
+    const fabCommunity = document.getElementById('fab-community');
+    const fabClasificados = document.getElementById('fab-clasificados');
+    const fabBackWeather = document.getElementById('fab-back-weather');
+    const newMessageToast = document.getElementById('new-message-toast');
+    const newPhotoToast = document.getElementById('new-photo-toast');
+    const newClassifiedToast = document.getElementById('new-classified-toast');
+    const clasificadosBadge = document.getElementById('clasificados-badge');
+    const clasificadosMenuBadge = document.getElementById('clasificados-menu-badge');
+    const menuButton = document.getElementById('menu-button');
+    const menuCloseButton = document.getElementById('menu-close-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const menuBackdrop = document.getElementById('menu-backdrop');
+
+    // --- LÓGICA DE INSTALACIÓN PWA ---
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevenir que Chrome 76+ muestre el prompt automáticamente
+        e.preventDefault();
+        // Guardar el evento para dispararlo más tarde
+        deferredPrompt = e;
         
-        /* Estilo para quitar el triángulo por defecto del details */
-        details > summary { list-style: none; }
-        details > summary::-webkit-details-marker { display: none; }
-    </style>
-</head>
-<body class="bg-white text-gray-900 min-h-screen p-4 md:p-8 relative overflow-x-hidden">
-
-    <div class="max-w-6xl mx-auto">
+        // Opcional: Mostrar un botón o mensaje propio de "Instalar App"
+        console.log("PWA lista para ser instalada");
         
-        <!-- ENCABEZADO PRINCIPAL -->
-        <div class="relative flex justify-center items-start mb-6 mt-4 md:mt-8">
+        // Intentar disparar el prompt automáticamente después de 3 segundos de navegación
+        setTimeout(() => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Usuario aceptó la instalación');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }, 3000);
+    });
+
+    window.addEventListener('appinstalled', (e) => {
+        console.log('PWA instalada correctamente');
+    });
+
+    function switchView(viewName) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Ocultar todas las vistas
+        if(viewDashboard) viewDashboard.classList.add('hidden');
+        if(viewCommunity) viewCommunity.classList.add('hidden');
+        if(viewClassifieds) viewClassifieds.classList.add('hidden');
+        
+        if (viewName === 'dashboard') {
+            if(viewDashboard) viewDashboard.classList.remove('hidden');
+            // Mostrar FABs de comunidad y clasificados, ocultar boton volver
+            if(fabContainer) fabContainer.classList.remove('hidden');
+            if(fabBackWeather) fabBackWeather.classList.add('hidden');
+        } else if (viewName === 'community') {
+            if(viewCommunity) viewCommunity.classList.remove('hidden');
+            // Ocultar FABs, mostrar boton volver verde
+            if(fabContainer) fabContainer.classList.add('hidden');
+            if(fabBackWeather) fabBackWeather.classList.remove('hidden');
+            markMessagesAsRead();
+        } else if (viewName === 'classifieds') {
+            if(viewClassifieds) viewClassifieds.classList.remove('hidden');
+            // Ocultar FABs, mostrar boton volver verde
+            if(fabContainer) fabContainer.classList.add('hidden');
+            if(fabBackWeather) fabBackWeather.classList.remove('hidden');
+            markClassifiedsAsRead();
+        }
+        
+        if (mobileMenu && !mobileMenu.classList.contains('-translate-x-full')) {
+            toggleMenu();
+        }
+    }
+    
+    // Marcar clasificados como leidos
+    function markClassifiedsAsRead() {
+        const now = Date.now();
+        localStorage.setItem('lastClassifiedReadTime', now);
+        if (clasificadosBadge) clasificadosBadge.classList.add('hidden');
+        if (clasificadosMenuBadge) clasificadosMenuBadge.classList.add('hidden');
+        if (newClassifiedToast) newClassifiedToast.classList.add('hidden');
+    }
+
+    function toggleMenu() {
+        if (mobileMenu.classList.contains('-translate-x-full')) {
+            mobileMenu.classList.remove('-translate-x-full'); 
+            menuBackdrop.classList.remove('hidden'); 
+        } else {
+            mobileMenu.classList.add('-translate-x-full'); 
+            menuBackdrop.classList.add('hidden'); 
+        }
+    }
+
+    if (navHomeBtn) navHomeBtn.addEventListener('click', () => switchView('dashboard'));
+    if (backToHomeBtn) backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
+    if (backToHomeClassifieds) backToHomeClassifieds.addEventListener('click', () => switchView('dashboard'));
+    if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', () => switchView('community'));
+    if (btnClasificadosMenu) btnClasificadosMenu.addEventListener('click', () => switchView('classifieds'));
+    if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
+    if (fabClasificados) fabClasificados.addEventListener('click', () => switchView('classifieds'));
+    if (fabBackWeather) fabBackWeather.addEventListener('click', () => switchView('dashboard'));
+    if (newMessageToast) newMessageToast.addEventListener('click', () => switchView('community'));
+    if (newClassifiedToast) newClassifiedToast.addEventListener('click', () => switchView('classifieds'));
+    if (newPhotoToast) {
+        newPhotoToast.addEventListener('click', () => {
+            switchView('community');
+            // Abrir la galería automáticamente
+            const gallerySection = document.getElementById('gallery-section');
+            if (gallerySection) gallerySection.setAttribute('open', '');
+            markPhotosAsRead();
+        });
+    }
+    if (menuButton) menuButton.addEventListener('click', toggleMenu);
+    if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
+    if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
+    
+    // Marcar fotos como leídas cuando se abre la galería
+    const gallerySection = document.getElementById('gallery-section');
+    if (gallerySection) {
+        gallerySection.addEventListener('toggle', () => {
+            if (gallerySection.hasAttribute('open')) {
+                markPhotosAsRead();
+            }
+        });
+    }
+
+    // --- COMPRESIÓN ---
+    async function compressImageToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const MAX_WIDTH = 600; 
+            const QUALITY = 0.6;   
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+                    resolve(dataUrl);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
+    }
+
+    // --- GALERÍA ---
+    const galleryUploadInput = document.getElementById('gallery-upload-input');
+    const galleryGrid = document.getElementById('gallery-grid');
+    const imageModal = document.getElementById('image-modal');
+    const modalImg = document.getElementById('modal-img');
+
+    const handleGalleryUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Verificar que el usuario esté logueado
+        if (!currentUser) {
+            alert('Debes iniciar sesion para subir fotos');
+            e.target.value = '';
+            return;
+        }
+        
+        if (!file.type.startsWith('image/')) { alert("Solo imágenes."); return; }
+
+        const inputElement = e.target;
+        const labelElement = inputElement.parentElement;
+        const spans = labelElement.querySelectorAll('span');
+        const originalTexts = []; 
+        spans.forEach(s => originalTexts.push(s.textContent));
+
+        spans.forEach(s => s.textContent = "Subiendo...");
+        labelElement.classList.add('opacity-50', 'cursor-wait');
+        inputElement.disabled = true; 
+        
+        try {
+            const base64String = await compressImageToBase64(file);
+            await addDoc(galleryCollection, {
+                url: base64String,
+                timestamp: serverTimestamp(),
+                userId: currentUser.uid,
+                userName: currentUser.displayName || 'Kiter'
+            });
+        } catch (error) {
+            console.error("Error subiendo:", error);
+            alert("No se pudo subir.");
+        } finally {
+            spans.forEach((s, index) => s.textContent = originalTexts[index]);
+            labelElement.classList.remove('opacity-50', 'cursor-wait');
+            inputElement.disabled = false;
+            inputElement.value = ''; 
+        }
+    };
+
+    if (galleryUploadInput && db) {
+        galleryUploadInput.addEventListener('change', handleGalleryUpload);
+    }
+
+    if (galleryGrid && db) {
+        const q = query(galleryCollection, orderBy("timestamp", "desc"), limit(20));
+        onSnapshot(q, (snapshot) => {
+            galleryGrid.innerHTML = ''; 
+            const now = Date.now();
+            const oneDay = 24 * 60 * 60 * 1000;
+            let hasImages = false;
+            const lastPhotoReadTime = parseInt(localStorage.getItem('lastPhotoReadTime') || '0');
+            let newestPhotoTime = 0;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.timestamp && data.url) {
+                    const imgDate = data.timestamp.toDate();
+                    const imgTime = imgDate.getTime();
+                    if (imgTime > newestPhotoTime) newestPhotoTime = imgTime;
+
+                    if (now - imgTime < oneDay) {
+                        hasImages = true;
+                        const imgContainer = document.createElement('div');
+                        imgContainer.className = "relative aspect-square cursor-pointer overflow-hidden rounded-lg shadow-md bg-gray-100 hover:opacity-90 transition-opacity";
+                        imgContainer.innerHTML = `<img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto"><div class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-2 py-1 rounded-tl-lg">${timeAgo(imgDate)}</div>`;
+                        imgContainer.addEventListener('click', () => {
+                            modalImg.src = data.url;
+                            imageModal.classList.remove('hidden');
+                        });
+                        galleryGrid.appendChild(imgContainer);
+                    }
+                }
+            });
+            if (!hasImages) galleryGrid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4 text-sm">Sin fotos hoy.</div>';
             
-            <!-- BOTÓN MENÚ (IZQUIERDA) -->
-            <button id="menu-button" class="absolute top-0 left-0 bg-blue-600 text-white px-3 py-2 md:px-4 md:py-2 rounded-full shadow-lg hover:bg-blue-700 hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-2 z-50 group">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                <span class="font-bold text-xs md:text-sm uppercase tracking-wider hidden md:inline group-hover:text-blue-100">Menú</span>
-            </button>
+            // Notificación de nueva foto
+            if (hasImages && newestPhotoTime > lastPhotoReadTime && lastPhotoReadTime > 0) {
+                // Solo mostrar si NO estamos viendo la galería abierta
+                const gallerySection = document.getElementById('gallery-section');
+                const isGalleryOpen = gallerySection && gallerySection.hasAttribute('open');
+                if (!isGalleryOpen) {
+                    if (newPhotoToast) newPhotoToast.classList.remove('hidden');
+                } else {
+                    markPhotosAsRead();
+                }
+            } else if (lastPhotoReadTime === 0 && newestPhotoTime > 0) {
+                // Primera vez que carga, inicializar el tiempo
+                localStorage.setItem('lastPhotoReadTime', now);
+            }
+        });
+    }
 
-            <!-- LOGOS CENTRALES -->
-            <div class="flex flex-col items-center z-10">
-                <a href="https://labajada.com.ar/" 
-                   target="blank" 
-                   class="flex items-center justify-center gap-2 md:gap-4 transition-transform hover:scale-105">
-                    
-                    <!-- Logo Palmera -->
-                    <img src="logo_palmera.png" alt="Logo Palmera Kitesurf" class="h-24 md:h-32 w-auto" onerror="this.style.display='none'">
-                    
-                    <!-- Logo La Bajada -->
-                    <img src="logo2.png" alt="Logo La Bajada Principal" class="h-20 md:h-28 w-auto" onerror="this.style.display='none'">
-                </a>
-            </div>
-        </div>
+    // --- PIZARRA ---
+    const messageForm = document.getElementById('kiter-board-form');
+    const messagesContainer = document.getElementById('messages-container');
+    const textInput = document.getElementById('message-text');
 
-        <!-- MENÚ OFF-CANVAS -->
-        <div id="mobile-menu" class="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl transform -translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col h-full border-r border-gray-200">
-            <div class="p-4 flex justify-between items-center border-b border-gray-200 bg-gray-50">
-                <h3 class="font-bold text-lg text-gray-800">Menú</h3>
-                <button id="menu-close-button" class="text-gray-500 hover:text-red-500 focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <div class="p-6 flex-grow overflow-y-auto flex flex-col gap-4">
-                <nav class="flex flex-col gap-2">
-                    <button id="nav-home" class="text-left w-full px-4 py-3 rounded-lg hover:bg-blue-50 font-semibold text-gray-700 flex items-center gap-3 transition-colors bg-blue-50 text-blue-700">
-                        <span>🏠</span> Inicio / Clima
-                    </button>
-                    <button id="btn-pizarra-menu" class="text-left w-full px-4 py-3 rounded-lg hover:bg-blue-50 font-semibold text-gray-700 flex items-center gap-3 transition-colors">
-                        <span>💬</span> Comunidad (Fotos/Chat)
-                    </button>
-                    <button id="btn-clasificados-menu" class="text-left w-full px-4 py-3 rounded-lg hover:bg-blue-50 font-semibold text-gray-700 flex items-center gap-3 transition-colors relative">
-                        <span>🏷️</span> Clasificados Kiteros
-                        <span id="clasificados-menu-badge" class="absolute right-3 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">!</span>
-                    </button>
-                </nav>
-                <hr class="border-gray-200 my-2">
-                <div class="flex flex-col items-center text-center space-y-2">
-                    <p class="text-sm text-gray-600 font-medium">¿Te sirve la app? ¡Ayudanos!</p>
-                    <a href='https://cafecito.app/labajadakite' rel='noopener' target='_blank' class="transition-transform hover:scale-105 block">
-                        <img src='https://cdn.cafecito.app/imgs/buttons/button_6.png' alt='Invitame un café en cafecito.app' />
-                    </a>
-                </div>
-            </div>
-            <div class="p-4 border-t border-gray-200 text-center text-xs text-gray-400">La Bajada App v3.9.2</div>
-        </div>
-        <div id="menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
+    // --- BOTONES DE LOGIN/LOGOUT ---
+    const btnGoogleLogin = document.getElementById('btn-google-login');
+    const btnLogout = document.getElementById('btn-logout');
+    
+    if (btnGoogleLogin) {
+        btnGoogleLogin.addEventListener('click', () => {
+            window.loginWithGoogle();
+        });
+    }
+    
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            window.logout();
+        });
+    }
 
-        <!-- VISTA DASHBOARD (CLIMA) -->
-        <div id="view-dashboard" class="fade-in">
+    function timeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        let interval = seconds / 3600;
+        if (interval > 1) return "hace " + Math.floor(interval) + "h";
+        interval = seconds / 60;
+        if (interval > 1) return "hace " + Math.floor(interval) + "m";
+        return "hace un momento";
+    }
+
+    function markMessagesAsRead() {
+        const now = Date.now();
+        localStorage.setItem('lastReadTime', now);
+        const badge = document.getElementById('notification-badge');
+        if (badge) badge.classList.add('hidden');
+        if (newMessageToast) newMessageToast.classList.add('hidden');
+    }
+
+    function markPhotosAsRead() {
+        const now = Date.now();
+        localStorage.setItem('lastPhotoReadTime', now);
+        if (newPhotoToast) newPhotoToast.classList.add('hidden');
+    }
+
+    if (messageForm && db) {
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            <!-- CONTENEDOR PRINCIPAL DE VIENTO Y VIDEO (Unificado) -->
-            <div id="wind-highlight-card" class="mt-6 lg:mt-8 p-4 md:p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
+            // Verificar que el usuario esté logueado
+            if (!currentUser) {
+                alert('Debes iniciar sesion para enviar mensajes');
+                return;
+            }
+            
+            const author = currentUser.displayName || 'Kiter';
+            const text = textInput.value.trim();
+            
+            if (text) {
+                const btn = messageForm.querySelector('button');
+                const originalText = btn.innerText;
+                btn.innerText = '...';
+                btn.disabled = true;
+                try {
+                    await addDoc(messagesCollection, { 
+                        author: author, 
+                        text: text, 
+                        timestamp: serverTimestamp(),
+                        userId: currentUser.uid,
+                        userPhoto: currentUser.photoURL || null
+                    });
+                    textInput.value = ''; 
+                    markMessagesAsRead();
+                } catch (e) { 
+                    console.error(e);
+                    alert("Error: " + e.message);
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
+            }
+        });
+    }
+
+    if (messagesContainer && db) {
+        const q = query(messagesCollection, orderBy("timestamp", "desc"), limit(50));
+        onSnapshot(q, (snapshot) => {
+            messagesContainer.innerHTML = ''; 
+            const now = Date.now();
+            const oneDay = 24 * 60 * 60 * 1000;
+            let hasMessages = false;
+            const lastReadTime = parseInt(localStorage.getItem('lastReadTime') || '0');
+            let newestMessageTime = 0;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.timestamp) {
+                    const msgDate = data.timestamp.toDate();
+                    const msgTime = msgDate.getTime();
+                    if (msgTime > newestMessageTime) newestMessageTime = msgTime;
+
+                    if (now - msgTime < oneDay) {
+                        hasMessages = true;
+                        const div = document.createElement('div');
+                        div.className = "bg-gray-50 p-3 rounded border border-gray-100 text-sm mb-2";
+                        div.innerHTML = `<div class="flex justify-between items-baseline mb-1"><span class="font-bold text-blue-900">${data.author}</span><span class="text-xs text-gray-400">${timeAgo(msgDate)}</span></div><p class="text-gray-700 break-words">${data.text}</p>`;
+                        messagesContainer.appendChild(div);
+                    }
+                }
+            });
+            if (!hasMessages) messagesContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-2">No hay mensajes recientes.</p>';
+            else {
+                if (newestMessageTime > lastReadTime && lastReadTime > 0) {
+                    if (viewCommunity.classList.contains('hidden')) {
+                        if(newMessageToast) newMessageToast.classList.remove('hidden');
+                        const badge = document.getElementById('notification-badge');
+                        if(badge) badge.classList.remove('hidden');
+                    } else { markMessagesAsRead(); }
+                } else if (lastReadTime === 0 && newestMessageTime > 0) {
+                    localStorage.setItem('lastReadTime', now);
+                }
+            }
+        });
+    }
+
+    // --- API CLIMA ---
+    const weatherApiUrl = 'api/data';
+    const tempEl = document.getElementById('temp-data');
+    const humidityEl = document.getElementById('humidity-data');
+    const pressureEl = document.getElementById('pressure-data');
+    const rainfallDailyEl = document.getElementById('rainfall-daily-data'); 
+    const uviEl = document.getElementById('uvi-data'); 
+    const errorEl = document.getElementById('error-message');
+    const lastUpdatedEl = document.getElementById('last-updated');
+
+    const windHighlightCard = document.getElementById('wind-highlight-card');
+    const unifiedWindDataCardEl = document.getElementById('unified-wind-data-card');
+    const highlightWindDirEl = document.getElementById('highlight-wind-dir-data');
+    const highlightWindSpeedEl = document.getElementById('highlight-wind-speed-data');
+    const highlightGustEl = document.getElementById('highlight-gust-data');
+    const windArrowEl = document.getElementById('wind-arrow'); 
+    const gustInfoContainer = document.getElementById('gust-info-container');
+    const verdictCardEl = document.getElementById('verdict-card');
+    const verdictDataEl = document.getElementById('verdict-data');
+    const stabilityCardEl = document.getElementById('stability-card');
+    const stabilityDataEl = document.getElementById('stability-data');
+
+    const skeletonLoaderIds = ['verdict-data-loader','highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader','temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 'rainfall-daily-data-loader', 'uvi-data-loader','stability-data-loader'];
+    const dataContentIds = ['verdict-data','highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data','temp-data', 'humidity-data', 'pressure-data','rainfall-daily-data', 'uvi-data','stability-data'];
+
+    let lastUpdateTime = null;
+
+    function showSkeletons(isLoading) {
+        skeletonLoaderIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isLoading ? 'block' : 'none';
+        });
+        dataContentIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isLoading ? 'none' : 'block';
+        });
+        if (isLoading && lastUpdatedEl) lastUpdatedEl.textContent = 'Actualizando...';
+    }
+    
+    function updateTimeAgo() {
+        if (!lastUpdateTime) return;
+        const now = new Date();
+        const secondsAgo = Math.round((now - lastUpdateTime) / 1000);
+        if (secondsAgo < 5) lastUpdatedEl.textContent = "Actualizado ahora";
+        else if (secondsAgo < 60) lastUpdatedEl.textContent = `Actualizado hace ${secondsAgo} seg.`;
+        else lastUpdatedEl.textContent = `Actualizado: ${lastUpdateTime.toLocaleTimeString('es-AR')}`;
+    }
+
+    function convertDegreesToCardinal(degrees) {
+        if (degrees === null || isNaN(degrees)) return 'N/A';
+        const val = Math.floor((degrees / 22.5) + 0.5);
+        const arr = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO"];
+        return arr[val % 16];
+    }
+
+    function calculateGustFactor(speed, gust) {
+        if (speed === null || gust === null || speed <= 0) return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
+        const MIN_KITE_WIND = 12; 
+        if (speed < MIN_KITE_WIND) return { factor: null, text: 'No Aplica', color: ['bg-gray-100', 'border-gray-300'] };
+        if (gust <= speed) return { factor: 0, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
+        const factor = (1 - (speed / gust)) * 100; 
+        if (factor <= 15) return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; 
+        else if (factor <= 30) return { factor, text: 'Racheado', color: ['bg-yellow-300', 'border-yellow-500'] }; 
+        else return { factor, text: 'Muy Racheado', color: ['bg-red-400', 'border-red-600'] }; 
+    }
+    
+    function getSpotVerdict(speed, gust, degrees) {
+        if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["VIENTO OFFSHORE!", ['bg-red-400', 'border-red-600']];
+        if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
+        if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
+        else if (speed <= 16) return ["ACEPTABLE", ['bg-cyan-300', 'border-cyan-500']];
+        else if (speed <= 19) return ["¡IDEAL!", ['bg-green-300', 'border-green-500']];
+        else if (speed <= 22) return ["¡MUY BUENO!", ['bg-yellow-300', 'border-yellow-500']];
+        else if (speed <= 27) return ["¡FUERTE!", ['bg-orange-300', 'border-orange-500']];
+        else if (speed > 33) return ["¡DEMASIADO FUERTE!", ['bg-purple-400', 'border-purple-600']];
+        else return ["¡MUY FUERTE!", ['bg-red-400', 'border-red-600']];
+    }
+
+    const allColorClasses = [
+        'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
+        'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600','bg-cyan-300', 'border-cyan-500',
+        'bg-purple-400', 'border-purple-600', 'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
+        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 'bg-cyan-300', 'border-cyan-500'
+    ];
+
+    function updateCardColors(element, newClasses) {
+        if (!element) return;
+        element.classList.remove(...allColorClasses);
+        element.classList.add(...newClasses);
+    }
+
+    // --- ESTA ES LA FUNCIÓN QUE FALTABA ---
+        
+        function getUnifiedWindColorClasses(speedInKnots, degrees) {
+        // 1. SEGURIDAD PRIMERO: Si es Offshore, tarjeta ROJA. (desactivado)
+        /*if (degrees !== null) {
+             if ((degrees > 292.5 || degrees <= 67.5)) { 
+                return ['bg-red-400', 'border-red-600'];
+            }
+        }*/
+    
+        // 2. Escala Kitera (Igualada a Veredicto)
+        if (speedInKnots !== null && !isNaN(speedInKnots)) {
+            if (speedInKnots <= 14) return ['bg-blue-200', 'border-blue-400'];       // Flojo
+            else if (speedInKnots <= 16) return ['bg-cyan-300', 'border-cyan-500'];  // Aceptable
+            else if (speedInKnots <= 19) return ['bg-green-300', 'border-green-500'];// Ideal
+            else if (speedInKnots <= 22) return ['bg-yellow-300', 'border-yellow-500']; // Muy Bueno
+            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; // Fuerte
+            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600'];    // Muy Fuerte
+            else return ['bg-purple-400', 'border-purple-600'];                      // Demasiado Fuerte
+        }
+        
+        return ['bg-gray-100', 'border-gray-300']; 
+    }
+        
+
+
+    function getWindyColorClasses(speedInKnots) {
+        if (speedInKnots !== null && !isNaN(speedInKnots)) {
+            if (speedInKnots <= 10) return ['bg-blue-200', 'border-blue-400']; 
+            else if (speedInKnots <= 16) return ['bg-green-300', 'border-green-500']; 
+            else if (speedInKnots <= 21) return ['bg-yellow-300', 'border-yellow-500']; 
+            else if (speedInKnots <= 27) return ['bg-orange-300', 'border-orange-500']; 
+            else if (speedInKnots <= 33) return ['bg-red-400', 'border-red-600']; 
+            else return ['bg-purple-400', 'border-purple-600']; 
+        }
+        return ['bg-gray-100', 'border-gray-300']; 
+    }
+    
+    function getMockWeatherData() {
+        return {
+            code: 0, msg: "success",
+            data: {
+                outdoor: { temperature: { value: "24.5", unit: "°C" }, humidity: { value: "55", unit: "%" } },
+                wind: { wind_speed: { value: "19.5", unit: "kts" }, wind_gust: { value: "24.2", unit: "kts" }, wind_direction: { value: "95", unit: "deg" } },
+                pressure: { relative: { value: "1015", unit: "hPa" } },
+                rainfall: { daily: { value: "0.0", unit: "mm" } },
+                solar_and_uvi: { uvi: { value: "7" } }
+            }
+        };
+    }
+
+    // Buffer circular para promedio de viento (4 minutos = 8 lecturas cada 30 seg)
+    const WIND_BUFFER_SIZE = 8;
+    const windSpeedBuffer = [];
+    const windGustBuffer = [];
+    
+    function addToBuffer(buffer, value, maxSize) {
+        if (value === null) return;
+        buffer.push(value);
+        if (buffer.length > maxSize) {
+            buffer.shift();
+        }
+    }
+    
+    function getBufferAverage(buffer) {
+        if (buffer.length === 0) return null;
+        const sum = buffer.reduce((a, b) => a + b, 0);
+        return Math.round((sum / buffer.length) * 10) / 10; // 1 decimal
+    }
+    
+    function getBufferMax(buffer) {
+        if (buffer.length === 0) return null;
+        return Math.max(...buffer);
+    }
+
+    async function fetchWithBackoff(url, options, retries = 2, delay = 500) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) throw new Error("Network error");
+            return response.json();
+        } catch (error) {
+            if (retries > 0) {
+                await new Promise(res => setTimeout(res, delay));
+                return fetchWithBackoff(url, options, retries - 1, delay * 2);
+            }
+            throw error;
+        }
+    }
+    
+    async function fetchWeatherData() {
+        showSkeletons(true);
+        errorEl.classList.add('hidden'); 
+        let json;
+        try {
+            try {
+                json = await fetchWithBackoff(weatherApiUrl, {});
+            } catch (e) {
+                console.warn("API real falló, usando MOCK.");
+                json = getMockWeatherData();
+            }
+
+            if (json.code === 0 && json.data) {
+                const data = json.data;
+                const windSpeedRaw = (data.wind?.wind_speed?.value) ? parseFloat(data.wind.wind_speed.value) : null;
+                const windGustRaw = (data.wind?.wind_gust?.value) ? parseFloat(data.wind.wind_gust.value) : null; 
+                const windDirDegrees = (data.wind?.wind_direction?.value) ? parseFloat(data.wind.wind_direction.value) : null;
                 
-                <!-- 1. LiveCam -->
-                <div class="bg-black rounded-lg overflow-hidden shadow-lg mb-3 border border-gray-400">
-                    <iframe id="live-camera" class="w-full aspect-video" src="https://www.youtube.com/embed/XAH0nAxRIpQ?autoplay=1&mute=1&controls=0" title="YouTube Live Camera" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-                </div>
-
-                <!-- 2. Veredicto -->
-                <div id="verdict-card" class="mb-3 py-2 px-3 rounded-lg border border-gray-300 transition-colors duration-300">
-                    <p class="text-gray-600 text-[10px] font-medium text-center uppercase">Status del Spot</p>
-                    <div id="verdict-data-loader" class="skeleton-loader skeleton-text-xl mx-auto" style="width: 70%;"></div>
-                    <p id="verdict-data" class="data-content text-lg font-extrabold text-gray-900 text-center">Calculando...</p>
-                </div>
+                // Agregar al buffer y calcular promedios (4 min)
+                addToBuffer(windSpeedBuffer, windSpeedRaw, WIND_BUFFER_SIZE);
+                addToBuffer(windGustBuffer, windGustRaw, WIND_BUFFER_SIZE);
                 
-                <!-- 3. TARJETA DE VIENTO UNIFICADA (con Estabilidad) -->
-                <div id="unified-wind-data-card" class="p-4 rounded-lg border border-gray-300 transition-colors duration-300 bg-gray-50">
-                    <div class="flex flex-row items-center justify-between">
-                        <!-- Columna Dirección (35%) -->
-                        <div class="flex flex-col items-center justify-center w-[35%] border-r border-gray-400/30 pr-2">
-                            <p class="text-gray-600 text-[10px] uppercase font-bold mb-1">Dirección</p>
-                            <div class="flex flex-col items-center justify-center">
-                                <!-- FLECHA: Borde ajustado a 0.5px -->
-                                <svg id="wind-arrow" class="w-20 h-20 text-gray-900 transition-transform duration-500 drop-shadow-md" style="stroke: black; stroke-width: 0.5px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L6 8h3v12h6V8h3l-6-6z"/></svg>
-                                
-                                <div id="highlight-wind-dir-data-loader" class="skeleton-loader skeleton-text-xl w-12 mt-1"></div>
-                                <p class="text-4xl font-black text-gray-900 data-content mt-1 text-shadow" id="highlight-wind-dir-data">N/A</p>
-                            </div>
+                const windSpeedValue = getBufferAverage(windSpeedBuffer) ?? windSpeedRaw;
+                const windGustValue = getBufferMax(windGustBuffer) ?? windGustRaw;
+                
+                const [verdictText, verdictColors] = getSpotVerdict(windSpeedValue, windGustValue, windDirDegrees);
+                updateCardColors(verdictCardEl, verdictColors);
+                verdictDataEl.textContent = verdictText;
+                
+                if (windArrowEl && windDirDegrees !== null) {
+                    windArrowEl.style.transform = `rotate(${windDirDegrees}deg)`;
+                    const isOffshore = (windDirDegrees > 292.5 || windDirDegrees <= 67.5);
+                    const isCross = (windDirDegrees > 67.5 && windDirDegrees <= 112.5) || (windDirDegrees > 247.5 && windDirDegrees <= 292.5);
+                    const isOnshore = !isOffshore && !isCross;
+
+                    windArrowEl.classList.remove('text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900');
+                    if (isOffshore) windArrowEl.classList.add('text-red-600');
+                    else if (isCross) windArrowEl.classList.add('text-yellow-600');
+                    else windArrowEl.classList.add('text-green-600');
+                }
+
+                updateCardColors(windHighlightCard, ['bg-gray-100', 'border-gray-300']); 
+                updateCardColors(unifiedWindDataCardEl, getUnifiedWindColorClasses(windSpeedValue, windDirDegrees));
+                if (gustInfoContainer) updateCardColors(gustInfoContainer, getUnifiedWindColorClasses(windGustValue, windDirDegrees));
+
+                highlightWindSpeedEl.innerHTML = (windSpeedValue !== null) 
+                    ? `${windSpeedValue} <span class="text-xl font-bold align-baseline">kts</span>` 
+                    : 'N/A';
+                highlightGustEl.textContent = windGustValue ?? 'N/A';
+                highlightWindDirEl.textContent = convertDegreesToCardinal(windDirDegrees); 
+
+                if(tempEl) tempEl.textContent = data.outdoor?.temperature?.value ? `${data.outdoor.temperature.value} ${data.outdoor.temperature.unit}` : 'N/A';
+                if(humidityEl) humidityEl.textContent = data.outdoor?.humidity?.value ? `${data.outdoor.humidity.value}%` : 'N/A';
+                if(pressureEl) pressureEl.textContent = data.pressure?.relative?.value ? `${data.pressure.relative.value} hPa` : 'N/A'; 
+                if(rainfallDailyEl) rainfallDailyEl.textContent = data.rainfall?.daily?.value ? `${data.rainfall.daily.value} mm` : 'N/A'; 
+                if(uviEl) uviEl.textContent = data.solar_and_uvi?.uvi?.value ?? 'N/A'; 
+
+                const stability = calculateGustFactor(windSpeedValue, windGustValue);
+                if (stabilityCardEl) updateCardColors(stabilityCardEl, stability.color);
+                if (stabilityDataEl) stabilityDataEl.textContent = stability.text;
+                
+                showSkeletons(false); 
+                lastUpdateTime = new Date(); 
+                updateTimeAgo(); 
+            } else {
+                throw new Error('Datos incorrectos');
+            }
+        } catch (error) {
+            console.error(error);
+            errorEl.classList.remove('hidden');
+            showSkeletons(false);
+            updateCardColors(verdictCardEl, ['bg-red-400', 'border-red-600']);
+            verdictDataEl.textContent = 'Error API';
+        }
+    }
+    
+    fetchWeatherData();
+    setInterval(fetchWeatherData, 30000);
+    setInterval(updateTimeAgo, 5000);
+
+    // --- SPONSOR CAROUSEL ---
+    const sponsorTrack = document.getElementById('sponsor-track');
+    const sponsorDots = document.querySelectorAll('.sponsor-dot');
+    let currentSponsor = 0;
+    const totalSponsors = document.querySelectorAll('.sponsor-slide').length;
+
+    function goToSponsor(index) {
+        currentSponsor = index;
+        if (sponsorTrack) {
+            sponsorTrack.style.transform = `translateX(-${index * 100}%)`;
+        }
+        sponsorDots.forEach((dot, i) => {
+            dot.classList.toggle('bg-gray-400', i === index);
+            dot.classList.toggle('bg-gray-300', i !== index);
+        });
+    }
+
+    function nextSponsor() {
+        goToSponsor((currentSponsor + 1) % totalSponsors);
+    }
+
+    // Click en indicadores
+    sponsorDots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            goToSponsor(parseInt(dot.dataset.index));
+        });
+    });
+
+    // Auto-rotate cada 4 segundos
+    if (totalSponsors > 1) {
+        setInterval(nextSponsor, 7000);
+    }
+
+    // --- ESCUELAS CAROUSEL ---
+    const escuelasTrack = document.getElementById('escuelas-track');
+    const escuelasDots = document.querySelectorAll('.escuela-dot');
+    let currentEscuela = 0;
+    const totalEscuelas = document.querySelectorAll('.escuela-slide').length;
+
+    function goToEscuela(index) {
+        currentEscuela = index;
+        if (escuelasTrack) {
+            escuelasTrack.style.transform = `translateX(-${index * 100}%)`;
+        }
+        escuelasDots.forEach((dot, i) => {
+            dot.classList.toggle('bg-gray-400', i === index);
+            dot.classList.toggle('bg-gray-300', i !== index);
+        });
+    }
+
+    function nextEscuela() {
+        goToEscuela((currentEscuela + 1) % totalEscuelas);
+    }
+
+    // Click en indicadores de escuelas
+    escuelasDots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            goToEscuela(parseInt(dot.dataset.index));
+        });
+    });
+
+    // Auto-rotate cada 5 segundos
+    if (totalEscuelas > 1) {
+        setInterval(nextEscuela, 5000);
+    }
+
+    // --- MODAL BIENVENIDA CLASIFICADOS ---
+    const welcomeClasificadosModal = document.getElementById('welcome-clasificados-modal');
+    const btnWelcomeClasificadosClose = document.getElementById('btn-welcome-clasificados-close');
+    const WELCOME_CLASIFICADOS_KEY = 'welcomeClasificadosShown';
+
+    // Mostrar modal solo una vez
+    if (welcomeClasificadosModal && !localStorage.getItem(WELCOME_CLASIFICADOS_KEY)) {
+        // Mostrar después de 2 segundos para no interrumpir la carga inicial
+        setTimeout(() => {
+            welcomeClasificadosModal.classList.remove('hidden');
+        }, 2000);
+    }
+
+    // Cerrar modal y guardar en localStorage
+    if (btnWelcomeClasificadosClose) {
+        btnWelcomeClasificadosClose.addEventListener('click', () => {
+            welcomeClasificadosModal.classList.add('hidden');
+            localStorage.setItem(WELCOME_CLASIFICADOS_KEY, 'true');
+        });
+    }
+
+    // Cerrar al hacer clic fuera del modal
+    if (welcomeClasificadosModal) {
+        welcomeClasificadosModal.addEventListener('click', (e) => {
+            if (e.target === welcomeClasificadosModal) {
+                welcomeClasificadosModal.classList.add('hidden');
+                localStorage.setItem(WELCOME_CLASIFICADOS_KEY, 'true');
+            }
+        });
+    }
+
+    // --- LAZY LOAD WINDGURU WIDGET ---
+    // Cargar el widget solo cuando el usuario abre el desplegable
+    const windguruContainer = document.getElementById('windguru-container');
+    const windguruDetails = windguruContainer ? windguruContainer.closest('details') : null;
+    let windguruLoaded = false;
+    
+    if (windguruDetails && windguruContainer) {
+        windguruDetails.addEventListener('toggle', () => {
+            if (windguruDetails.open && !windguruLoaded) {
+                windguruLoaded = true;
+                // Crear el widget con un ID único basado en timestamp
+                const uid = 'wg_fwdg_1312667_29_' + Date.now();
+                const arg = [
+                    "s=1312667",
+                    "m=29",
+                    "uid=" + uid,
+                    "wj=knots",
+                    "tj=c",
+                    "waj=m",
+                    "tij=cm",
+                    "odh=0",
+                    "doh=24",
+                    "fhours=240",
+                    "hrsm=2",
+                    "vt=forecasts",
+                    "lng=es",
+                    "ts=1",
+                    "idbs=1",
+                    "p=WINDSPD,GUST,MWINDSPD,SMER,TMPE,FLHGT,CDC,APCP1s,RATING"
+                ];
+                
+                // Limpiar contenedor y agregar script placeholder
+                windguruContainer.innerHTML = '<script id="' + uid + '"></script>';
+                
+                // Cargar el widget
+                const script = document.createElement('script');
+                script.src = 'https://www.windguru.cz/js/widget.php?' + arg.join('&');
+                document.head.appendChild(script);
+            }
+        });
+    }
+
+    // --- CLASIFICADOS KITE ---
+    const classifiedsList = document.getElementById('classifieds-list');
+    const classifiedsLoading = document.getElementById('classifieds-loading');
+    const classifiedFormModal = document.getElementById('classified-form-modal');
+    const classifiedForm = document.getElementById('classified-form');
+    const btnNewClassified = document.getElementById('btn-new-classified');
+    const btnCloseClassifiedForm = document.getElementById('btn-close-classified-form');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    let currentFilter = 'todos';
+    let allClassifieds = [];
+
+    // Abrir modal
+    if (btnNewClassified) {
+        btnNewClassified.addEventListener('click', () => {
+            if (classifiedFormModal) classifiedFormModal.classList.remove('hidden');
+        });
+    }
+
+    // Cerrar modal
+    if (btnCloseClassifiedForm) {
+        btnCloseClassifiedForm.addEventListener('click', () => {
+            if (classifiedFormModal) classifiedFormModal.classList.add('hidden');
+        });
+    }
+
+    // Cerrar modal al hacer clic fuera
+    if (classifiedFormModal) {
+        classifiedFormModal.addEventListener('click', (e) => {
+            if (e.target === classifiedFormModal) {
+                classifiedFormModal.classList.add('hidden');
+            }
+        });
+    }
+
+    // Filtros
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentFilter = btn.dataset.filter;
+            filterBtns.forEach(b => {
+                b.classList.remove('bg-orange-500', 'text-white');
+                b.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            btn.classList.remove('bg-gray-200', 'text-gray-700');
+            btn.classList.add('bg-orange-500', 'text-white');
+            renderClassifieds();
+        });
+    });
+
+    // Renderizar clasificados
+    function renderClassifieds() {
+        if (!classifiedsList) return;
+        
+        const filtered = currentFilter === 'todos' 
+            ? allClassifieds 
+            : allClassifieds.filter(c => c.category === currentFilter);
+
+        if (filtered.length === 0) {
+            classifiedsList.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">No hay anuncios en esta categoria</p>';
+            return;
+        }
+
+        const currentUserId = currentUser?.uid || null;
+        
+        classifiedsList.innerHTML = filtered.map(c => {
+            const createdDate = c.createdAt?.toDate ? c.createdAt.toDate() : new Date();
+            const isOwner = currentUserId && c.userId === currentUserId;
+            const status = c.status || 'disponible';
+            const statusColors = {
+                'disponible': 'bg-green-100 text-green-700',
+                'reservado': 'bg-yellow-100 text-yellow-700',
+                'vendido': 'bg-gray-300 text-gray-600'
+            };
+            const statusLabels = {
+                'disponible': 'Disponible',
+                'reservado': 'Reservado',
+                'vendido': 'Vendido'
+            };
+            const isVendido = status === 'vendido';
+            
+            return `
+            <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 flex gap-3 ${isVendido ? 'opacity-60' : ''}" data-category="${c.category}" data-id="${c.id}">
+                ${c.photoURL ? `<img src="${c.photoURL}" alt="${c.title}" class="w-20 h-20 object-cover rounded-lg flex-shrink-0 cursor-pointer ${isVendido ? 'grayscale' : ''}" onclick="document.getElementById('modal-img').src='${c.photoURL}';document.getElementById('image-modal').classList.remove('hidden');">` : '<div class="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-gray-300 flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>'}
+                <div class="flex-grow min-w-0">
+                    <div class="flex items-start justify-between gap-2">
+                        <h4 class="font-bold text-gray-800 text-sm truncate ${isVendido ? 'line-through' : ''}">${c.title}</h4>
+                        <div class="flex gap-1 flex-shrink-0">
+                            <span class="text-xs px-2 py-0.5 rounded-full ${statusColors[status]} font-medium">${statusLabels[status]}</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">${c.category}</span>
                         </div>
-                        
-                        <!-- Columna Velocidad (65%) -->
-                        <div class="flex flex-col items-center justify-center w-[65%] pl-2">
-                            <div class="flex flex-col items-center">
-                                <p class="text-gray-600 text-[10px] uppercase font-bold">Velocidad Prom.</p>
-                                <div id="highlight-wind-speed-data-loader" class="skeleton-loader skeleton-text-4xl w-24 mt-1"></div>
-                                <p class="text-5xl font-black text-gray-900 data-content leading-none tracking-tight" id="highlight-wind-speed-data">N/A</p>
-                            </div>
-                            <div id="gust-info-container" class="mt-3 flex items-center justify-center gap-2 opacity-90 bg-white/30 px-3 py-1 rounded-full shadow-sm transition-colors duration-300 border border-gray-200/50">
-                                <span class="text-xs text-gray-800 font-bold uppercase">Racha:</span>
-                                <div id="highlight-gust-data-loader" class="skeleton-loader skeleton-text-sm w-8 inline-block"></div>
-                                <span class="text-lg font-black text-gray-900 data-content" id="highlight-gust-data">N/A</span>
-                            </div>
-                        </div>
                     </div>
-                    
-                    <!-- Estabilidad (dentro de la tarjeta de viento) -->
-                    <div id="stability-card" class="mt-3 flex items-center justify-center gap-3 py-2 px-3 rounded-md border border-gray-200 transition-colors duration-300 bg-white/50">
-                        <span class="text-gray-600 text-xs font-bold uppercase">Estabilidad:</span>
-                        <div id="stability-data-loader" class="skeleton-loader skeleton-text-sm w-16 inline-block"></div>
-                        <span class="text-lg font-extrabold text-gray-900 data-content" id="stability-data">N/A</span>
+                    <p class="text-green-600 font-bold text-lg ${isVendido ? 'line-through text-gray-400' : ''}">${c.currency === 'USD' ? 'U$D' : '$'} ${c.price.toLocaleString('es-AR')}</p>
+                    ${c.description ? `<p class="text-gray-600 text-xs mt-1 line-clamp-2">${c.description}</p>` : ''}
+                    <div class="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                        <span>${c.userName || 'Usuario'}</span>
+                        <span>-</span>
+                        <span>${timeAgo(createdDate)}</span>
                     </div>
-                </div>
-
-                <div id="error-message" class="hidden mt-6 p-4 bg-red-600 text-white rounded-lg text-center">Error al cargar los datos del clima.</div>
-            </div>
-
-            <!-- WINDGURU -->
-            <details class="group bg-gray-100 rounded-xl shadow-2xl border border-gray-300 overflow-hidden mt-6 lg:mt-8 transition-all duration-300">
-                <summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-gray-200 transition-colors">
-                    <h3 class="text-xl font-extrabold text-gray-900 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                        Pronóstico Windguru
-                    </h3>
-                    <span class="transform group-open:rotate-180 transition-transform duration-300 text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </span>
-                </summary>
-                <div class="p-4 bg-gray-50 overflow-x-auto border-t border-gray-300 animate-fadeIn">
-                    <p class="text-xs text-gray-500 mb-2 text-center">Desliza para ver más días -></p>
-                    <div id="windguru-container">
-                        <p class="text-center text-gray-400 py-4">Cargando pronóstico...</p>
-                    </div>
-                </div>
-            </details>
-
-            <!-- SPONSOR CAROUSEL -->
-            <div class="text-center mt-6 lg:mt-8">
-                <p class="text-[11px] text-gray-500 uppercase tracking-wider mb-2">Sponsors oficiales del Spot</p>
-                <div id="sponsor-carousel" class="relative overflow-hidden">
-                    <div id="sponsor-track" class="flex transition-transform duration-500 ease-in-out">
-                        <!-- Sponsor 1: Maccarone -->
-                        <a href="https://linktr.ee/dmaccarone" target="_blank" rel="noopener" class="sponsor-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
-                            <img src="logo-maccarone.jpeg" alt="Maccarone" class="w-full max-h-[150px] object-contain">
-                        </a>
-                        <!-- Sponsor 2: CORE -->
-                        <a href="https://ridecore.com/es" target="_blank" rel="noopener" class="sponsor-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
-                            <img src="logo-core.jpeg" alt="CORE Kiteboarding" class="w-full max-h-[150px] object-contain">
-                        </a>
-                        <!-- Sponsor 3: Casa Vina -->
-                        <a href="https://www.instagram.com/casavinawine" target="_blank" rel="noopener" class="sponsor-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
-                            <img src="logo-casavina.jpg" alt="Casa Vina - Almacén de Bebidas" class="w-full max-h-[150px] object-contain">
-                        </a>
-                        <!-- Sponsor 4: Todo Viento Shop -->
-                        <a href="https://wa.me/5491176018043" target="_blank" rel="noopener" class="sponsor-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
-                            <img src="logo-todoviento.png" alt="Todo Viento Shop" class="w-full max-h-[150px] object-contain">
-                        </a>
-                    </div>
-                    <!-- Indicadores -->
-                    <div id="sponsor-dots" class="flex justify-center gap-1.5 mt-2">
-                        <button class="sponsor-dot w-2 h-2 rounded-full bg-gray-400 transition-colors" data-index="0"></button>
-                        <button class="sponsor-dot w-2 h-2 rounded-full bg-gray-300 transition-colors" data-index="1"></button>
-                        <button class="sponsor-dot w-2 h-2 rounded-full bg-gray-300 transition-colors" data-index="2"></button>
-                        <button class="sponsor-dot w-2 h-2 rounded-full bg-gray-300 transition-colors" data-index="3"></button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- DATOS EN VIVO (COLUMNA) -->
-            <div class="bg-gray-100 p-6 rounded-xl shadow-2xl flex flex-col mt-6 lg:mt-8 border border-gray-300">
-                <ul class="space-y-4 text-lg">
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048l-1.096 1.096A11.25 11.25 0 0012 21a11.25 11.25 0 006.058-20.957l-1.096 1.096z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75v12.75A3 3 0 0015 13.5a3 3 0 00-3-2.25z" /></svg>Temperatura (Ext.):</span><div id="temp-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="temp-data">Cargando...</span></li>
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048l-1.096 1.096A11.25 11.25 0 0012 21a11.25 11.25 0 006.058-20.957l-1.096 1.096z" /></svg>Humedad:</span><div id="humidity-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="humidity-data">Cargando...</span></li>
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>Presión (Relativa):</span><div id="pressure-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="pressure-data">Cargando...</span></li>
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m-3-3h6M15 12.75H9" /></svg>Lluvia (Diaria):</span><div id="rainfall-daily-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="rainfall-daily-data">Cargando...</span></li>
-                    <li class="flex justify-between items-center"><span class="text-gray-600 text-sm flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-6.364-.386l1.591-1.591M3 12H.75m.386-6.364l1.591 1.591M12 12a2.25 2.25 0 00-2.25 2.25c0 .543.19 1.04.5 1.414.31.374.724.665 1.184.876.46.211.956.314 1.466.314.51 0 1.006-.103 1.466-.314.46-.211.874-.502 1.184-.876.31-.374.5-1.04.5-1.414A2.25 2.25 0 0012 12z" /></svg>Índice UV:</span><div id="uvi-data-loader" class="skeleton-loader skeleton-text-xl"></div><span class="text-xl font-extrabold text-gray-900 data-content" id="uvi-data">Cargando...</span></li>
-                </ul>
-                <div class="mt-4 pt-4 border-t border-gray-300 text-right"><p id="last-updated" class="text-xs text-gray-500">Actualizando datos...</p></div>
-            </div>
-
-            <!-- ESCUELAS DE KITE - CARRUSEL -->
-            <div class="text-center mt-6 lg:mt-8">
-                <p class="text-sm text-gray-600 uppercase tracking-wider mb-3 flex justify-center items-center gap-2 font-semibold">
-                    Escuelas de Kite
-                    <img class="w-5 h-5" src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/1200px-WhatsApp.svg.png" alt="WhatsApp">
-                </p>
-                <div id="escuelas-carousel" class="relative overflow-hidden">
-                    <div id="escuelas-track" class="flex transition-transform duration-500 ease-in-out">
-                        <!-- Escuela 1: Claromecó Kiteboarding -->
-                        <a href="https://wa.me/542983595133?text=Hola!%20Te%20contacto%20desde%20la%20app%20La%20Bajada.%20Quisiera%20informaci%C3%B3n%20sobre%20clases%20de%20kitesurf.%20Gracias!" target="_blank" rel="noopener" class="escuela-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
-                            <img src="logo.png" alt="Claromecó Kiteboarding" class="w-auto max-h-[120px] object-contain">
-                        </a>
-                        <!-- Escuela 2: Mariana Fernunson -->
-                        <a href="https://wa.me/5492983649149?text=Hola!%20Te%20contacto%20desde%20la%20app%20La%20Bajada.%20Quisiera%20informaci%C3%B3n%20sobre%20clases%20de%20kitesurf.%20Gracias!" target="_blank" rel="noopener" class="escuela-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
-                            <img src="logo-mariana.png" alt="Mariana Fernunson - Kitesurf Bajada del Náutico" class="w-auto max-h-[120px] object-contain">
-                        </a>
-                        <!-- Escuela 3: Kukulkan -->
-                        <a href="https://wa.me/5492223575161?text=Hola!%20Te%20contacto%20desde%20la%20app%20La%20Bajada.%20Quisiera%20informaci%C3%B3n%20sobre%20clases%20de%20kitesurf.%20Gracias!" target="_blank" rel="noopener" class="escuela-slide flex-shrink-0 w-full flex items-center justify-center hover:opacity-80 transition-opacity">
-                            <img src="logo3.jpg" alt="Kukulkan Kitesurf" class="w-auto max-h-[120px] object-contain">
-                        </a>
-                    </div>
-                    <!-- Indicadores -->
-                    <div id="escuelas-dots" class="flex justify-center gap-1.5 mt-3">
-                        <button class="escuela-dot w-2 h-2 rounded-full bg-gray-400 transition-colors" data-index="0"></button>
-                        <button class="escuela-dot w-2 h-2 rounded-full bg-gray-300 transition-colors" data-index="1"></button>
-                        <button class="escuela-dot w-2 h-2 rounded-full bg-gray-300 transition-colors" data-index="2"></button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CONTACTOS DE EMERGENCIA -->
-            <details class="group bg-red-50 rounded-xl shadow-lg border border-red-200 overflow-hidden mt-6 lg:mt-8 transition-all duration-300">
-                <summary class="flex justify-between items-center p-4 cursor-pointer hover:bg-red-100 transition-colors">
-                    <h3 class="text-lg font-extrabold text-red-800 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        Emergencias
-                    </h3>
-                    <span class="transform group-open:rotate-180 transition-transform duration-300 text-red-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </span>
-                </summary>
-                <div class="p-4 bg-white border-t border-red-200 animate-fadeIn">
-                    <div class="space-y-3">
-                        <a href="tel:2983463080" class="flex items-center justify-between p-3 bg-yellow-100 rounded-lg hover:bg-yellow-200 transition-colors">
-                            <div class="flex items-center gap-3">
-                                <span class="text-2xl">🚒</span>
-                                <div>
-                                    <p class="font-bold text-yellow-900">Bomberos / Guardavidas</p>
-                                    <p class="text-xs text-yellow-700">Incendios y rescates</p>
-                                </div>
-                            </div>
-                            <span class="font-black text-yellow-800 text-sm">(02983) 463080</span>
-                        </a>
-                        <a href="tel:106" class="flex items-center justify-between p-3 bg-red-100 rounded-lg hover:bg-red-200 transition-colors">
-                            <div class="flex items-center gap-3">
-                                <span class="text-2xl">🚨</span>
-                                <div>
-                                    <p class="font-bold text-red-900">Prefectura Naval</p>
-                                    <p class="text-xs text-red-700">Emergencias marítimas</p>
-                                </div>
-                            </div>
-                            <span class="font-black text-red-800 text-lg">106</span>
-                        </a>
-                        <a href="tel:107" class="flex items-center justify-between p-3 bg-orange-100 rounded-lg hover:bg-orange-200 transition-colors">
-                            <div class="flex items-center gap-3">
-                                <span class="text-2xl">🚑</span>
-                                <div>
-                                    <p class="font-bold text-orange-900">SAME / Ambulancia</p>
-                                    <p class="text-xs text-orange-700">Emergencias médicas</p>
-                                </div>
-                            </div>
-                            <span class="font-black text-orange-800 text-lg">107</span>
-                        </a>
-                        <a href="tel:101" class="flex items-center justify-between p-3 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors">
-                            <div class="flex items-center gap-3">
-                                <span class="text-2xl">🚔</span>
-                                <div>
-                                    <p class="font-bold text-blue-900">Policía</p>
-                                    <p class="text-xs text-blue-700">Seguridad</p>
-                                </div>
-                            </div>
-                            <span class="font-black text-blue-800 text-lg">101</span>
-                        </a>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-4 text-center">Tocá un contacto para llamar directamente</p>
-                </div>
-            </details>
-        </div>
-
-        <!-- VISTA COMUNIDAD -->
-        <div id="view-community" class="hidden fade-in space-y-6 mt-6">
-            <div class="flex items-center justify-between mb-2">
-                <h2 class="text-2xl font-black text-gray-800">Comunidad</h2>
-                <button id="back-to-home" class="text-sm text-blue-600 font-bold hover:underline flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    Volver al Clima
-                </button>
-            </div>
-
-            <!-- SECCIÓN DE LOGIN/USUARIO -->
-            <div id="auth-section" class="p-4 bg-white rounded-xl shadow-lg border border-gray-200">
-                <!-- Estado: No logueado -->
-                <div id="auth-login" class="text-center">
-                    <p class="text-sm text-gray-600 mb-3">Inicia sesion para participar en la comunidad</p>
-                    <button id="btn-google-login" class="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-bold text-sm hover:bg-gray-50 transition-colors shadow-md flex items-center justify-center gap-3 mx-auto">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        Continuar con Google
-                    </button>
-                </div>
-                <!-- Estado: Logueado -->
-                <div id="auth-user" class="hidden">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <img id="user-photo" src="" alt="Foto" class="w-10 h-10 rounded-full border-2 border-blue-500">
-                            <div>
-                                <p class="font-bold text-gray-800 text-sm" id="user-name">Usuario</p>
-                                <p class="text-xs text-gray-500">Conectado</p>
-                            </div>
-                        </div>
-                        <button id="btn-logout" class="text-red-500 hover:text-red-700 text-sm font-bold flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                            Salir
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 1. PIZARRA KITERA (ARRIBA) -->
-            <div id="pizarra-section" class="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
-                <div class="flex items-center justify-center gap-2 mb-4">
-                    <h3 class="text-xl font-extrabold text-gray-800">Pizarra Kitera</h3>
-                </div>
-                <!-- Formulario (solo visible si está logueado) -->
-                <form id="kiter-board-form" class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-inner hidden">
-                    <div class="flex gap-2">
-                        <input type="text" id="message-text" placeholder="Escribe un mensaje..." maxlength="140" class="flex-grow p-2 rounded border border-gray-300 text-sm focus:outline-none focus:border-blue-500 bg-white" required>
-                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-blue-700 transition-colors shadow-md">Enviar</button>
-                    </div>
-                </form>
-                <!-- Mensaje si no está logueado -->
-                <div id="login-prompt-messages" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center text-sm text-yellow-800">
-                    Inicia sesion con Google para enviar mensajes
-                </div>
-                <div id="messages-container" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1"></div>
-            </div>
-
-            <!-- 2. GALERÍA DEL DÍA (ABAJO Y DESPLEGABLE) -->
-            <details id="gallery-section" class="group bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden transition-all duration-300">
-                <summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-gray-50 transition-colors">
-                    <h3 class="text-lg font-extrabold text-gray-800 flex items-center gap-2">Galería del Día 📸</h3>
-                    <span class="transform group-open:rotate-180 transition-transform duration-300 text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </span>
-                </summary>
-                <!-- Contenido desplegable -->
-                <div class="p-6 border-t border-gray-200">
-                    <!-- Botón subir foto (solo visible si está logueado) -->
-                    <div id="gallery-upload-container" class="flex justify-end mb-4 hidden">
-                        <label class="cursor-pointer bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span class="hidden md:inline">Subir Foto</span>
-                            <span class="md:hidden">Subir</span>
-                            <input type="file" id="gallery-upload-input" accept="image/*" class="hidden">
-                        </label>
-                    </div>
-                    <!-- Mensaje si no está logueado -->
-                    <div id="login-prompt-gallery" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center text-sm text-yellow-800">
-                        Inicia sesion con Google para subir fotos
-                    </div>
-                    <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[500px] overflow-y-auto p-1">
-                        <p id="gallery-loading" class="col-span-full text-center text-gray-400 text-sm py-4">Cargando fotos...</p>
-                    </div>
-                </div>
-            </details>
-
-        </div>
-
-        <!-- VISTA CLASIFICADOS (SEPARADA) -->
-        <div id="view-classifieds" class="hidden fade-in space-y-6 mt-6">
-            <div class="flex items-center justify-between mb-2">
-                <h2 class="text-2xl font-black text-gray-800 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    Clasificados Kiteros
-                </h2>
-                <button id="back-to-home-classifieds" class="text-sm text-blue-600 font-bold hover:underline flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    Volver
-                </button>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden p-6">
-                <!-- Filtros de categoría -->
-                <div class="flex flex-wrap gap-2 mb-4">
-                    <button data-filter="todos" class="filter-btn active px-3 py-1 text-xs font-bold rounded-full bg-orange-500 text-white transition-colors">Todos</button>
-                    <button data-filter="kites" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Kites</button>
-                    <button data-filter="tablas" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Tablas</button>
-                    <button data-filter="barras" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Barras</button>
-                    <button data-filter="arneses" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Arneses</button>
-                    <button data-filter="otros" class="filter-btn px-3 py-1 text-xs font-bold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Otros</button>
-                </div>
-
-                <!-- Botón publicar (solo logueados) -->
-                <div id="classifieds-publish-container" class="flex justify-end mb-4 hidden">
-                    <button id="btn-new-classified" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700 transition-colors flex items-center gap-2 shadow-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Publicar
-                    </button>
-                </div>
-
-                <!-- Mensaje si no está logueado -->
-                <div id="login-prompt-classifieds" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center text-sm text-yellow-800">
-                    Inicia sesion con Google para publicar anuncios
-                </div>
-
-                <!-- Modal formulario de publicación -->
-                <div id="classified-form-modal" class="hidden fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
-                    <div class="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
-                        <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-lg font-bold text-gray-800">Nuevo Anuncio</h4>
-                            <button id="btn-close-classified-form" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-                        </div>
-                        <form id="classified-form" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Titulo</label>
-                                <input type="text" id="classified-title" maxlength="60" required class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" placeholder="Ej: Kite Core XR7 12m">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                                <select id="classified-category" required class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                                    <option value="">Seleccionar...</option>
-                                    <option value="kites">Kites</option>
-                                    <option value="tablas">Tablas</option>
-                                    <option value="barras">Barras</option>
-                                    <option value="arneses">Arneses</option>
-                                    <option value="otros">Otros</option>
-                                </select>
-                            </div>
-                            <div class="flex gap-2">
-                                <div class="flex-1">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Precio</label>
-                                    <input type="number" id="classified-price" required min="0" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" placeholder="Ej: 350000">
-                                </div>
-                                <div class="w-24">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
-                                    <select id="classified-currency" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                                        <option value="ARS">ARS</option>
-                                        <option value="USD">USD</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
-                                <textarea id="classified-description" maxlength="200" rows="3" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 resize-none" placeholder="Estado, detalles, etc."></textarea>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp (con codigo pais)</label>
-                                <input type="tel" id="classified-whatsapp" required class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" placeholder="Ej: 5492983500324">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Foto del producto</label>
-                                <input type="file" id="classified-photo" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg text-sm">
-                            </div>
-                            <button type="submit" id="btn-submit-classified" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors">
-                                Publicar Anuncio
+                    <div class="flex items-center justify-between mt-2 flex-wrap gap-2">
+                        ${!isVendido ? `<a href="https://wa.me/${c.whatsapp}?text=${encodeURIComponent('Hola! Vi tu anuncio de "' + c.title + '" en La Bajada App')}" target="_blank" class="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold hover:bg-green-600 transition-colors flex items-center gap-1">
+                            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                            WhatsApp
+                        </a>` : '<span class="text-xs text-gray-400 italic">Anuncio finalizado</span>'}
+                        ${isOwner ? `<div class="flex items-center gap-2">
+                            <button onclick="openEditClassified('${c.id}')" class="text-blue-500 hover:text-blue-700 text-xs font-medium flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                Editar
                             </button>
-                        </form>
+                            <button onclick="toggleClassifiedStatus('${c.id}')" class="text-yellow-600 hover:text-yellow-700 text-xs font-medium flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                Estado
+                            </button>
+                            <button onclick="deleteClassified('${c.id}')" class="text-red-500 hover:text-red-700 text-xs font-medium flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                Eliminar
+                            </button>
+                        </div>` : ''}
                     </div>
                 </div>
-
-                <!-- Modal editar clasificado -->
-                <div id="edit-classified-modal" class="hidden fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
-                    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-                        <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-lg font-bold text-gray-800">Editar Anuncio</h4>
-                            <button onclick="closeEditClassified()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-                        </div>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Titulo</label>
-                                <input type="text" id="edit-classified-title" maxlength="60" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                            <div class="flex gap-2">
-                                <div class="flex-1">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Precio</label>
-                                    <input type="number" id="edit-classified-price" min="0" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                                </div>
-                                <div class="w-24">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
-                                    <select id="edit-classified-currency" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                                        <option value="ARS">ARS</option>
-                                        <option value="USD">USD</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
-                                <textarea id="edit-classified-description" maxlength="200" rows="3" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 resize-none"></textarea>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="closeEditClassified()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-bold hover:bg-gray-300 transition-colors">
-                                    Cancelar
-                                </button>
-                                <button onclick="saveEditClassified()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">
-                                    Guardar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Lista de clasificados -->
-                <div id="classifieds-list" class="space-y-3 max-h-[70vh] overflow-y-auto">
-                    <p id="classifieds-loading" class="text-center text-gray-400 text-sm py-4">Cargando clasificados...</p>
-                </div>
             </div>
-        </div>
+        `}).join('');
+    }
 
-        <!-- FLOATERS - Centrados abajo, uno al lado del otro -->
-        <div id="fab-container" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-40 flex gap-3">
-            <button id="fab-community" class="bg-blue-600 text-white p-3.5 rounded-full shadow-2xl hover:bg-blue-700 transition-transform hover:scale-110 active:scale-95 border-2 border-white relative">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
-                <span id="notification-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full hidden border border-white animate-bounce">!</span>
-            </button>
-            <button id="fab-clasificados" class="bg-orange-500 text-white p-3.5 rounded-full shadow-2xl hover:bg-orange-600 transition-transform hover:scale-110 active:scale-95 border-2 border-white relative">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
-                <span id="clasificados-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full hidden border border-white animate-bounce">!</span>
-            </button>
-        </div>
-
-        <!-- FAB Volver al Clima - Solo visible en Comunidad/Clasificados -->
-        <button id="fab-back-weather" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-40 bg-green-600 text-white p-3.5 rounded-full shadow-2xl hover:bg-green-700 transition-transform hover:scale-110 active:scale-95 border-2 border-white hidden">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>
-        </button>
-
-        <div id="new-message-toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer transition-all duration-300 w-max">
-            <div class="bg-blue-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-blue-400 text-sm font-bold">
-                💬 Nuevo Mensaje
-            </div>
-        </div>
-
-        <div id="new-photo-toast" class="fixed top-32 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer transition-all duration-300 w-max">
-            <div class="bg-green-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-green-400 text-sm font-bold">
-                Nueva Foto en la Galeria
-            </div>
-        </div>
-
-        <div id="new-classified-toast" class="fixed top-44 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer transition-all duration-300 w-max">
-            <div class="bg-orange-500 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-orange-400 text-sm font-bold">
-                Nuevo Clasificado
-            </div>
-        </div>
-
-        <div id="image-modal" class="fixed inset-0 z-[60] hidden modal-backdrop flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
-            <img id="modal-img" src="" alt="Vista completa" class="max-h-full max-w-full rounded shadow-2xl object-contain">
-            <button class="absolute top-4 right-4 text-white text-4xl font-bold focus:outline-none">&times;</button>
-        </div>
-
-        <!-- FOOTER -->
-        <footer class="mt-8 pt-4 pb-24 border-t border-gray-300">
-            <div class="text-center text-xs text-gray-500">
-                <p>¿Sugerencias? <a href="https://wa.me/5492983500324" target="_blank" class="underline hover:text-gray-400 font-medium">Contactar desarrollador</a></p>
-            </div>
-        </footer>
-
-    </div>
+    // Cargar clasificados desde Firebase
+    function loadClassifieds() {
+        if (!classifiedsCollection) return;
+        
+        const q = query(classifiedsCollection, orderBy('createdAt', 'desc'), limit(50));
+        
+        onSnapshot(q, (snapshot) => {
+            allClassifieds = snapshot.docs.map(d => ({
+                id: d.id,
+                ...d.data()
+            }));
+            
+            if (classifiedsLoading) classifiedsLoading.classList.add('hidden');
+            renderClassifieds();
+            
+            // Verificar si hay nuevos clasificados
+            checkNewClassifieds();
+        }, (error) => {
+            console.error('Error cargando clasificados:', error);
+            if (classifiedsLoading) {
+                classifiedsLoading.textContent = 'Error al cargar clasificados';
+                classifiedsLoading.classList.add('text-red-500');
+            }
+        });
+    }
     
-    <script src="/_vercel/insights/script.js"></script>
-    <script type="module" src="app.js"></script>
-</body>
-</html>
+    // Verificar nuevos clasificados y mostrar notificacion
+    function checkNewClassifieds() {
+        if (allClassifieds.length === 0) return;
+        
+        const lastReadTime = parseInt(localStorage.getItem('lastClassifiedReadTime') || '0');
+        const newestClassified = allClassifieds[0];
+        const newestTime = newestClassified?.createdAt?.toDate?.()?.getTime() || 0;
+        
+        if (newestTime > lastReadTime && lastReadTime > 0) {
+            // Hay nuevos clasificados y no estamos en la vista de clasificados
+            if (viewClassifieds && viewClassifieds.classList.contains('hidden')) {
+                if (newClassifiedToast) newClassifiedToast.classList.remove('hidden');
+                if (clasificadosBadge) clasificadosBadge.classList.remove('hidden');
+                if (clasificadosMenuBadge) clasificadosMenuBadge.classList.remove('hidden');
+            } else {
+                markClassifiedsAsRead();
+            }
+        } else if (lastReadTime === 0 && newestTime > 0) {
+            // Primera vez - marcar como leido
+            localStorage.setItem('lastClassifiedReadTime', newestTime);
+        }
+    }
+
+    // Eliminar clasificado (solo el dueño)
+    async function deleteClassified(classifiedId) {
+        if (!currentUser) {
+            alert('Debes iniciar sesion');
+            return;
+        }
+        
+        const classified = allClassifieds.find(c => c.id === classifiedId);
+        if (!classified || classified.userId !== currentUser.uid) {
+            alert('No tienes permiso para eliminar este anuncio');
+            return;
+        }
+        
+        if (!confirm('Eliminar este anuncio?')) return;
+        
+        try {
+            await deleteDoc(doc(db, 'classifieds', classifiedId));
+            console.log('Clasificado eliminado:', classifiedId);
+        } catch (error) {
+            console.error('Error eliminando clasificado:', error);
+            alert('Error al eliminar. Intenta de nuevo.');
+        }
+    }
+    
+    // Exponer funcion globalmente para onclick
+    window.deleteClassified = deleteClassified;
+    
+    // Cambiar estado del clasificado (ciclo: disponible -> reservado -> vendido -> disponible)
+    async function toggleClassifiedStatus(classifiedId) {
+        if (!currentUser) {
+            alert('Debes iniciar sesion');
+            return;
+        }
+        
+        const classified = allClassifieds.find(c => c.id === classifiedId);
+        if (!classified || classified.userId !== currentUser.uid) {
+            alert('No tienes permiso para modificar este anuncio');
+            return;
+        }
+        
+        const currentStatus = classified.status || 'disponible';
+        const statusOrder = ['disponible', 'reservado', 'vendido'];
+        const currentIndex = statusOrder.indexOf(currentStatus);
+        const nextStatus = statusOrder[(currentIndex + 1) % 3];
+        
+        const statusLabels = { 'disponible': 'Disponible', 'reservado': 'Reservado', 'vendido': 'Vendido' };
+        if (!confirm(`Cambiar estado a "${statusLabels[nextStatus]}"?`)) return;
+        
+        try {
+            await updateDoc(doc(db, 'classifieds', classifiedId), { status: nextStatus });
+            console.log('Estado actualizado:', nextStatus);
+        } catch (error) {
+            console.error('Error actualizando estado:', error);
+            alert('Error al actualizar. Intenta de nuevo.');
+        }
+    }
+    window.toggleClassifiedStatus = toggleClassifiedStatus;
+    
+    // Abrir modal de edicion
+    let editingClassifiedId = null;
+    
+    function openEditClassified(classifiedId) {
+        const classified = allClassifieds.find(c => c.id === classifiedId);
+        if (!classified) return;
+        
+        editingClassifiedId = classifiedId;
+        
+        const modal = document.getElementById('edit-classified-modal');
+        const titleInput = document.getElementById('edit-classified-title');
+        const priceInput = document.getElementById('edit-classified-price');
+        const currencyInput = document.getElementById('edit-classified-currency');
+        const descInput = document.getElementById('edit-classified-description');
+        
+        if (titleInput) titleInput.value = classified.title || '';
+        if (priceInput) priceInput.value = classified.price || '';
+        if (currencyInput) currencyInput.value = classified.currency || 'ARS';
+        if (descInput) descInput.value = classified.description || '';
+        
+        if (modal) modal.classList.remove('hidden');
+    }
+    window.openEditClassified = openEditClassified;
+    
+    // Guardar edicion
+    async function saveEditClassified() {
+        if (!currentUser || !editingClassifiedId) return;
+        
+        const classified = allClassifieds.find(c => c.id === editingClassifiedId);
+        if (!classified || classified.userId !== currentUser.uid) {
+            alert('No tienes permiso para editar este anuncio');
+            return;
+        }
+        
+        const titleInput = document.getElementById('edit-classified-title');
+        const priceInput = document.getElementById('edit-classified-price');
+        const currencyInput = document.getElementById('edit-classified-currency');
+        const descInput = document.getElementById('edit-classified-description');
+        
+        const newTitle = titleInput?.value?.trim();
+        const newPrice = parseInt(priceInput?.value) || 0;
+        const newCurrency = currencyInput?.value || 'ARS';
+        const newDesc = descInput?.value?.trim();
+        
+        if (!newTitle || newPrice <= 0) {
+            alert('Titulo y precio son obligatorios');
+            return;
+        }
+        
+        try {
+            await updateDoc(doc(db, 'classifieds', editingClassifiedId), {
+                title: newTitle,
+                price: newPrice,
+                currency: newCurrency,
+                description: newDesc
+            });
+            console.log('Clasificado actualizado');
+            document.getElementById('edit-classified-modal')?.classList.add('hidden');
+            editingClassifiedId = null;
+        } catch (error) {
+            console.error('Error actualizando clasificado:', error);
+            alert('Error al guardar. Intenta de nuevo.');
+        }
+    }
+    window.saveEditClassified = saveEditClassified;
+    
+    // Cerrar modal de edicion
+    function closeEditClassified() {
+        document.getElementById('edit-classified-modal')?.classList.add('hidden');
+        editingClassifiedId = null;
+    }
+    window.closeEditClassified = closeEditClassified;
+
+    // Comprimir imagen para clasificados (usa la misma funcion que galeria)
+    async function compressImageForClassified(file) {
+        const MAX_WIDTH = 800;
+        const QUALITY = 0.7;
+        
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+                    resolve(dataUrl);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
+    }
+
+    // Enviar clasificado
+    if (classifiedForm) {
+        classifiedForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!currentUser) {
+                alert('Debes iniciar sesion para publicar');
+                return;
+            }
+
+            const submitBtn = document.getElementById('btn-submit-classified');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Publicando...';
+
+            try {
+                const title = document.getElementById('classified-title').value.trim();
+                const category = document.getElementById('classified-category').value;
+                const price = parseInt(document.getElementById('classified-price').value);
+                const description = document.getElementById('classified-description').value.trim();
+                const whatsapp = document.getElementById('classified-whatsapp').value.trim();
+                const photoInput = document.getElementById('classified-photo');
+                
+                let photoURL = null;
+                if (photoInput && photoInput.files && photoInput.files.length > 0) {
+                    try {
+                        photoURL = await compressImageForClassified(photoInput.files[0]);
+                        console.log('Imagen comprimida correctamente');
+                    } catch (err) {
+                        console.error('Error comprimiendo imagen:', err);
+                        alert('Error procesando la imagen. Intenta con otra.');
+                    }
+                }
+
+                const currency = document.getElementById('classified-currency').value || 'ARS';
+                
+                await addDoc(classifiedsCollection, {
+                    title,
+                    category,
+                    price,
+                    currency,
+                    description,
+                    whatsapp,
+                    photoURL,
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName || 'Usuario',
+                    userPhoto: currentUser.photoURL || null,
+                    status: 'disponible',
+                    createdAt: serverTimestamp()
+                });
+
+                classifiedForm.reset();
+                classifiedFormModal.classList.add('hidden');
+                console.log('✅ Clasificado publicado');
+            } catch (error) {
+                console.error('Error publicando clasificado:', error);
+                alert('Error al publicar. Intenta de nuevo.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+    }
+
+    // Iniciar carga de clasificados
+    loadClassifieds();
+});
+} catch (e) {
+    console.error("❌ Error inicializando Firebase:", e);
+}
