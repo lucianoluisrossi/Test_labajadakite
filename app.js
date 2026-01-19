@@ -837,6 +837,49 @@ try {
         setInterval(nextEscuela, 5000);
     }
 
+    // --- MODAL BIENVENIDA CLASIFICADOS ---
+    const welcomeClasificadosModal = document.getElementById('welcome-clasificados-modal');
+    const btnWelcomeClasificadosClose = document.getElementById('btn-welcome-clasificados-close');
+    const WELCOME_CLASIFICADOS_KEY = 'welcomeClasificadosStart';
+    const WELCOME_CLASIFICADOS_DAYS = 4; // Días que se mostrará el modal
+
+    // Verificar si debemos mostrar el modal (durante 4 días desde la primera vez)
+    function shouldShowWelcomeModal() {
+        const startDate = localStorage.getItem(WELCOME_CLASIFICADOS_KEY);
+        if (!startDate) {
+            // Primera vez - guardar fecha de inicio
+            localStorage.setItem(WELCOME_CLASIFICADOS_KEY, Date.now().toString());
+            return true;
+        }
+        // Verificar si pasaron 4 días
+        const daysPassed = (Date.now() - parseInt(startDate)) / (1000 * 60 * 60 * 24);
+        return daysPassed < WELCOME_CLASIFICADOS_DAYS;
+    }
+
+    // Mostrar modal durante el período de 4 días
+    if (welcomeClasificadosModal && shouldShowWelcomeModal()) {
+        // Mostrar después de 2 segundos para no interrumpir la carga inicial
+        setTimeout(() => {
+            welcomeClasificadosModal.classList.remove('hidden');
+        }, 2000);
+    }
+
+    // Cerrar modal (sin deshabilitar - aparecerá de nuevo hasta que pasen 4 días)
+    if (btnWelcomeClasificadosClose) {
+        btnWelcomeClasificadosClose.addEventListener('click', () => {
+            welcomeClasificadosModal.classList.add('hidden');
+        });
+    }
+
+    // Cerrar al hacer clic fuera del modal
+    if (welcomeClasificadosModal) {
+        welcomeClasificadosModal.addEventListener('click', (e) => {
+            if (e.target === welcomeClasificadosModal) {
+                welcomeClasificadosModal.classList.add('hidden');
+            }
+        });
+    }
+
     // --- LAZY LOAD WINDGURU WIDGET ---
     // Cargar el widget solo cuando el usuario abre el desplegable
     const windguruContainer = document.getElementById('windguru-container');
