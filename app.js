@@ -771,7 +771,12 @@ try {
                 if (stabilityDataEl) stabilityDataEl.textContent = stability.text;
                 
                 showSkeletons(false); 
-                lastUpdateTime = new Date(); 
+                // Usar el timestamp de la estación (cuando reportó los datos) en lugar de Date actual
+                if (data.outdoor?.temperature?.time) {
+                    lastUpdateTime = new Date(data.outdoor.temperature.time * 1000);
+                } else {
+                    lastUpdateTime = new Date(); 
+                }
                 updateTimeAgo(); 
             } else {
                 throw new Error('Datos incorrectos');
