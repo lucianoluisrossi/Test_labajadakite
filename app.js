@@ -721,8 +721,20 @@ try {
                 json = getMockWeatherData();
             }
 
-            if (json.code === 0 && json.data) {
+            // Verificar si hay datos válidos (no array vacío)
+            const hasValidData = json.code === 0 && json.data && !Array.isArray(json.data);
+            
+            if (hasValidData) {
                 const data = json.data;
+                
+                // Solo actualizar lastUpdateTime cuando hay datos reales de la estación
+                if (data.outdoor?.temperature?.time) {
+                    lastUpdateTime = new Date(data.outdoor.temperature.time * 1000);
+                } else {
+                    lastUpdateTime = new Date();
+                }
+                updateTimeAgo();
+                
                 const windSpeedRaw = (data.wind?.wind_speed?.value) ? parseFloat(data.wind.wind_speed.value) : null;
                 const windGustRaw = (data.wind?.wind_gust?.value) ? parseFloat(data.wind.wind_gust.value) : null; 
                 const windDirDegrees = (data.wind?.wind_direction?.value) ? parseFloat(data.wind.wind_direction.value) : null;
@@ -771,15 +783,21 @@ try {
                 if (stabilityDataEl) stabilityDataEl.textContent = stability.text;
                 
                 showSkeletons(false); 
-                // Usar el timestamp de la estación (cuando reportó los datos) en lugar de Date actual
-                if (data.outdoor?.temperature?.time) {
-                    lastUpdateTime = new Date(data.outdoor.temperature.time * 1000);
-                } else {
-                    lastUpdateTime = new Date(); 
-                }
-                updateTimeAgo(); 
             } else {
-                throw new Error('Datos incorrectos');
+                // Data vacío o inválido - estación sin conexión
+                console.warn('Estación sin datos - posible desconexión');
+                showSkeletons(false);
+                
+                // Mostrar banner de advertencia inmediatamente
+                if (connectionWarning) {
+                    connectionWarning.classList.remove('hidden');
+                    if (connectionWarningText) {
+                        connectionWarningText.textContent = 'La estación meteorológica no está reportando datos. Posible corte de conexión.';
+                    }
+                }
+                
+                updateCardColors(verdictCardEl, ['bg-amber-300', 'border-amber-500']);
+                verdictDataEl.textContent = 'SIN DATOS';
             }
         } catch (error) {
             console.error(error);
