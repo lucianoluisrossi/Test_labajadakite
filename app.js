@@ -203,14 +203,21 @@ try {
     }
 
     async function checkNotificationStatus(userId) {
-        if (!userId) return false;
+        if (!userId) {
+            console.log('⚠️ checkNotificationStatus: No userId');
+            return false;
+        }
         
         try {
             const tokenDoc = doc(db, 'notification_tokens', userId);
             const docSnap = await getDoc(tokenDoc);
+            console.log('🔍 Verificando notificaciones para:', userId);
             if (docSnap.exists()) {
-                return docSnap.data().enabled === true;
+                const enabled = docSnap.data().enabled === true;
+                console.log('📋 Estado de notificaciones:', enabled);
+                return enabled;
             }
+            console.log('📋 No existe documento de notificaciones');
             return false;
         } catch (error) {
             console.error('Error verificando estado de notificaciones:', error);
@@ -287,6 +294,26 @@ try {
                 notificationsToggleContainer.classList.add('hidden');
             }
         }
+        
+        // Actualizar UI del menú según estado de login
+        const menuLoginBtnContainer = document.getElementById('menu-login-btn-container');
+        const menuUserInfo = document.getElementById('menu-user-info');
+        const menuUserPhoto = document.getElementById('menu-user-photo');
+        const menuUserName = document.getElementById('menu-user-name');
+        
+        if (menuLoginBtnContainer && menuUserInfo) {
+            if (user && !user.isAnonymous) {
+                // Usuario logueado - mostrar info, ocultar botón login
+                menuLoginBtnContainer.classList.add('hidden');
+                menuUserInfo.classList.remove('hidden');
+                if (menuUserPhoto) menuUserPhoto.src = user.photoURL || '';
+                if (menuUserName) menuUserName.textContent = user.displayName || 'Usuario';
+            } else {
+                // No logueado - mostrar botón login, ocultar info
+                menuLoginBtnContainer.classList.remove('hidden');
+                menuUserInfo.classList.add('hidden');
+            }
+        }
     });
     console.log("🚀 App iniciada.");
 
@@ -318,6 +345,22 @@ try {
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
+    
+    // --- BOTONES DE LOGIN/LOGOUT EN EL MENÚ ---
+    const menuGoogleLogin = document.getElementById('menu-google-login');
+    const menuLogoutBtn = document.getElementById('menu-logout-btn');
+    
+    if (menuGoogleLogin) {
+        menuGoogleLogin.addEventListener('click', () => {
+            loginWithGoogle();
+        });
+    }
+    
+    if (menuLogoutBtn) {
+        menuLogoutBtn.addEventListener('click', () => {
+            logoutUser();
+        });
+    }
 
     // --- LÓGICA DE INSTALACIÓN PWA ---
     let deferredPrompt;
