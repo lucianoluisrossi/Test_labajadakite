@@ -86,6 +86,24 @@
                         <span id="clasificados-menu-badge" class="absolute right-3 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">!</span>
                     </button>
                 </nav>
+                
+                <!-- Toggle de Notificaciones (solo visible para usuarios logueados con Google) -->
+                <div id="notifications-toggle-container" class="hidden bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-4 border border-teal-200">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">🔔</span>
+                            <div>
+                                <p class="font-semibold text-gray-800 text-sm">Alertas de Viento</p>
+                                <p class="text-xs text-gray-500">Recibí avisos cuando haya viento</p>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="notifications-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+                        </label>
+                    </div>
+                    <p id="notifications-status" class="text-xs text-gray-500 mt-2 text-center hidden"></p>
+                </div>
                 <hr class="border-gray-200 my-2">
                 <div class="flex flex-col items-center text-center space-y-2">
                     <p class="text-sm text-gray-600 font-medium">¿Te sirve la app? ¡Ayudanos!</p>
