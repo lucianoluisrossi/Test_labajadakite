@@ -1,8 +1,7 @@
 // app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInAnonymously, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, deleteDoc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -18,16 +17,11 @@ const firebaseConfig = {
 // Variables globales
 let db;
 let auth; 
-let messaging;
 let messagesCollection;
 let galleryCollection;
 let classifiedsCollection;
-let notificationTokensCollection;
 let currentUser = null;
 const googleProvider = new GoogleAuthProvider();
-
-// VAPID Key para FCM
-const VAPID_KEY = 'BPw7yDksKcbfvdLV_rb6mFiF4BKaoLVo9Uywx2d7ySElMPHHhAmTbpubbMpN4MpIah1hBxSOBtrSv7Og9YogouQ';
 
 try {
     const app = initializeApp(firebaseConfig);
@@ -37,15 +31,6 @@ try {
     messagesCollection = collection(db, "kiter_board");
     galleryCollection = collection(db, "daily_gallery_meta");
     classifiedsCollection = collection(db, "classifieds");
-    notificationTokensCollection = collection(db, "notification_tokens");
-    
-    // Inicializar Firebase Messaging
-    try {
-        messaging = getMessaging(app);
-        console.log("✅ Firebase Messaging inicializado.");
-    } catch (msgError) {
-        console.warn("⚠️ Firebase Messaging no disponible:", msgError.message);
-    }
 
     console.log("✅ Firebase inicializado.");
 
@@ -121,199 +106,10 @@ try {
         }
     }
 
-    // --- FUNCIONES DE NOTIFICACIONES PUSH ---
-    const notificationsToggleContainer = document.getElementById('notifications-toggle-container');
-    const notificationsToggle = document.getElementById('notifications-toggle');
-    const notificationsStatus = document.getElementById('notifications-status');
-
-    async function requestNotificationPermission() {
-        if (!messaging) {
-            console.warn('Messaging no disponible');
-            return null;
-        }
-        
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                console.log('✅ Permiso de notificaciones concedido');
-                return await getNotificationToken();
-            } else {
-                console.log('❌ Permiso de notificaciones denegado');
-                return null;
-            }
-        } catch (error) {
-            console.error('Error solicitando permiso:', error);
-            return null;
-        }
-    }
-
-    async function getNotificationToken() {
-        if (!messaging) return null;
-        
-        try {
-            // Registrar el SW de Firebase Messaging primero
-            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-            
-            const token = await getToken(messaging, {
-                vapidKey: VAPID_KEY,
-                serviceWorkerRegistration: registration
-            });
-            
-            if (token) {
-                console.log('✅ Token FCM obtenido');
-                return token;
-            }
-            return null;
-        } catch (error) {
-            console.error('Error obteniendo token FCM:', error);
-            return null;
-        }
-    }
-
-    async function saveNotificationToken(userId, token) {
-        if (!token || !userId) return;
-        
-        try {
-            const tokenDoc = doc(db, 'notification_tokens', userId);
-            await setDoc(tokenDoc, {
-                token: token,
-                userId: userId,
-                enabled: true,
-                updatedAt: serverTimestamp()
-            }, { merge: true });
-            console.log('✅ Token guardado en Firestore');
-        } catch (error) {
-            console.error('Error guardando token:', error);
-        }
-    }
-
-    async function disableNotifications(userId) {
-        if (!userId) return;
-        
-        try {
-            const tokenDoc = doc(db, 'notification_tokens', userId);
-            await setDoc(tokenDoc, {
-                enabled: false,
-                updatedAt: serverTimestamp()
-            }, { merge: true });
-            console.log('✅ Notificaciones desactivadas');
-        } catch (error) {
-            console.error('Error desactivando notificaciones:', error);
-        }
-    }
-
-    async function checkNotificationStatus(userId) {
-        if (!userId) {
-            console.log('⚠️ checkNotificationStatus: No userId');
-            return false;
-        }
-        
-        try {
-            const tokenDoc = doc(db, 'notification_tokens', userId);
-            const docSnap = await getDoc(tokenDoc);
-            console.log('🔍 Verificando notificaciones para:', userId);
-            if (docSnap.exists()) {
-                const enabled = docSnap.data().enabled === true;
-                console.log('📋 Estado de notificaciones:', enabled);
-                return enabled;
-            }
-            console.log('📋 No existe documento de notificaciones');
-            return false;
-        } catch (error) {
-            console.error('Error verificando estado de notificaciones:', error);
-            return false;
-        }
-    }
-
-    // Listener para el toggle de notificaciones
-    if (notificationsToggle) {
-        notificationsToggle.addEventListener('change', async () => {
-            if (!currentUser) return;
-            
-            if (notificationsToggle.checked) {
-                // Activar notificaciones
-                const token = await requestNotificationPermission();
-                if (token) {
-                    await saveNotificationToken(currentUser.uid, token);
-                    showNotificationStatus('Notificaciones activadas', 'text-green-600');
-                } else {
-                    notificationsToggle.checked = false;
-                    showNotificationStatus('No se pudo activar. Verificá los permisos.', 'text-red-600');
-                }
-            } else {
-                // Desactivar notificaciones
-                await disableNotifications(currentUser.uid);
-                showNotificationStatus('Notificaciones desactivadas', 'text-gray-500');
-            }
-        });
-    }
-
-    function showNotificationStatus(message, colorClass) {
-        if (notificationsStatus) {
-            notificationsStatus.textContent = message;
-            notificationsStatus.className = `text-xs mt-2 text-center ${colorClass}`;
-            notificationsStatus.classList.remove('hidden');
-            setTimeout(() => {
-                notificationsStatus.classList.add('hidden');
-            }, 3000);
-        }
-    }
-
-    // Listener para notificaciones en foreground
-    if (messaging) {
-        onMessage(messaging, (payload) => {
-            console.log('📩 Notificación recibida en foreground:', payload);
-            // Mostrar notificación usando la API de Notifications
-            if (Notification.permission === 'granted') {
-                new Notification(payload.notification?.title || '🪁 La Bajada', {
-                    body: payload.notification?.body || 'Hay viento para navegar!',
-                    icon: '/logo-192.png'
-                });
-            }
-        });
-    }
-
     // --- LISTENER DE ESTADO DE AUTENTICACIÓN (dentro de DOMContentLoaded) ---
-    onAuthStateChanged(auth, async (user) => {
+    onAuthStateChanged(auth, (user) => {
         currentUser = user;
         updateAuthUI(user);
-        
-        // Mostrar/ocultar toggle de notificaciones según login
-        if (notificationsToggleContainer) {
-            if (user && !user.isAnonymous) {
-                // Usuario logueado con Google - mostrar toggle
-                notificationsToggleContainer.classList.remove('hidden');
-                
-                // Verificar estado actual de notificaciones
-                const isEnabled = await checkNotificationStatus(user.uid);
-                if (notificationsToggle) {
-                    notificationsToggle.checked = isEnabled;
-                }
-            } else {
-                // Usuario anónimo o no logueado - ocultar toggle
-                notificationsToggleContainer.classList.add('hidden');
-            }
-        }
-        
-        // Actualizar UI del menú según estado de login
-        const menuLoginBtnContainer = document.getElementById('menu-login-btn-container');
-        const menuUserInfo = document.getElementById('menu-user-info');
-        const menuUserPhoto = document.getElementById('menu-user-photo');
-        const menuUserName = document.getElementById('menu-user-name');
-        
-        if (menuLoginBtnContainer && menuUserInfo) {
-            if (user && !user.isAnonymous) {
-                // Usuario logueado - mostrar info, ocultar botón login
-                menuLoginBtnContainer.classList.add('hidden');
-                menuUserInfo.classList.remove('hidden');
-                if (menuUserPhoto) menuUserPhoto.src = user.photoURL || '';
-                if (menuUserName) menuUserName.textContent = user.displayName || 'Usuario';
-            } else {
-                // No logueado - mostrar botón login, ocultar info
-                menuLoginBtnContainer.classList.remove('hidden');
-                menuUserInfo.classList.add('hidden');
-            }
-        }
     });
     console.log("🚀 App iniciada.");
 
@@ -345,22 +141,6 @@ try {
     const menuCloseButton = document.getElementById('menu-close-button');
     const mobileMenu = document.getElementById('mobile-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
-    
-    // --- BOTONES DE LOGIN/LOGOUT EN EL MENÚ ---
-    const menuGoogleLogin = document.getElementById('menu-google-login');
-    const menuLogoutBtn = document.getElementById('menu-logout-btn');
-    
-    if (menuGoogleLogin) {
-        menuGoogleLogin.addEventListener('click', () => {
-            loginWithGoogle();
-        });
-    }
-    
-    if (menuLogoutBtn) {
-        menuLogoutBtn.addEventListener('click', () => {
-            logoutUser();
-        });
-    }
 
     // --- LÓGICA DE INSTALACIÓN PWA ---
     let deferredPrompt;
