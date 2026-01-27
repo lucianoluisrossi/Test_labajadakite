@@ -3,6 +3,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, signInAnonymously, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+// ⭐ SISTEMA DE NOTIFICACIONES PUSH
+import { pushManager } from './notifications.js';
+import './notifications-integration.js';
+
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
@@ -782,7 +786,12 @@ try {
                 if (stabilityCardEl) updateCardColors(stabilityCardEl, stability.color);
                 if (stabilityDataEl) stabilityDataEl.textContent = stability.text;
                 
-                showSkeletons(false); 
+                showSkeletons(false);
+                
+                // ⭐ ANALIZAR CONDICIONES PARA NOTIFICACIONES PUSH
+                if (window.analyzeAndNotify) {
+                    window.analyzeAndNotify(data);
+                }
             } else {
                 // Data vacío o inválido - estación sin conexión
                 console.warn('Estación sin datos - posible desconexión');
