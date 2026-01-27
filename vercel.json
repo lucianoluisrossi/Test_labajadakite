@@ -2,12 +2,11 @@
   "version": 2,
   "framework": null,
   "buildCommand": "npm run build",
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs20.x"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
