@@ -9,9 +9,9 @@ export class PushNotificationManager {
         
         // Configuración de umbrales para notificaciones
         this.config = {
-            minNavigableWind: 15,      // kts - mínimo para navegar
-            maxGoodWind: 30,            // kts - máximo óptimo
-            dangerousWind: 35,          // kts - peligroso
+            minNavigableWind: 12,      // kts - mínimo para navegar
+            maxGoodWind: 27,            // kts - máximo para "condiciones ideales" (>27 = extremas)
+            dangerousWind: 35,          // kts - rachas peligrosas
             offshoreAngles: [315, 67.5], // N a NE (offshore)
             checkInterval: 5 * 60 * 1000, // 5 minutos
         };
@@ -102,15 +102,24 @@ export class PushNotificationManager {
         // Determinar estado de navegabilidad
         const isNavigable = speed >= this.config.minNavigableWind;
         const isGoodConditions = speed >= this.config.minNavigableWind && 
-                                  speed <= this.config.maxGoodWind && 
+                                  speed < 27 && 
                                   !isOffshore;
-        const isDangerous = gust >= this.config.dangerousWind;
+        const isDangerous = speed > 27 || gust >= this.config.dangerousWind;
 
-        // 1. CONDICIONES EXTREMAS (rachas peligrosas)
+        // 1. CONDICIONES EXTREMAS (viento >27 kts O rachas peligrosas)
         if (isDangerous && !this.sentNotifications.dangerous) {
+            let message = '';
+            if (speed > 27 && gust >= this.config.dangerousWind) {
+                message = `Viento ${speed} kts, Rachas ${gust} kts`;
+            } else if (speed > 27) {
+                message = `Viento ${speed} kts`;
+            } else {
+                message = `Rachas de ${gust} kts`;
+            }
+            
             this.sendNotification({
                 title: '⚠️ Condiciones extremas',
-                body: `Rachas de ${gust} kts - Solo para expertos`,
+                body: message,
                 tag: 'dangerous-conditions',
                 requireInteraction: false,
                 vibrate: [300, 100, 300]
@@ -118,24 +127,34 @@ export class PushNotificationManager {
             this.sentNotifications.dangerous = true;
         }
 
-        // 2. CONDICIONES IDEALES (viento navegable y no extremo)
-        if (isGoodConditions && !this.sentNotifications.goodConditions) {
-            const kiteSize = this.recommendKiteSize(speed);
+        // 2. CONDICIONES IDEALES (15-27 kts, no offshore)
+        if (isGoodConditions && !this.sentNotifications.goodConditions && !isDangerous) {
             this.sendNotification({
                 title: '🪁 ¡Condiciones ideales!',
-                body: `${speed} kts ${cardinal} - Recomendado: ${kiteSize}`,
+                body: `${speed} kts ${cardinal}`,
                 tag: 'good-conditions',
                 requireInteraction: false
             });
             this.sentNotifications.goodConditions = true;
         }
 
-        // 3. VIENTO SUBIÓ (solo si antes no era navegable y ahora sí)
+        // 3. CONDICIONES ACEPTABLES (12-14 kts, no offshore)
+        const isAcceptable = speed >= 12 && speed <= 14 && !isOffshore;
+        if (isAcceptable && !this.sentNotifications.goodConditions && !isDangerous) {
+            this.sendNotification({
+                title: '🌬️ Condiciones Aceptables',
+                body: `${speed} kts ${cardinal} - Con Kite 14-17 mts`,
+                tag: 'acceptable-conditions',
+                requireInteraction: false
+            });
+            this.sentNotifications.goodConditions = true;
+        }
+
+        // 4. VIENTO SUBIÓ (solo si antes no era navegable y ahora sí)
         if (this.lastWindConditions && this.lastWindConditions.speed < this.config.minNavigableWind && isNavigable && !this.sentNotifications.windIncreased) {
-            const kiteSize = this.recommendKiteSize(speed);
             this.sendNotification({
                 title: '📈 El viento subió',
-                body: `Ahora ${speed} kts ${cardinal} - Recomendado: ${kiteSize}`,
+                body: `Ahora ${speed} kts ${cardinal}`,
                 tag: 'wind-increased',
                 requireInteraction: false
             });

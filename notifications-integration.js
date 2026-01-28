@@ -163,8 +163,8 @@ if (saveConfigBtn) {
 // Cargar configuración guardada en los sliders
 const loadSavedConfig = () => {
     const config = pushManager.config;
-    if (minWindSlider) minWindSlider.value = config.minNavigableWind;
-    if (minWindValue) minWindValue.textContent = config.minNavigableWind;
+    if (minWindSlider) minWindSlider.value = config.minNavigableWind || 12;
+    if (minWindValue) minWindValue.textContent = config.minNavigableWind || 12;
     if (maxWindSlider) maxWindSlider.value = config.maxGoodWind;
     if (maxWindValue) maxWindValue.textContent = config.maxGoodWind;
 };
