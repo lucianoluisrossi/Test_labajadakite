@@ -297,27 +297,6 @@
             <span>Activar Notificaciones</span>
         </button>
 
-        <!-- Descripción -->
-        <div class="text-sm text-gray-600 space-y-2">
-            <p class="font-semibold text-gray-700">Te avisaremos cuando:</p>
-            <ul class="space-y-1 ml-4">
-                <li class="flex items-start gap-2">
-                    <span class="text-green-500 mt-0.5">✓</span>
-                    <span><strong>Condiciones ideales:</strong> Viento navegable sin ser extremo</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <span class="text-blue-500 mt-0.5">✓</span>
-                    <span><strong>El viento subió:</strong> Pasó de no navegable a navegable</span>
-                </li>
-                <li class="flex items-start gap-2">
-                    <span class="text-orange-500 mt-0.5">⚠</span>
-                    <span><strong>Condiciones extremas:</strong> Rachas peligrosas (35+ kts)</span>
-                </li>
-            </ul>
-            <p class="text-xs text-gray-500 mt-3 italic">
-                💡 Tip: Las notificaciones se resetean cada 2 horas para evitar spam
-            </p>
-        </div>
 
         <!-- Configuración avanzada (colapsable) -->
         <details class="border border-gray-200 rounded-lg">
@@ -332,7 +311,7 @@
                         Viento mínimo para notificar (kts)
                     </label>
                     <div class="flex items-center gap-3">
-                        <input type="range" id="min-wind-slider" min="10" max="20" value="15" step="1" class="flex-1">
+                        <input type="range" id="min-wind-slider" min="12" max="20" value="15" step="1" class="flex-1">
                         <span id="min-wind-value" class="text-lg font-bold text-blue-600 w-12 text-right">15</span>
                     </div>
                     <p class="text-xs text-gray-500 mt-1">Notificar cuando el viento supere este valor</p>
