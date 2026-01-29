@@ -53,6 +53,7 @@ function updateNotificationsUI() {
         }
         if (disableBtn) {
             disableBtn.classList.remove('hidden');
+            disableBtn.classList.add('flex'); // Asegurar que se muestre como flex
         }
         
     } else if (!status.supported) {
@@ -97,11 +98,13 @@ function updateNotificationsUI() {
         // Mostrar botón de activar, ocultar botón de desactivar
         if (enableBtn) {
             enableBtn.classList.remove('hidden');
+            enableBtn.classList.add('flex');
             enableBtn.disabled = false;
             enableBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
         if (disableBtn) {
             disableBtn.classList.add('hidden');
+            disableBtn.classList.remove('flex');
         }
     }
 }
