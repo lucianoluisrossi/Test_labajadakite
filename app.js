@@ -7,6 +7,9 @@ import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, se
 import { pushManager } from './notifications.js';
 import './notifications-integration.js';
 
+// ⭐ MEJORAS UX/UI
+import './ux-improvements.js';
+
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
@@ -785,6 +788,11 @@ try {
                 const stability = calculateGustFactor(windSpeedValue, windGustValue);
                 if (stabilityCardEl) updateCardColors(stabilityCardEl, stability.color);
                 if (stabilityDataEl) stabilityDataEl.textContent = stability.text;
+                
+                // ⭐ MEJORAS UX: Actualizar barra, tendencia, timestamp
+                if (window.updateUXImprovements) {
+                    window.updateUXImprovements(windSpeedValue, windGustValue, lastUpdateTime);
+                }
                 
                 showSkeletons(false);
                 

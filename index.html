@@ -102,7 +102,17 @@
         <div id="view-dashboard" class="fade-in">
             
             <!-- CONTENEDOR PRINCIPAL DE VIENTO Y VIDEO (Unificado) -->
-            <div id="wind-highlight-card" class="mt-6 lg:mt-8 p-4 md:p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300">
+            <div id="wind-highlight-card" class="mt-6 lg:mt-8 p-4 md:p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 border border-gray-300 relative">
+                
+                <!-- Badge de Notificaciones (flotante) -->
+                <button id="notification-badge" 
+                        class="absolute top-2 right-2 md:top-4 md:right-4 bg-red-500 hover:bg-red-600 text-white p-2 md:p-3 rounded-full shadow-lg z-20 hidden transition-all duration-300 hover:scale-110"
+                        title="Activar notificaciones">
+                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                    </svg>
+                    <span class="absolute -top-1 -right-1 bg-white text-red-600 text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center animate-pulse">!</span>
+                </button>
                 
                 <!-- 1. LiveCam -->
                 <div class="bg-black rounded-lg overflow-hidden shadow-lg mb-3 border border-gray-400">
@@ -133,13 +143,31 @@
                         
                         <!-- Columna Velocidad (65%) -->
                         <div class="flex flex-col items-center justify-center w-[65%] pl-2">
-                            <div class="flex flex-col items-center">
+                            <div class="flex flex-col items-center w-full">
                                 <p class="text-gray-600 text-[10px] uppercase font-bold">Velocidad Prom.</p>
                                 <div id="highlight-wind-speed-data-loader" class="skeleton-loader skeleton-text-4xl w-24 mt-1"></div>
-                                <p class="text-5xl font-black text-gray-900 data-content leading-none tracking-tight" id="highlight-wind-speed-data">N/A</p>
+                                <div class="flex items-center gap-2">
+                                    <p class="text-5xl font-black text-gray-900 data-content leading-none tracking-tight" id="highlight-wind-speed-data">N/A</p>
+                                    <span id="wind-trend" class="text-3xl data-content" title="Tendencia del viento">→</span>
+                                </div>
+                                
+                                <!-- Barra de intensidad -->
+                                <div class="w-full max-w-[180px] mt-2 data-content" id="wind-intensity-container">
+                                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                                        <div id="wind-intensity-bar" 
+                                             class="h-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 transition-all duration-500 rounded-full" 
+                                             style="width: 0%">
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between text-[8px] text-gray-500 mt-1 px-1">
+                                        <span>0</span>
+                                        <span id="wind-percentage" class="font-bold">--%</span>
+                                        <span>35</span>
+                                    </div>
+                                </div>
                             </div>
                             <div id="gust-info-container" class="mt-3 flex items-center justify-center gap-2 opacity-90 bg-white/30 px-3 py-1 rounded-full shadow-sm transition-colors duration-300 border border-gray-200/50">
-                                <span class="text-xs text-gray-800 font-bold uppercase">Racha:</span>
+                                <span id="gust-label" class="text-xs text-gray-800 font-bold uppercase">Racha:</span>
                                 <div id="highlight-gust-data-loader" class="skeleton-loader skeleton-text-sm w-8 inline-block"></div>
                                 <span class="text-lg font-black text-gray-900 data-content" id="highlight-gust-data">N/A</span>
                             </div>
@@ -151,6 +179,13 @@
                         <span class="text-gray-600 text-xs font-bold uppercase">Estabilidad:</span>
                         <div id="stability-data-loader" class="skeleton-loader skeleton-text-sm w-16 inline-block"></div>
                         <span class="text-lg font-extrabold text-gray-900 data-content" id="stability-data">N/A</span>
+                    </div>
+                    
+                    <!-- Timestamp última actualización -->
+                    <div class="mt-2 text-center">
+                        <p class="text-[9px] text-gray-500 data-content">
+                            🕐 Actualizado hace <span id="time-since-update" class="font-semibold">--</span>
+                        </p>
                     </div>
                 </div>
 
