@@ -36,6 +36,8 @@ const maxWindValue = document.getElementById('max-wind-value');
 
 function updateNotificationsUI() {
     const status = pushManager.getStatus();
+    const enableBtn = document.getElementById('enable-notifications-btn');
+    const disableBtn = document.getElementById('disable-notifications-btn');
     
     if (status.enabled) {
         // Notificaciones activadas
@@ -45,14 +47,13 @@ function updateNotificationsUI() {
         statusText.classList.remove('text-gray-600');
         statusText.classList.add('text-green-700', 'font-semibold');
         
-        enableNotificationsBtn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            <span>Notificaciones Activadas</span>
-        `;
-        enableNotificationsBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-        enableNotificationsBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+        // Ocultar botón de activar, mostrar botón de desactivar
+        if (enableBtn) {
+            enableBtn.classList.add('hidden');
+        }
+        if (disableBtn) {
+            disableBtn.classList.remove('hidden');
+        }
         
     } else if (!status.supported) {
         // No soportadas
@@ -62,8 +63,13 @@ function updateNotificationsUI() {
         statusText.classList.remove('text-green-700', 'font-semibold');
         statusText.classList.add('text-gray-600');
         
-        enableNotificationsBtn.disabled = true;
-        enableNotificationsBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        if (enableBtn) {
+            enableBtn.disabled = true;
+            enableBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        if (disableBtn) {
+            disableBtn.classList.add('hidden');
+        }
         
     } else if (status.permission === 'denied') {
         // Denegadas
@@ -73,6 +79,13 @@ function updateNotificationsUI() {
         statusText.classList.remove('text-green-700', 'font-semibold');
         statusText.classList.add('text-gray-600');
         
+        if (enableBtn) {
+            enableBtn.classList.remove('hidden');
+        }
+        if (disableBtn) {
+            disableBtn.classList.add('hidden');
+        }
+        
     } else {
         // Desactivadas (default)
         statusIndicator.classList.remove('bg-green-500', 'bg-yellow-400');
@@ -80,6 +93,16 @@ function updateNotificationsUI() {
         statusText.textContent = 'Notificaciones desactivadas';
         statusText.classList.remove('text-green-700', 'font-semibold');
         statusText.classList.add('text-gray-600');
+        
+        // Mostrar botón de activar, ocultar botón de desactivar
+        if (enableBtn) {
+            enableBtn.classList.remove('hidden');
+            enableBtn.disabled = false;
+            enableBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        if (disableBtn) {
+            disableBtn.classList.add('hidden');
+        }
     }
 }
 
@@ -104,6 +127,44 @@ if (enableNotificationsBtn) {
             pushManager.savePreferences();
         } else {
             alert('No se pudo activar las notificaciones. Verifica los permisos del navegador.');
+        }
+    });
+}
+
+// Desactivar notificaciones
+const disableNotificationsBtn = document.getElementById('disable-notifications-btn');
+if (disableNotificationsBtn) {
+    disableNotificationsBtn.addEventListener('click', async () => {
+        // Confirmar acción
+        const confirmed = confirm('¿Estás seguro que quieres desactivar las notificaciones de viento?');
+        if (!confirmed) return;
+        
+        try {
+            // Desregistrar service worker
+            const registration = await pushManager.getRegistration();
+            if (registration) {
+                await registration.unregister();
+                console.log('✅ Service Worker desregistrado');
+            }
+            
+            // Limpiar preferencias guardadas
+            localStorage.removeItem('windNotificationsEnabled');
+            localStorage.removeItem('windNotificationsConfig');
+            
+            // Actualizar estado
+            pushManager.permission = 'default';
+            updateNotificationsUI();
+            
+            // Recargar badge
+            if (window.updateNotificationBadge) {
+                window.updateNotificationBadge();
+            }
+            
+            alert('✅ Notificaciones desactivadas correctamente');
+            
+        } catch (error) {
+            console.error('Error al desactivar notificaciones:', error);
+            alert('Hubo un error al desactivar las notificaciones. Intenta de nuevo.');
         }
     });
 }
