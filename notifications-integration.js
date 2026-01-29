@@ -10,8 +10,15 @@ import { pushManager } from './notifications.js';
 
 console.log('🔔 Inicializando sistema de notificaciones...');
 
-// Cargar preferencias guardadas
-pushManager.loadPreferences();
+// Verificar si las notificaciones están realmente activas antes de cargar
+const notificationsWereDisabled = localStorage.getItem('notificationsDisabled') === 'true';
+
+// Solo cargar preferencias si NO fueron desactivadas manualmente
+if (!notificationsWereDisabled) {
+    pushManager.loadPreferences();
+} else {
+    console.log('⚠️ Notificaciones desactivadas previamente - no auto-cargar');
+}
 
 // Elementos del DOM
 const notificationsCard = document.getElementById('notifications-card');
@@ -126,6 +133,9 @@ if (enableNotificationsBtn) {
     enableNotificationsBtn.addEventListener('click', async () => {
         const granted = await pushManager.requestPermission();
         if (granted) {
+            // Remover flag de desactivación
+            localStorage.removeItem('notificationsDisabled');
+            
             updateNotificationsUI();
             pushManager.savePreferences();
         } else {
@@ -173,10 +183,17 @@ if (disableNotificationsBtn) {
             
             // Limpiar preferencias guardadas (siempre funciona)
             try {
+                // Eliminar TODAS las claves relacionadas con notificaciones
                 localStorage.removeItem('windNotificationsEnabled');
                 localStorage.removeItem('windNotificationsConfig');
                 localStorage.removeItem('notificationsLastSent');
-                console.log('✅ LocalStorage limpiado');
+                localStorage.removeItem('notificationConfig'); // ← AGREGADO
+                localStorage.removeItem('notificationsEnabled'); // ← AGREGADO
+                
+                // Marcar como desactivadas manualmente
+                localStorage.setItem('notificationsDisabled', 'true');
+                
+                console.log('✅ LocalStorage limpiado completamente');
             } catch (storageError) {
                 console.warn('No se pudo limpiar localStorage:', storageError);
             }
