@@ -143,31 +143,73 @@ if (disableNotificationsBtn) {
         if (!confirmed) return;
         
         try {
-            // Desregistrar service worker
-            const registration = await pushManager.getRegistration();
-            if (registration) {
-                await registration.unregister();
-                console.log('✅ Service Worker desregistrado');
+            console.log('🔄 Desactivando notificaciones...');
+            
+            // Método 1: Intentar desregistrar con pushManager
+            if (pushManager.getRegistration) {
+                try {
+                    const registration = await pushManager.getRegistration();
+                    if (registration) {
+                        const unregistered = await registration.unregister();
+                        console.log('✅ Service Worker desregistrado:', unregistered);
+                    }
+                } catch (swError) {
+                    console.warn('No se pudo desregistrar con pushManager:', swError);
+                }
             }
             
-            // Limpiar preferencias guardadas
-            localStorage.removeItem('windNotificationsEnabled');
-            localStorage.removeItem('windNotificationsConfig');
+            // Método 2: Intentar desregistrar todos los service workers directamente
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const registration of registrations) {
+                        await registration.unregister();
+                        console.log('✅ Service Worker desregistrado');
+                    }
+                } catch (swError) {
+                    console.warn('No se pudieron desregistrar todos los SW:', swError);
+                }
+            }
             
-            // Actualizar estado
-            pushManager.permission = 'default';
+            // Limpiar preferencias guardadas (siempre funciona)
+            try {
+                localStorage.removeItem('windNotificationsEnabled');
+                localStorage.removeItem('windNotificationsConfig');
+                localStorage.removeItem('notificationsLastSent');
+                console.log('✅ LocalStorage limpiado');
+            } catch (storageError) {
+                console.warn('No se pudo limpiar localStorage:', storageError);
+            }
+            
+            // Actualizar estado del pushManager
+            if (pushManager) {
+                pushManager.permission = 'default';
+            }
+            
+            // Actualizar UI
             updateNotificationsUI();
             
             // Recargar badge
-            if (window.updateNotificationBadge) {
-                window.updateNotificationBadge();
-            }
+            setTimeout(() => {
+                if (window.updateNotificationBadge) {
+                    window.updateNotificationBadge();
+                }
+            }, 100);
             
-            alert('✅ Notificaciones desactivadas correctamente');
+            alert('✅ Notificaciones desactivadas correctamente.\n\nSi quieres volver a activarlas, solo presiona el botón "Activar Notificaciones".');
             
         } catch (error) {
-            console.error('Error al desactivar notificaciones:', error);
-            alert('Hubo un error al desactivar las notificaciones. Intenta de nuevo.');
+            console.error('❌ Error al desactivar notificaciones:', error);
+            
+            // Intentar limpiar de todas formas
+            try {
+                localStorage.removeItem('windNotificationsEnabled');
+                localStorage.removeItem('windNotificationsConfig');
+                updateNotificationsUI();
+                alert('⚠️ Notificaciones desactivadas parcialmente.\n\nSi siguen apareciendo, ve a Configuración del navegador → Permisos → Notificaciones y revoca el permiso manualmente.');
+            } catch (fallbackError) {
+                alert('❌ Error al desactivar las notificaciones.\n\nPor favor, desactívalas manualmente desde la configuración del navegador:\n1. Click en el candado/info junto a la URL\n2. Permisos → Notificaciones → Bloquear');
+            }
         }
     });
 }
