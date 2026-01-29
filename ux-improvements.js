@@ -23,8 +23,8 @@ function updateWindIntensity(speed) {
     
     intensityContainer.style.opacity = '1';
     
-    // Calcular porcentaje (0-35 kts como rango)
-    const maxWind = 35;
+    // Calcular porcentaje (0-30 kts como rango)
+    const maxWind = 30;
     const percentage = Math.min(Math.round((speed / maxWind) * 100), 100);
     
     // Animar barra
