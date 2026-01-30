@@ -594,7 +594,7 @@ try {
     function calculateGustFactor(speed, gust) {
         if (speed === null || gust === null || speed <= 0) return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
         const MIN_KITE_WIND = 12; 
-        if (speed < MIN_KITE_WIND) return { factor: null, text: 'No Aplica', color: ['bg-gray-100', 'border-gray-300'] };
+        if (speed < MIN_KITE_WIND) return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
         if (gust <= speed) return { factor: 0, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
         const factor = (1 - (speed / gust)) * 100; 
         if (factor <= 15) return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; 

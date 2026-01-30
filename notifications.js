@@ -9,7 +9,7 @@ export class PushNotificationManager {
         
         // Configuración de umbrales para notificaciones
         this.config = {
-            minNavigableWind: 12,      // kts - mínimo para navegar
+            minNavigableWind: 15,      // kts - mínimo para navegar
             maxGoodWind: 27,            // kts - máximo para "condiciones ideales" (>27 = extremas)
             dangerousWind: 35,          // kts - rachas peligrosas
             offshoreAngles: [315, 67.5], // N a NE (offshore)
