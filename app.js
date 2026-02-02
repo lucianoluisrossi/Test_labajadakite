@@ -935,18 +935,36 @@ try {
         }, 2000);
     }
 
-    // Cerrar modal (aparecerá de nuevo hasta que pasen 4 días)
+    // Cerrar modal y activar notificaciones
     if (btnWelcomeClasificadosClose) {
-        btnWelcomeClasificadosClose.addEventListener('click', () => {
+        btnWelcomeClasificadosClose.addEventListener('click', async () => {
             welcomeClasificadosModal.classList.add('hidden');
+            
+            // Intentar activar notificaciones
+            if (window.pushManager) {
+                const granted = await window.pushManager.requestPermission();
+                if (granted) {
+                    console.log('✅ Notificaciones activadas desde el modal');
+                    // Marcar como no volver a mostrar si activa
+                    localStorage.setItem(WELCOME_CLASIFICADOS_DISABLED, 'true');
+                    
+                    // Scroll al panel de notificaciones para mostrar la configuración
+                    setTimeout(() => {
+                        const notificationsCard = document.getElementById('notifications-card');
+                        if (notificationsCard) {
+                            notificationsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 500);
+                }
+            }
         });
     }
 
-    // No volver a mostrar - deshabilitar permanentemente
+    // Recordarme después - no deshabilitar, solo cerrar
     if (btnWelcomeClasificadosNever) {
         btnWelcomeClasificadosNever.addEventListener('click', () => {
             welcomeClasificadosModal.classList.add('hidden');
-            localStorage.setItem(WELCOME_CLASIFICADOS_DISABLED, 'true');
+            // NO marcamos como disabled, así vuelve a aparecer
         });
     }
 

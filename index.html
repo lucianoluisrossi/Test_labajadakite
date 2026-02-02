@@ -774,46 +774,42 @@
             <button class="absolute top-4 right-4 text-white text-4xl font-bold focus:outline-none">&times;</button>
         </div>
 
-        <!-- MODAL BIENVENIDA CLASIFICADOS -->
+        <!-- MODAL BIENVENIDA NOTIFICACIONES -->
         <div id="welcome-clasificados-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4" style="background-color: rgba(0, 0, 0, 0.85);">
             <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-fadeIn">
                 <!-- Header -->
-                <div class="bg-gradient-to-r from-orange-500 to-orange-600 p-4 text-center">
-                    <div class="text-4xl mb-2">🏷️</div>
-                    <h2 class="text-xl font-bold text-white">Nueva Sección</h2>
-                    <p class="text-orange-100 text-sm">Clasificados Kiteros</p>
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-4 text-center">
+                    <div class="text-4xl mb-2">🔔</div>
+                    <h2 class="text-xl font-bold text-white">Nueva Funcionalidad</h2>
+                    <p class="text-blue-100 text-sm">Notificaciones de Viento</p>
                 </div>
                 <!-- Contenido -->
                 <div class="p-5 space-y-4">
                     <p class="text-gray-700 text-sm text-center leading-relaxed">
-                        Ahora podés <strong>comprar y vender</strong> equipos de kitesurf y reportar <strong>objetos perdidos</strong>.
+                        ¡Recibí <strong>alertas automáticas</strong> cuando haya viento ideal para navegar!
                     </p>
                     <ul class="text-sm text-gray-600 space-y-2">
                         <li class="flex items-start gap-2">
                             <span class="text-green-500 mt-0.5">✓</span>
-                            <span>Publicá tu equipo usado (kites, tablas, arneses)</span>
+                            <span>Alertas en tiempo real cuando hay condiciones ideales</span>
                         </li>
                         <li class="flex items-start gap-2">
                             <span class="text-green-500 mt-0.5">✓</span>
-                            <span>Contactá vendedores directo por WhatsApp</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="text-red-500 mt-0.5">!</span>
-                            <span>Reportá objetos perdidos o encontrados</span>
+                            <span>Configurá tu viento mínimo (12-20 kts)</span>
                         </li>
                         <li class="flex items-start gap-2">
                             <span class="text-green-500 mt-0.5">✓</span>
-                            <span>Precios en ARS o USD</span>
+                            <span>Evita viajes innecesarios ¡Te avisamos cuando hay viento!</span>
                         </li>
                     </ul>
                 </div>
                 <!-- Botones -->
                 <div class="p-4 bg-gray-50 border-t border-gray-200 space-y-2">
-                    <button id="btn-welcome-clasificados-close" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md">
-                        Entendido
+                    <button id="btn-welcome-clasificados-close" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md">
+                        Activar Notificaciones
                     </button>
                     <button id="btn-welcome-clasificados-never" class="w-full text-gray-500 hover:text-gray-700 text-sm py-2 transition-colors">
-                        No volver a mostrar
+                        Recordarme después
                     </button>
                 </div>
             </div>
