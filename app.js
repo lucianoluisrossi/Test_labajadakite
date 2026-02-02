@@ -1487,6 +1487,44 @@ try {
 
     // Iniciar carga de clasificados
     loadClassifieds();
+
+    // ============================================
+    // SCROLL AUTOMÁTICO AL VENIR DE NOTIFICACIÓN
+    // ============================================
+    
+    // Detectar si viene de una notificación
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromNotification = urlParams.get('from_notification');
+    
+    if (fromNotification === 'true') {
+        console.log('🔔 Usuario viene de notificación - Haciendo scroll al panel de viento');
+        
+        // Esperar a que la página cargue completamente
+        setTimeout(() => {
+            const windPanel = document.getElementById('wind-highlight-card');
+            
+            if (windPanel) {
+                // Hacer scroll suave al panel de viento
+                windPanel.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                // Agregar highlight temporal (animación de atención)
+                windPanel.classList.add('ring-4', 'ring-blue-500', 'ring-opacity-75');
+                
+                // Quitar highlight después de 3 segundos
+                setTimeout(() => {
+                    windPanel.classList.remove('ring-4', 'ring-blue-500', 'ring-opacity-75');
+                }, 3000);
+                
+                console.log('✅ Scroll completado y panel resaltado');
+            }
+            
+            // Limpiar URL (quitar parámetro)
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 1000); // 1 segundo para que todo cargue
+    }
 });
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
