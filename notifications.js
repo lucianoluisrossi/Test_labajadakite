@@ -127,7 +127,7 @@ export class PushNotificationManager {
             this.sentNotifications.dangerous = true;
         }
 
-        // 2. CONDICIONES IDEALES (15-27 kts, no offshore)
+        // 2. CONDICIONES IDEALES (respeta configuración del usuario)
         if (isGoodConditions && !this.sentNotifications.goodConditions && !isDangerous) {
             this.sendNotification({
                 title: '🪁 ¡Condiciones ideales!',
@@ -138,19 +138,7 @@ export class PushNotificationManager {
             this.sentNotifications.goodConditions = true;
         }
 
-        // 3. CONDICIONES ACEPTABLES (12-14 kts, no offshore)
-        const isAcceptable = speed >= 12 && speed <= 14 && !isOffshore;
-        if (isAcceptable && !this.sentNotifications.goodConditions && !isDangerous) {
-            this.sendNotification({
-                title: '🌬️ Condiciones Aceptables',
-                body: `${speed} kts ${cardinal} - Con Kite 14-17 mts`,
-                tag: 'acceptable-conditions',
-                requireInteraction: false
-            });
-            this.sentNotifications.goodConditions = true;
-        }
-
-        // 4. VIENTO SUBIÓ (solo si antes no era navegable y ahora sí)
+        // 3. VIENTO SUBIÓ (solo si antes no era navegable y ahora sí)
         if (this.lastWindConditions && this.lastWindConditions.speed < this.config.minNavigableWind && isNavigable && !this.sentNotifications.windIncreased) {
             this.sendNotification({
                 title: '📈 El viento subió',
