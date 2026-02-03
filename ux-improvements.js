@@ -204,8 +204,8 @@ function updateUXImprovements(windSpeed, windGust, updateTime) {
     // 1. Barra de intensidad
     updateWindIntensity(windSpeed);
     
-    // 2. Tendencia
-    updateWindTrend(windSpeed);
+    // 2. Tendencia - DESHABILITADA
+    // updateWindTrend(windSpeed);
     
     // 3. Alerta de rachas
     updateGustAlert(windSpeed, windGust);
