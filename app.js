@@ -402,9 +402,16 @@ try {
     // --- BOTONES DE LOGIN/LOGOUT ---
     const btnGoogleLogin = document.getElementById('btn-google-login');
     const btnLogout = document.getElementById('btn-logout');
+    const btnGoogleLoginClassifieds = document.getElementById('btn-google-login-classifieds');
     
     if (btnGoogleLogin) {
         btnGoogleLogin.addEventListener('click', () => {
+            window.loginWithGoogle();
+        });
+    }
+    
+    if (btnGoogleLoginClassifieds) {
+        btnGoogleLoginClassifieds.addEventListener('click', () => {
             window.loginWithGoogle();
         });
     }
