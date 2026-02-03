@@ -130,9 +130,6 @@ try {
     const viewDashboard = document.getElementById('view-dashboard');
     const viewCommunity = document.getElementById('view-community');
     const viewClassifieds = document.getElementById('view-classifieds');
-    const navHomeBtn = document.getElementById('nav-home');
-    const btnPizarraMenu = document.getElementById('btn-pizarra-menu');
-    const btnClasificadosMenu = document.getElementById('btn-clasificados-menu');
     const backToHomeBtn = document.getElementById('back-to-home');
     const backToHomeClassifieds = document.getElementById('back-to-home-classifieds');
     const fabContainer = document.getElementById('fab-container');
@@ -144,10 +141,6 @@ try {
     const newClassifiedToast = document.getElementById('new-classified-toast');
     const clasificadosBadge = document.getElementById('clasificados-badge');
     const clasificadosMenuBadge = document.getElementById('clasificados-menu-badge');
-    const menuButton = document.getElementById('menu-button');
-    const menuCloseButton = document.getElementById('menu-close-button');
-    const mobileMenu = document.getElementById('mobile-menu');
-    const menuBackdrop = document.getElementById('menu-backdrop');
 
     // --- LÓGICA DE INSTALACIÓN PWA ---
     let deferredPrompt;
@@ -204,10 +197,6 @@ try {
             if(fabBackWeather) fabBackWeather.classList.remove('hidden');
             markClassifiedsAsRead();
         }
-        
-        if (mobileMenu && !mobileMenu.classList.contains('-translate-x-full')) {
-            toggleMenu();
-        }
     }
     
     // Marcar clasificados como leidos
@@ -219,21 +208,10 @@ try {
         if (newClassifiedToast) newClassifiedToast.classList.add('hidden');
     }
 
-    function toggleMenu() {
-        if (mobileMenu.classList.contains('-translate-x-full')) {
-            mobileMenu.classList.remove('-translate-x-full'); 
-            menuBackdrop.classList.remove('hidden'); 
-        } else {
-            mobileMenu.classList.add('-translate-x-full'); 
-            menuBackdrop.classList.add('hidden'); 
-        }
-    }
+    // --- LISTENERS DE NAVEGACIÓN ---
 
-    if (navHomeBtn) navHomeBtn.addEventListener('click', () => switchView('dashboard'));
     if (backToHomeBtn) backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
     if (backToHomeClassifieds) backToHomeClassifieds.addEventListener('click', () => switchView('dashboard'));
-    if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', () => switchView('community'));
-    if (btnClasificadosMenu) btnClasificadosMenu.addEventListener('click', () => switchView('classifieds'));
     if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
     if (fabClasificados) fabClasificados.addEventListener('click', () => switchView('classifieds'));
     if (fabBackWeather) fabBackWeather.addEventListener('click', () => switchView('dashboard'));
@@ -248,9 +226,6 @@ try {
             markPhotosAsRead();
         });
     }
-    if (menuButton) menuButton.addEventListener('click', toggleMenu);
-    if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
-    if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
     
     // Marcar fotos como leídas cuando se abre la galería
     const gallerySection = document.getElementById('gallery-section');

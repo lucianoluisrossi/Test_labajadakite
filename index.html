@@ -28,14 +28,6 @@
         
         <!-- ENCABEZADO PRINCIPAL -->
         <div class="relative flex justify-center items-start mb-6 mt-4 md:mt-8">
-            
-            <!-- BOTÓN MENÚ (IZQUIERDA) - MÁS GRANDE -->
-            <button id="menu-button" class="absolute top-0 left-0 bg-blue-600 text-white px-4 py-3 md:px-5 md:py-3 rounded-full shadow-lg hover:bg-blue-700 hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-2 z-50 group">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                <span class="font-bold text-sm md:text-base uppercase tracking-wider hidden md:inline group-hover:text-blue-100">Menú</span>
-            </button>
 
             <!-- LOGOS CENTRALES -->
             <div class="flex flex-col items-center z-10">
@@ -65,59 +57,6 @@
 
         <!-- MENÚ OFF-CANVAS -->
         <!-- MENÚ HAMBURGUESA - MODERNO CON CARDS -->
-        <div id="mobile-menu" class="fixed inset-y-0 left-0 w-80 bg-gradient-to-b from-blue-50 via-white to-blue-50 shadow-2xl transform -translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col h-full">
-            <!-- Header con gradiente azul -->
-            <div class="p-6 bg-gradient-to-r from-blue-600 to-blue-700 relative">
-                <div class="flex items-center gap-3 mb-2">
-                    <span class="text-4xl">🏖️</span>
-                    <div>
-                        <h3 class="font-bold text-xl text-white">La Bajada</h3>
-                        <p class="text-xs text-blue-100">Kitesurf App</p>
-                    </div>
-                </div>
-                <button id="menu-close-button" class="absolute top-4 right-4 text-white hover:text-blue-200 focus:outline-none transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            
-            <!-- Opciones con cards grandes -->
-            <div class="p-5 flex-grow overflow-y-auto space-y-3">
-                <!-- Card 1: Inicio -->
-                <button id="nav-home" class="w-full bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col items-center gap-2 border-2 border-blue-100 hover:border-blue-300 hover:scale-[1.02] active:scale-95">
-                    <span class="text-6xl">🏠</span>
-                    <span class="font-bold text-gray-800 text-sm">Inicio / Clima</span>
-                </button>
-                
-                <!-- Card 2: Comunidad -->
-                <button id="btn-pizarra-menu" class="w-full bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col items-center gap-2 border-2 border-blue-100 hover:border-blue-300 hover:scale-[1.02] active:scale-95">
-                    <span class="text-6xl">💬</span>
-                    <span class="font-bold text-gray-800 text-sm">Comunidad</span>
-                    <span class="text-xs text-gray-500">Fotos & Chat</span>
-                </button>
-                
-                <!-- Card 3: Clasificados -->
-                <button id="btn-clasificados-menu" class="w-full bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col items-center gap-2 border-2 border-blue-100 hover:border-blue-300 hover:scale-[1.02] active:scale-95 relative">
-                    <span class="text-6xl">🏷️</span>
-                    <span class="font-bold text-gray-800 text-sm">Clasificados</span>
-                    <span class="text-xs text-gray-500">Compra & Venta</span>
-                    <span id="clasificados-menu-badge" class="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full hidden animate-pulse">!</span>
-                </button>
-            </div>
-            
-            <!-- Footer con Cafecito -->
-            <div class="p-5 border-t border-gray-200 bg-white">
-                <div class="flex flex-col items-center text-center space-y-3">
-                    <p class="text-sm text-gray-600 font-medium">¿Te sirve la app?</p>
-                    <a href='https://cafecito.app/labajadakite' rel='noopener' target='_blank' class="transition-transform hover:scale-105 block">
-                        <img src='https://cdn.cafecito.app/imgs/buttons/button_6.png' alt='Invitame un café en cafecito.app' class="h-10" />
-                    </a>
-                    <p class="text-xs text-gray-400 mt-2">La Bajada App v3.9.2</p>
-                </div>
-            </div>
-        </div>
-        <div id="menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
 
         <!-- VISTA DASHBOARD (CLIMA) -->
         <div id="view-dashboard" class="fade-in">
@@ -850,6 +789,13 @@
                 <p>¿Sugerencias? <a href="https://wa.me/5492983500324" target="_blank" class="underline hover:text-gray-400 font-medium">Contactar desarrollador</a></p>
             </div>
         </footer>
+
+        <!-- CAFECITO BUTTON - FIJO DESKTOP (bottom-right) -->
+        <div class="hidden md:block fixed bottom-6 right-6 z-30">
+            <a href='https://cafecito.app/labajadakite' rel='noopener' target='_blank' class="block transition-transform hover:scale-110 active:scale-95 hover:shadow-2xl rounded-lg">
+                <img src='https://cdn.cafecito.app/imgs/buttons/button_6.png' alt='Invitame un café en cafecito.app' class="h-12 rounded-lg shadow-xl" />
+            </a>
+        </div>
 
     </div>
     
