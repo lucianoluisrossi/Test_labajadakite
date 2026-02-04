@@ -87,6 +87,10 @@ try {
         const loginPromptGallery = document.getElementById('login-prompt-gallery');
         const classifiedsPublishContainer = document.getElementById('classifieds-publish-container');
         const loginPromptClassifieds = document.getElementById('login-prompt-classifieds');
+        
+        // Elementos de notificaciones
+        const notifLoginRequired = document.getElementById('notif-login-required');
+        const notifSettingsLogged = document.getElementById('notif-settings-logged');
 
         if (user) {
             // Usuario logueado
@@ -100,6 +104,11 @@ try {
             if (loginPromptGallery) loginPromptGallery.classList.add('hidden');
             if (classifiedsPublishContainer) classifiedsPublishContainer.classList.remove('hidden');
             if (loginPromptClassifieds) loginPromptClassifieds.classList.add('hidden');
+            
+            // Notificaciones: Mostrar configuración
+            if (notifLoginRequired) notifLoginRequired.classList.add('hidden');
+            if (notifSettingsLogged) notifSettingsLogged.classList.remove('hidden');
+            
             console.log("✅ Usuario logueado:", user.displayName);
         } else {
             // Usuario no logueado
@@ -111,6 +120,11 @@ try {
             if (loginPromptGallery) loginPromptGallery.classList.remove('hidden');
             if (classifiedsPublishContainer) classifiedsPublishContainer.classList.add('hidden');
             if (loginPromptClassifieds) loginPromptClassifieds.classList.remove('hidden');
+            
+            // Notificaciones: Mostrar login requerido
+            if (notifLoginRequired) notifLoginRequired.classList.remove('hidden');
+            if (notifSettingsLogged) notifSettingsLogged.classList.add('hidden');
+            
             console.log("ℹ️ Usuario no logueado");
         }
     }
@@ -380,6 +394,7 @@ try {
     const btnGoogleLogin = document.getElementById('btn-google-login');
     const btnLogout = document.getElementById('btn-logout');
     const btnGoogleLoginClassifieds = document.getElementById('btn-google-login-classifieds');
+    const btnLoginForNotifications = document.getElementById('login-for-notifications');
     
     if (btnGoogleLogin) {
         btnGoogleLogin.addEventListener('click', () => {
@@ -389,6 +404,13 @@ try {
     
     if (btnGoogleLoginClassifieds) {
         btnGoogleLoginClassifieds.addEventListener('click', () => {
+            window.loginWithGoogle();
+        });
+    }
+    
+    if (btnLoginForNotifications) {
+        btnLoginForNotifications.addEventListener('click', () => {
+            console.log('👆 Click login notificaciones');
             window.loginWithGoogle();
         });
     }
