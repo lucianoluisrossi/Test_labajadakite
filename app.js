@@ -70,6 +70,8 @@ try {
     // Exponer funciones globalmente para uso en eventos
     window.loginWithGoogle = loginWithGoogle;
     window.logout = logout;
+    window.auth = auth;
+    window.onAuthStateChanged = onAuthStateChanged;
 
     document.addEventListener('DOMContentLoaded', () => {
     
