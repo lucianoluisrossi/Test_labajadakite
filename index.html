@@ -350,8 +350,8 @@
             </div>
         </div>
         <div class="p-4 bg-gray-50 border-t border-gray-200">
-            <button id="close-help-modal" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                Entendido
+            <button id="activate-from-modal" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                Activar Notificaciones
             </button>
         </div>
     </div>
@@ -789,7 +789,7 @@
     <script>
         window.addEventListener('DOMContentLoaded', () => {
             const helpModal = document.getElementById('notifications-help-modal');
-            const closeHelpBtn = document.getElementById('close-help-modal');
+            const activateFromModalBtn = document.getElementById('activate-from-modal');
             const enableNotifBtn = document.getElementById('enable-notifications-btn');
             
             // Función para cerrar el modal y marcarlo como visto
@@ -800,9 +800,26 @@
                 }
             }
             
-            // Cerrar modal al clickear el botón
-            if (closeHelpBtn) {
-                closeHelpBtn.addEventListener('click', closeModal);
+            // Activar notificaciones desde el modal
+            if (activateFromModalBtn) {
+                activateFromModalBtn.addEventListener('click', async () => {
+                    // Solicitar permiso
+                    if ('Notification' in window) {
+                        const permission = await Notification.requestPermission();
+                        
+                        if (permission === 'granted') {
+                            console.log('✅ Notificaciones activadas desde el modal');
+                            
+                            // Inicializar el WindNotificationManager si existe
+                            if (window.windNotificationManager) {
+                                await window.windNotificationManager.requestPermission();
+                            }
+                        }
+                    }
+                    
+                    // Cerrar el modal después de solicitar permiso
+                    closeModal();
+                });
             }
             
             // Función para verificar si debe mostrarse el modal
@@ -820,7 +837,7 @@
                 return true;
             }
             
-            // Manejar click en "Activar Notificaciones"
+            // Manejar click en "Activar Notificaciones" (botón principal)
             if (enableNotifBtn) {
                 enableNotifBtn.addEventListener('click', async () => {
                     // Mostrar el modal solo si debe mostrarse
@@ -832,7 +849,11 @@
                     if (!shouldShowModal()) {
                         // Solicitar permiso directamente
                         if ('Notification' in window && Notification.permission === 'default') {
-                            await Notification.requestPermission();
+                            const permission = await Notification.requestPermission();
+                            
+                            if (permission === 'granted' && window.windNotificationManager) {
+                                await window.windNotificationManager.requestPermission();
+                            }
                         }
                     }
                 });
