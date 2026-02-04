@@ -960,7 +960,10 @@
             const minWindSlider = document.getElementById('min-wind-slider');
             const minWindValue = document.getElementById('min-wind-value');
             
-            if (!minWindSlider) return;
+            if (!minWindSlider) {
+                console.log('⚠️ Slider de viento mínimo no encontrado (aún)');
+                return;
+            }
             
             // Cargar valores guardados
             const savedMinWind = localStorage.getItem('notif_min_wind');
@@ -968,6 +971,7 @@
             if (savedMinWind) {
                 minWindSlider.value = savedMinWind;
                 minWindValue.textContent = savedMinWind;
+                console.log('📥 Viento mínimo cargado:', savedMinWind, 'kts');
             }
             
             // Guardar automáticamente al cambiar el slider de viento mínimo
@@ -976,10 +980,12 @@
                 minWindValue.textContent = value;
                 localStorage.setItem('notif_min_wind', value);
                 
-                // Actualizar configuración en el sistema de notificaciones si existe
-                if (window.windNotificationManager) {
-                    window.windNotificationManager.config.minNavigableWind = parseInt(value);
+                // Actualizar configuración en pushManager si existe
+                if (window.pushManager) {
+                    window.pushManager.config.minNavigableWind = parseInt(value);
                     console.log('✅ Viento mínimo actualizado:', value, 'kts');
+                } else {
+                    console.log('⚠️ pushManager aún no disponible, configuración guardada en localStorage');
                 }
             });
             
