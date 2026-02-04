@@ -4,7 +4,7 @@ import { getAuth, signInAnonymously, signInWithPopup, signOut, onAuthStateChange
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // ⭐ SISTEMA DE NOTIFICACIONES PUSH
-import { pushManager } from './notifications.js';
+import { PushNotificationManager } from './notifications.js';
 import './notifications-integration.js';
 
 // ⭐ MEJORAS UX/UI
@@ -28,6 +28,7 @@ let messagesCollection;
 let galleryCollection;
 let classifiedsCollection;
 let currentUser = null;
+let pushManager; // Se inicializará después de Firebase
 const googleProvider = new GoogleAuthProvider();
 
 try {
@@ -39,7 +40,12 @@ try {
     galleryCollection = collection(db, "daily_gallery_meta");
     classifiedsCollection = collection(db, "classifieds");
 
+    // Inicializar pushManager con Firebase app para logging
+    pushManager = new PushNotificationManager(app);
+    window.pushManager = pushManager; // Exponerlo globalmente
+
     console.log("✅ Firebase inicializado.");
+    console.log("✅ PushManager inicializado con logging a Firestore.");
 
     // --- FUNCIONES DE LOGIN/LOGOUT ---
     async function loginWithGoogle() {

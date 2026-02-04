@@ -1,11 +1,21 @@
 // notifications.js
 // Sistema de Notificaciones Push para La Bajada Kite App
 
+import { NotificationLogger, NotificationTypes } from './notification-logger.js';
+
 export class PushNotificationManager {
-    constructor() {
+    constructor(firebaseApp = null) {
         this.isSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
         this.permission = this.isSupported ? Notification.permission : 'denied';
         this.lastWindConditions = null;
+        
+        // Inicializar logger si hay Firebase disponible
+        this.logger = firebaseApp ? new NotificationLogger(firebaseApp) : null;
+        if (this.logger) {
+            console.log('✅ NotificationLogger inicializado');
+        } else {
+            console.log('⚠️ NotificationLogger no disponible (Firebase no proporcionado)');
+        }
         
         // Configuración de umbrales para notificaciones
         // Cargar desde localStorage si existe, sino usar valores por defecto
@@ -126,7 +136,7 @@ export class PushNotificationManager {
                 tag: 'epic-east',
                 requireInteraction: true,
                 vibrate: [200, 100, 200, 100, 200]
-            });
+            }, { speed, gust, direction });
             this.sentNotifications.epicEast = true;
         }
 
@@ -147,7 +157,7 @@ export class PushNotificationManager {
                 tag: 'dangerous-conditions',
                 requireInteraction: false,
                 vibrate: [300, 100, 300]
-            });
+            }, { speed, gust, direction });
             this.sentNotifications.dangerous = true;
         }
 
@@ -158,7 +168,7 @@ export class PushNotificationManager {
                 body: `${speed} kts ${cardinal}`,
                 tag: 'good-conditions',
                 requireInteraction: false
-            });
+            }, { speed, gust, direction });
             this.sentNotifications.goodConditions = true;
         }
 
@@ -169,7 +179,7 @@ export class PushNotificationManager {
                 body: `Ahora ${speed} kts ${cardinal}`,
                 tag: 'wind-increased',
                 requireInteraction: false
-            });
+            }, { speed, gust, direction });
             this.sentNotifications.windIncreased = true;
         }
 
@@ -194,7 +204,7 @@ export class PushNotificationManager {
     }
 
     // Enviar notificación
-    sendNotification(options) {
+    sendNotification(options, windData = null) {
         if (this.permission !== 'granted') return;
 
         const defaultOptions = {
@@ -218,8 +228,64 @@ export class PushNotificationManager {
             }
             
             console.log('📬 Notificación enviada:', notificationOptions.title);
+            
+            // Registrar en Firestore si logger está disponible y tenemos datos
+            if (this.logger && windData) {
+                this.logNotificationToFirestore(notificationOptions, windData);
+            }
         } catch (error) {
             console.error('Error enviando notificación:', error);
+        }
+    }
+    
+    // Método auxiliar para registrar en Firestore
+    async logNotificationToFirestore(notificationOptions, windData) {
+        try {
+            // Obtener user ID actual (si está logueado)
+            const currentUserId = window.auth?.currentUser?.uid || null;
+            const userIds = currentUserId ? [currentUserId] : [];
+            
+            // Obtener configuración del usuario
+            const usersConfig = currentUserId ? [{
+                userId: currentUserId,
+                minWind: this.config.minNavigableWind,
+                maxWind: this.config.maxGoodWind
+            }] : [];
+            
+            // Determinar tipo de notificación basado en el tag
+            let notificationType = 'unknown';
+            switch(notificationOptions.tag) {
+                case 'epic-east':
+                    notificationType = NotificationTypes.EPIC_EAST;
+                    break;
+                case 'dangerous-conditions':
+                    notificationType = NotificationTypes.DANGEROUS;
+                    break;
+                case 'good-conditions':
+                    notificationType = NotificationTypes.GOOD_CONDITIONS;
+                    break;
+                case 'wind-increased':
+                    notificationType = NotificationTypes.WIND_INCREASED;
+                    break;
+                case 'offshore-warning':
+                    notificationType = NotificationTypes.OFFSHORE_WARNING;
+                    break;
+            }
+            
+            // Registrar en Firestore
+            await this.logger.logNotification({
+                windSpeed: windData.speed,
+                windGust: windData.gust,
+                direction: windData.direction,
+                notificationType: notificationType,
+                notificationTitle: notificationOptions.title,
+                notificationBody: notificationOptions.body,
+                userIds: userIds,
+                usersConfig: usersConfig
+            });
+            
+        } catch (error) {
+            console.error('❌ Error al registrar notificación en Firestore:', error);
         }
     }
 
@@ -279,5 +345,4 @@ export class PushNotificationManager {
     }
 }
 
-// Exportar instancia singleton
-export const pushManager = new PushNotificationManager();
+// No exportamos singleton, se crea en app.js con Firebase app
