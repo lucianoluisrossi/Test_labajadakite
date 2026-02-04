@@ -284,7 +284,7 @@
     <div id="notifications-content" class="hidden mt-4 space-y-4">
         
         <!-- VERSIÓN: Usuario NO logueado (Login requerido) -->
-        <div id="notif-login-required" class="hidden">
+        <div id="notif-login-required">
             <div class="text-center p-6 space-y-4">
                 <div class="text-6xl">🔔</div>
                 <h3 class="font-bold text-xl text-gray-800">Notificaciones Personalizadas</h3>
@@ -327,7 +327,7 @@
         </div>
         
         <!-- VERSIÓN: Usuario logueado (Configuración normal) -->
-        <div id="notif-settings-logged" class="hidden space-y-4">
+        <div id="notif-settings-logged" class="space-y-4">
             
             <!-- Botón principal de activación -->
             <button id="enable-notifications-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md flex items-center justify-center gap-2">
@@ -842,6 +842,11 @@
         const notifSettingsLogged = document.getElementById('notif-settings-logged');
         const loginForNotifBtn = document.getElementById('login-for-notifications');
         
+        // INICIALIZACIÓN INMEDIATA: Ocultar ambos hasta saber el estado
+        // Esto evita que ambos aparezcan momentáneamente
+        if (notifLoginRequired) notifLoginRequired.classList.add('hidden');
+        if (notifSettingsLogged) notifSettingsLogged.classList.add('hidden');
+        
         // Función para actualizar UI según estado de login
         function updateNotificationUI(user) {
             if (user) {
@@ -878,6 +883,28 @@
     <!-- Script para control del modal de notificaciones -->
     <script>
         window.addEventListener('DOMContentLoaded', () => {
+            // Elementos para expandir/colapsar
+            const expandBtn = document.getElementById('notifications-expand-btn');
+            const expandIcon = document.getElementById('expand-icon');
+            const notifContent = document.getElementById('notifications-content');
+            
+            // Toggle expandir/colapsar
+            if (expandBtn && notifContent) {
+                expandBtn.addEventListener('click', () => {
+                    const isHidden = notifContent.classList.contains('hidden');
+                    
+                    if (isHidden) {
+                        // Expandir
+                        notifContent.classList.remove('hidden');
+                        expandIcon.style.transform = 'rotate(180deg)';
+                    } else {
+                        // Colapsar
+                        notifContent.classList.add('hidden');
+                        expandIcon.style.transform = 'rotate(0deg)';
+                    }
+                });
+            }
+            
             const helpModal = document.getElementById('notifications-help-modal');
             const activateFromModalBtn = document.getElementById('activate-from-modal');
             const enableNotifBtn = document.getElementById('enable-notifications-btn');
