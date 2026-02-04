@@ -381,6 +381,50 @@
     </div>
 </div>
 
+<!-- Script inline para expandir/colapsar notificaciones -->
+<script>
+(function() {
+    // Ejecutar inmediatamente
+    function setupExpand() {
+        const expandBtn = document.getElementById('notifications-expand-btn');
+        const expandIcon = document.getElementById('expand-icon');
+        const notifContent = document.getElementById('notifications-content');
+        
+        console.log('🔧 Setup expandir:', { expandBtn, expandIcon, notifContent });
+        
+        if (expandBtn && notifContent && expandIcon) {
+            expandBtn.addEventListener('click', function() {
+                const isHidden = notifContent.classList.contains('hidden');
+                console.log('👆 Click expandir, isHidden:', isHidden);
+                
+                if (isHidden) {
+                    // Expandir
+                    notifContent.classList.remove('hidden');
+                    expandIcon.style.transform = 'rotate(180deg)';
+                    console.log('✅ Expandido');
+                } else {
+                    // Colapsar
+                    notifContent.classList.add('hidden');
+                    expandIcon.style.transform = 'rotate(0deg)';
+                    console.log('✅ Colapsado');
+                }
+            });
+            console.log('✅ Listener de expandir configurado');
+        } else {
+            console.error('❌ No se encontraron elementos:', { expandBtn, expandIcon, notifContent });
+        }
+    }
+    
+    // Ejecutar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupExpand);
+    } else {
+        // DOM ya está listo
+        setupExpand();
+    }
+})();
+</script>
+
 <!-- Modal de ayuda (opcional) -->
 <div id="notifications-help-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4" style="background-color: rgba(0, 0, 0, 0.85);">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-fadeIn">
@@ -883,28 +927,6 @@
     <!-- Script para control del modal de notificaciones -->
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            // Elementos para expandir/colapsar
-            const expandBtn = document.getElementById('notifications-expand-btn');
-            const expandIcon = document.getElementById('expand-icon');
-            const notifContent = document.getElementById('notifications-content');
-            
-            // Toggle expandir/colapsar
-            if (expandBtn && notifContent) {
-                expandBtn.addEventListener('click', () => {
-                    const isHidden = notifContent.classList.contains('hidden');
-                    
-                    if (isHidden) {
-                        // Expandir
-                        notifContent.classList.remove('hidden');
-                        expandIcon.style.transform = 'rotate(180deg)';
-                    } else {
-                        // Colapsar
-                        notifContent.classList.add('hidden');
-                        expandIcon.style.transform = 'rotate(0deg)';
-                    }
-                });
-            }
-            
             const helpModal = document.getElementById('notifications-help-modal');
             const activateFromModalBtn = document.getElementById('activate-from-modal');
             const enableNotifBtn = document.getElementById('enable-notifications-btn');
