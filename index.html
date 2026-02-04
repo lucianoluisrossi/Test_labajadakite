@@ -267,7 +267,7 @@
             </svg>
             <h3 class="font-bold text-gray-800">Notificaciones de Viento</h3>
         </div>
-        <button id="notifications-expand-btn" class="text-gray-500 hover:text-gray-700 transition-colors">
+        <button id="notifications-expand-btn" class="text-gray-500 hover:text-gray-700 transition-colors" onclick="(function(btn){var c=document.getElementById('notifications-content');var i=document.getElementById('expand-icon');if(c.classList.contains('hidden')){c.classList.remove('hidden');i.style.transform='rotate(180deg)'}else{c.classList.add('hidden');i.style.transform='rotate(0deg)'}})(this)">
             <svg id="expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
@@ -878,41 +878,61 @@
     
     <!-- Script para control de login en notificaciones -->
     <script type="module">
-        import { auth } from './firebase-init.js';
-        import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-        
-        // Elementos
-        const notifLoginRequired = document.getElementById('notif-login-required');
-        const notifSettingsLogged = document.getElementById('notif-settings-logged');
-        const loginForNotifBtn = document.getElementById('login-for-notifications');
-        
-        // INICIALIZACIÓN INMEDIATA: Ocultar ambos hasta saber el estado
-        // Esto evita que ambos aparezcan momentáneamente
-        if (notifLoginRequired) notifLoginRequired.classList.add('hidden');
-        if (notifSettingsLogged) notifSettingsLogged.classList.add('hidden');
-        
-        // Función para actualizar UI según estado de login
-        function updateNotificationUI(user) {
-            if (user) {
-                // Usuario logueado - Mostrar configuración
-                if (notifLoginRequired) notifLoginRequired.classList.add('hidden');
-                if (notifSettingsLogged) notifSettingsLogged.classList.remove('hidden');
-                console.log('✅ Usuario logueado - Notificaciones disponibles');
-            } else {
-                // Usuario NO logueado - Mostrar login requerido
-                if (notifLoginRequired) notifLoginRequired.classList.remove('hidden');
-                if (notifSettingsLogged) notifSettingsLogged.classList.add('hidden');
-                console.log('⚠️ Login requerido para notificaciones');
+        try {
+            const { auth } = await import('./firebase-init.js');
+            const { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+            
+            // Elementos
+            const notifLoginRequired = document.getElementById('notif-login-required');
+            const notifSettingsLogged = document.getElementById('notif-settings-logged');
+            const loginForNotifBtn = document.getElementById('login-for-notifications');
+            
+            // INICIALIZACIÓN INMEDIATA: Ocultar ambos hasta saber el estado
+            if (notifLoginRequired) notifLoginRequired.classList.add('hidden');
+            if (notifSettingsLogged) notifSettingsLogged.classList.add('hidden');
+            
+            // Función para actualizar UI según estado de login
+            function updateNotificationUI(user) {
+                if (user) {
+                    // Usuario logueado - Mostrar configuración
+                    if (notifLoginRequired) notifLoginRequired.classList.add('hidden');
+                    if (notifSettingsLogged) notifSettingsLogged.classList.remove('hidden');
+                    console.log('✅ Usuario logueado - Notificaciones disponibles');
+                } else {
+                    // Usuario NO logueado - Mostrar login requerido
+                    if (notifLoginRequired) notifLoginRequired.classList.remove('hidden');
+                    if (notifSettingsLogged) notifSettingsLogged.classList.add('hidden');
+                    console.log('⚠️ Login requerido para notificaciones');
+                }
             }
+            
+            // Escuchar cambios en el estado de autenticación
+            onAuthStateChanged(auth, (user) => {
+                updateNotificationUI(user);
+            });
+            
+            // Botón de login para notificaciones
+            if (loginForNotifBtn) {
+                loginForNotifBtn.addEventListener('click', async () => {
+                    // Llamar a la función global de login
+                    if (window.loginWithGoogle) {
+                        await window.loginWithGoogle();
+                    } else {
+                        console.error('❌ Función loginWithGoogle no disponible');
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error cargando Firebase para notificaciones:', error);
+            // Si Firebase falla, mostrar login por defecto
+            const notifLoginRequired = document.getElementById('notif-login-required');
+            const notifSettingsLogged = document.getElementById('notif-settings-logged');
+            
+            if (notifLoginRequired) notifLoginRequired.classList.remove('hidden');
+            if (notifSettingsLogged) notifSettingsLogged.classList.add('hidden');
+            
+            console.log('⚠️ Mostrando login requerido (Firebase no disponible)');
         }
-        
-        // Escuchar cambios en el estado de autenticación
-        onAuthStateChanged(auth, (user) => {
-            updateNotificationUI(user);
-        });
-        
-        // Botón de login para notificaciones
-        if (loginForNotifBtn) {
             loginForNotifBtn.addEventListener('click', async () => {
                 // Llamar a la función global de login
                 if (window.loginWithGoogle) {
