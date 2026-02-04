@@ -1,0 +1,348 @@
+// notifications.js
+// Sistema de Notificaciones Push para La Bajada Kite App
+
+import { NotificationLogger, NotificationTypes } from './notification-logger.js';
+
+export class PushNotificationManager {
+    constructor(firebaseApp = null) {
+        this.isSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+        this.permission = this.isSupported ? Notification.permission : 'denied';
+        this.lastWindConditions = null;
+        
+        // Inicializar logger si hay Firebase disponible
+        this.logger = firebaseApp ? new NotificationLogger(firebaseApp) : null;
+        if (this.logger) {
+            console.log('✅ NotificationLogger inicializado');
+        } else {
+            console.log('⚠️ NotificationLogger no disponible (Firebase no proporcionado)');
+        }
+        
+        // Configuración de umbrales para notificaciones
+        // Cargar desde localStorage si existe, sino usar valores por defecto
+        const savedMinWind = localStorage.getItem('notif_min_wind');
+        
+        this.config = {
+            minNavigableWind: savedMinWind ? parseInt(savedMinWind) : 15,  // kts - mínimo para navegar
+            maxGoodWind: 27,            // kts - máximo para "condiciones ideales" (>27 = extremas)
+            dangerousWind: 35,          // kts - rachas peligrosas
+            offshoreAngles: [315, 67.5], // N a NE (offshore)
+            checkInterval: 5 * 60 * 1000, // 5 minutos
+        };
+        
+        console.log('⚙️ Configuración de notificaciones cargada:', {
+            minNavigableWind: this.config.minNavigableWind
+        });
+        
+        // Estado de notificaciones enviadas (para evitar spam)
+        this.sentNotifications = {
+            goodConditions: false,
+            windIncreased: false,
+            dangerous: false,
+            epicEast: false,
+            lastReset: Date.now()
+        };
+        
+        // Resetear estado cada 2 horas
+        setInterval(() => this.resetNotificationState(), 2 * 60 * 60 * 1000);
+    }
+
+    // Verificar si el navegador soporta notificaciones
+    checkSupport() {
+        if (!this.isSupported) {
+            console.warn('⚠️ Push notifications no soportadas en este navegador');
+            return false;
+        }
+        return true;
+    }
+
+    // Solicitar permiso al usuario
+    async requestPermission() {
+        if (!this.checkSupport()) {
+            return false;
+        }
+
+        if (this.permission === 'granted') {
+            console.log('✅ Permiso de notificaciones ya concedido');
+            return true;
+        }
+
+        if (this.permission === 'denied') {
+            console.log('❌ Permiso de notificaciones denegado');
+            return false;
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            this.permission = permission;
+            
+            if (permission === 'granted') {
+                console.log('✅ Permiso de notificaciones concedido');
+                this.showTestNotification();
+                return true;
+            } else {
+                console.log('❌ Usuario rechazó las notificaciones');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error solicitando permiso:', error);
+            return false;
+        }
+    }
+
+    // Mostrar notificación de prueba
+    showTestNotification() {
+        if (this.permission !== 'granted') return;
+        
+        new Notification('¡Notificaciones activadas! 🪁', {
+            body: 'Te avisaremos cuando haya buenas condiciones de viento',
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            tag: 'test-notification',
+            requireInteraction: false
+        });
+    }
+
+    // Analizar condiciones de viento y enviar notificaciones si corresponde
+    analyzeWindConditions(windData) {
+        if (this.permission !== 'granted') return;
+        
+        const { speed, gust, direction, cardinal } = windData;
+        
+        // Validar datos
+        if (speed === null || direction === null) {
+            console.log('⚠️ Datos de viento incompletos');
+            return;
+        }
+
+        // Determinar si es offshore (peligroso)
+        const isOffshore = this.isOffshoreWind(direction);
+        
+        // ⭐ CONDICIÓN ÉPICA: E, ESE y SE (vientos del este) >17 kts
+        const isEastWind = direction >= 68 && direction <= 146; // E, ESE, SE
+        const isEpicEast = isEastWind && speed > 17;
+        
+        // Determinar estado de navegabilidad
+        const isNavigable = speed >= this.config.minNavigableWind;
+        const isGoodConditions = speed >= this.config.minNavigableWind && 
+                                  speed < 27 && 
+                                  !isOffshore;
+        const isDangerous = speed > 27 || gust >= this.config.dangerousWind;
+
+        // 1. ⭐ CONDICIÓN ÉPICA (prioridad máxima, antes que todo)
+        if (isEpicEast && !this.sentNotifications.epicEast && !isDangerous) {
+            this.sendNotification({
+                title: '👑 ¡ÉPICO!',
+                body: `${speed} kts ${cardinal}`,
+                tag: 'epic-east',
+                requireInteraction: true,
+                vibrate: [200, 100, 200, 100, 200]
+            }, { speed, gust, direction });
+            this.sentNotifications.epicEast = true;
+        }
+
+        // 2. CONDICIONES EXTREMAS (viento >27 kts O rachas peligrosas)
+        if (isDangerous && !this.sentNotifications.dangerous) {
+            let message = '';
+            if (speed > 27 && gust >= this.config.dangerousWind) {
+                message = `Viento ${speed} kts, Rachas ${gust} kts`;
+            } else if (speed > 27) {
+                message = `Viento ${speed} kts`;
+            } else {
+                message = `Rachas de ${gust} kts`;
+            }
+            
+            this.sendNotification({
+                title: '⚠️ Condiciones extremas',
+                body: message,
+                tag: 'dangerous-conditions',
+                requireInteraction: false,
+                vibrate: [300, 100, 300]
+            }, { speed, gust, direction });
+            this.sentNotifications.dangerous = true;
+        }
+
+        // 3. CONDICIONES IDEALES (respeta configuración del usuario)
+        if (isGoodConditions && !this.sentNotifications.goodConditions && !isDangerous && !isEpicEast) {
+            this.sendNotification({
+                title: '🪁 ¡Condiciones ideales!',
+                body: `${speed} kts ${cardinal}`,
+                tag: 'good-conditions',
+                requireInteraction: false
+            }, { speed, gust, direction });
+            this.sentNotifications.goodConditions = true;
+        }
+
+        // 4. VIENTO SUBIÓ (solo si antes no era navegable y ahora sí)
+        if (this.lastWindConditions && this.lastWindConditions.speed < this.config.minNavigableWind && isNavigable && !this.sentNotifications.windIncreased) {
+            this.sendNotification({
+                title: '📈 El viento subió',
+                body: `Ahora ${speed} kts ${cardinal}`,
+                tag: 'wind-increased',
+                requireInteraction: false
+            }, { speed, gust, direction });
+            this.sentNotifications.windIncreased = true;
+        }
+
+        // Guardar condiciones actuales para comparar después
+        this.lastWindConditions = { speed, gust, direction, cardinal };
+    }
+
+    // Determinar si el viento es offshore
+    isOffshoreWind(degrees) {
+        // Offshore en La Bajada: N, NNE, NE, NNO, NO (315° a 67.5°)
+        return degrees >= this.config.offshoreAngles[0] || degrees <= this.config.offshoreAngles[1];
+    }
+
+    // Recomendar tamaño de kite según velocidad de viento
+    recommendKiteSize(windSpeed) {
+        if (windSpeed < 12) return '12-14m';
+        if (windSpeed < 16) return '10-12m';
+        if (windSpeed < 20) return '9-10m';
+        if (windSpeed < 25) return '7-9m';
+        if (windSpeed < 30) return '5-7m';
+        return '5m o menos';
+    }
+
+    // Enviar notificación
+    sendNotification(options, windData = null) {
+        if (this.permission !== 'granted') return;
+
+        const defaultOptions = {
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            vibrate: [200, 100, 200],
+            data: { url: '/' }
+        };
+
+        const notificationOptions = { ...defaultOptions, ...options };
+
+        try {
+            // Si hay service worker registrado, usar showNotification
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification(notificationOptions.title, notificationOptions);
+                });
+            } else {
+                // Fallback: notificación normal
+                new Notification(notificationOptions.title, notificationOptions);
+            }
+            
+            console.log('📬 Notificación enviada:', notificationOptions.title);
+            
+            // Registrar en Firestore si logger está disponible y tenemos datos
+            if (this.logger && windData) {
+                this.logNotificationToFirestore(notificationOptions, windData);
+            }
+        } catch (error) {
+            console.error('Error enviando notificación:', error);
+        }
+    }
+    
+    // Método auxiliar para registrar en Firestore
+    async logNotificationToFirestore(notificationOptions, windData) {
+        try {
+            // Obtener user ID actual (si está logueado)
+            const currentUserId = window.auth?.currentUser?.uid || null;
+            const userIds = currentUserId ? [currentUserId] : [];
+            
+            // Obtener configuración del usuario
+            const usersConfig = currentUserId ? [{
+                userId: currentUserId,
+                minWind: this.config.minNavigableWind,
+                maxWind: this.config.maxGoodWind
+            }] : [];
+            
+            // Determinar tipo de notificación basado en el tag
+            let notificationType = 'unknown';
+            switch(notificationOptions.tag) {
+                case 'epic-east':
+                    notificationType = NotificationTypes.EPIC_EAST;
+                    break;
+                case 'dangerous-conditions':
+                    notificationType = NotificationTypes.DANGEROUS;
+                    break;
+                case 'good-conditions':
+                    notificationType = NotificationTypes.GOOD_CONDITIONS;
+                    break;
+                case 'wind-increased':
+                    notificationType = NotificationTypes.WIND_INCREASED;
+                    break;
+                case 'offshore-warning':
+                    notificationType = NotificationTypes.OFFSHORE_WARNING;
+                    break;
+            }
+            
+            // Registrar en Firestore
+            await this.logger.logNotification({
+                windSpeed: windData.speed,
+                windGust: windData.gust,
+                direction: windData.direction,
+                notificationType: notificationType,
+                notificationTitle: notificationOptions.title,
+                notificationBody: notificationOptions.body,
+                userIds: userIds,
+                usersConfig: usersConfig
+            });
+            
+        } catch (error) {
+            console.error('❌ Error al registrar notificación en Firestore:', error);
+        }
+    }
+
+    // Resetear estado de notificaciones (para evitar spam)
+    resetNotificationState() {
+        const now = Date.now();
+        const timeSinceLastReset = now - this.sentNotifications.lastReset;
+        
+        // Solo resetear si pasaron al menos 2 horas
+        if (timeSinceLastReset >= 2 * 60 * 60 * 1000) {
+            console.log('🔄 Reseteando estado de notificaciones');
+            this.sentNotifications = {
+                goodConditions: false,
+                windIncreased: false,
+                dangerous: false,
+                epicEast: false,
+                lastReset: now
+            };
+        }
+    }
+
+    // Configurar preferencias de notificaciones
+    setConfig(newConfig) {
+        this.config = { ...this.config, ...newConfig };
+        console.log('⚙️ Configuración actualizada:', this.config);
+    }
+
+    // Obtener estado de notificaciones
+    getStatus() {
+        return {
+            supported: this.isSupported,
+            permission: this.permission,
+            enabled: this.permission === 'granted',
+            config: this.config,
+            lastWindConditions: this.lastWindConditions,
+            sentNotifications: this.sentNotifications
+        };
+    }
+
+    // Guardar preferencias en localStorage
+    savePreferences() {
+        localStorage.setItem('notificationConfig', JSON.stringify(this.config));
+        localStorage.setItem('notificationsEnabled', this.permission === 'granted');
+    }
+
+    // Cargar preferencias desde localStorage
+    loadPreferences() {
+        const savedConfig = localStorage.getItem('notificationConfig');
+        if (savedConfig) {
+            try {
+                this.config = { ...this.config, ...JSON.parse(savedConfig) };
+                console.log('✅ Preferencias de notificaciones cargadas');
+            } catch (e) {
+                console.error('Error cargando preferencias:', e);
+            }
+        }
+    }
+}
+
+// No exportamos singleton, se crea en app.js con Firebase app

@@ -3,6 +3,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, signInAnonymously, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+// ⭐ SISTEMA DE NOTIFICACIONES PUSH
+import { PushNotificationManager } from './notifications.js';
+import './notifications-integration.js';
+
+// ⭐ MEJORAS UX/UI
+import './ux-improvements.js';
+
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
@@ -21,6 +28,7 @@ let messagesCollection;
 let galleryCollection;
 let classifiedsCollection;
 let currentUser = null;
+let pushManager; // Se inicializará después de Firebase
 const googleProvider = new GoogleAuthProvider();
 
 try {
@@ -32,7 +40,12 @@ try {
     galleryCollection = collection(db, "daily_gallery_meta");
     classifiedsCollection = collection(db, "classifieds");
 
+    // Inicializar pushManager con Firebase app para logging
+    pushManager = new PushNotificationManager(app);
+    window.pushManager = pushManager; // Exponerlo globalmente
+
     console.log("✅ Firebase inicializado.");
+    console.log("✅ PushManager inicializado con logging a Firestore.");
 
     // --- FUNCIONES DE LOGIN/LOGOUT ---
     async function loginWithGoogle() {
@@ -63,6 +76,8 @@ try {
     // Exponer funciones globalmente para uso en eventos
     window.loginWithGoogle = loginWithGoogle;
     window.logout = logout;
+    window.auth = auth;
+    window.onAuthStateChanged = onAuthStateChanged;
 
     document.addEventListener('DOMContentLoaded', () => {
     
@@ -78,6 +93,10 @@ try {
         const loginPromptGallery = document.getElementById('login-prompt-gallery');
         const classifiedsPublishContainer = document.getElementById('classifieds-publish-container');
         const loginPromptClassifieds = document.getElementById('login-prompt-classifieds');
+        
+        // Elementos de notificaciones
+        const notifLoginRequired = document.getElementById('notif-login-required');
+        const notifSettingsLogged = document.getElementById('notif-settings-logged');
 
         if (user) {
             // Usuario logueado
@@ -91,6 +110,11 @@ try {
             if (loginPromptGallery) loginPromptGallery.classList.add('hidden');
             if (classifiedsPublishContainer) classifiedsPublishContainer.classList.remove('hidden');
             if (loginPromptClassifieds) loginPromptClassifieds.classList.add('hidden');
+            
+            // Notificaciones: Mostrar configuración
+            if (notifLoginRequired) notifLoginRequired.classList.add('hidden');
+            if (notifSettingsLogged) notifSettingsLogged.classList.remove('hidden');
+            
             console.log("✅ Usuario logueado:", user.displayName);
         } else {
             // Usuario no logueado
@@ -102,6 +126,11 @@ try {
             if (loginPromptGallery) loginPromptGallery.classList.remove('hidden');
             if (classifiedsPublishContainer) classifiedsPublishContainer.classList.add('hidden');
             if (loginPromptClassifieds) loginPromptClassifieds.classList.remove('hidden');
+            
+            // Notificaciones: Mostrar login requerido
+            if (notifLoginRequired) notifLoginRequired.classList.remove('hidden');
+            if (notifSettingsLogged) notifSettingsLogged.classList.add('hidden');
+            
             console.log("ℹ️ Usuario no logueado");
         }
     }
@@ -123,9 +152,6 @@ try {
     const viewDashboard = document.getElementById('view-dashboard');
     const viewCommunity = document.getElementById('view-community');
     const viewClassifieds = document.getElementById('view-classifieds');
-    const navHomeBtn = document.getElementById('nav-home');
-    const btnPizarraMenu = document.getElementById('btn-pizarra-menu');
-    const btnClasificadosMenu = document.getElementById('btn-clasificados-menu');
     const backToHomeBtn = document.getElementById('back-to-home');
     const backToHomeClassifieds = document.getElementById('back-to-home-classifieds');
     const fabContainer = document.getElementById('fab-container');
@@ -137,10 +163,6 @@ try {
     const newClassifiedToast = document.getElementById('new-classified-toast');
     const clasificadosBadge = document.getElementById('clasificados-badge');
     const clasificadosMenuBadge = document.getElementById('clasificados-menu-badge');
-    const menuButton = document.getElementById('menu-button');
-    const menuCloseButton = document.getElementById('menu-close-button');
-    const mobileMenu = document.getElementById('mobile-menu');
-    const menuBackdrop = document.getElementById('menu-backdrop');
 
     // --- LÓGICA DE INSTALACIÓN PWA ---
     let deferredPrompt;
@@ -197,10 +219,6 @@ try {
             if(fabBackWeather) fabBackWeather.classList.remove('hidden');
             markClassifiedsAsRead();
         }
-        
-        if (mobileMenu && !mobileMenu.classList.contains('-translate-x-full')) {
-            toggleMenu();
-        }
     }
     
     // Marcar clasificados como leidos
@@ -212,21 +230,10 @@ try {
         if (newClassifiedToast) newClassifiedToast.classList.add('hidden');
     }
 
-    function toggleMenu() {
-        if (mobileMenu.classList.contains('-translate-x-full')) {
-            mobileMenu.classList.remove('-translate-x-full'); 
-            menuBackdrop.classList.remove('hidden'); 
-        } else {
-            mobileMenu.classList.add('-translate-x-full'); 
-            menuBackdrop.classList.add('hidden'); 
-        }
-    }
+    // --- LISTENERS DE NAVEGACIÓN ---
 
-    if (navHomeBtn) navHomeBtn.addEventListener('click', () => switchView('dashboard'));
     if (backToHomeBtn) backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
     if (backToHomeClassifieds) backToHomeClassifieds.addEventListener('click', () => switchView('dashboard'));
-    if (btnPizarraMenu) btnPizarraMenu.addEventListener('click', () => switchView('community'));
-    if (btnClasificadosMenu) btnClasificadosMenu.addEventListener('click', () => switchView('classifieds'));
     if (fabCommunity) fabCommunity.addEventListener('click', () => switchView('community'));
     if (fabClasificados) fabClasificados.addEventListener('click', () => switchView('classifieds'));
     if (fabBackWeather) fabBackWeather.addEventListener('click', () => switchView('dashboard'));
@@ -241,9 +248,6 @@ try {
             markPhotosAsRead();
         });
     }
-    if (menuButton) menuButton.addEventListener('click', toggleMenu);
-    if (menuCloseButton) menuCloseButton.addEventListener('click', toggleMenu);
-    if (menuBackdrop) menuBackdrop.addEventListener('click', toggleMenu);
     
     // Marcar fotos como leídas cuando se abre la galería
     const gallerySection = document.getElementById('gallery-section');
@@ -395,9 +399,24 @@ try {
     // --- BOTONES DE LOGIN/LOGOUT ---
     const btnGoogleLogin = document.getElementById('btn-google-login');
     const btnLogout = document.getElementById('btn-logout');
+    const btnGoogleLoginClassifieds = document.getElementById('btn-google-login-classifieds');
+    const btnLoginForNotifications = document.getElementById('login-for-notifications');
     
     if (btnGoogleLogin) {
         btnGoogleLogin.addEventListener('click', () => {
+            window.loginWithGoogle();
+        });
+    }
+    
+    if (btnGoogleLoginClassifieds) {
+        btnGoogleLoginClassifieds.addEventListener('click', () => {
+            window.loginWithGoogle();
+        });
+    }
+    
+    if (btnLoginForNotifications) {
+        btnLoginForNotifications.addEventListener('click', () => {
+            console.log('👆 Click login notificaciones');
             window.loginWithGoogle();
         });
     }
@@ -534,7 +553,7 @@ try {
     const stabilityDataEl = document.getElementById('stability-data');
 
     const skeletonLoaderIds = ['verdict-data-loader','highlight-wind-dir-data-loader', 'highlight-wind-speed-data-loader', 'highlight-gust-data-loader','temp-data-loader', 'humidity-data-loader', 'pressure-data-loader', 'rainfall-daily-data-loader', 'uvi-data-loader','stability-data-loader'];
-    const dataContentIds = ['verdict-data','highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data','temp-data', 'humidity-data', 'pressure-data','rainfall-daily-data', 'uvi-data','stability-data'];
+    const dataContentIds = ['verdict-data','highlight-wind-dir-data', 'highlight-wind-speed-data', 'highlight-gust-data','temp-data', 'humidity-data', 'pressure-data','rainfall-daily-data', 'uvi-data','stability-data','wind-intensity-container','time-since-update'];
 
     let lastUpdateTime = null;
 
@@ -587,7 +606,7 @@ try {
     function calculateGustFactor(speed, gust) {
         if (speed === null || gust === null || speed <= 0) return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
         const MIN_KITE_WIND = 12; 
-        if (speed < MIN_KITE_WIND) return { factor: null, text: 'No Aplica', color: ['bg-gray-100', 'border-gray-300'] };
+        if (speed < MIN_KITE_WIND) return { factor: null, text: 'N/A', color: ['bg-gray-100', 'border-gray-300'] };
         if (gust <= speed) return { factor: 0, text: 'Ultra Estable', color: ['bg-green-400', 'border-green-600'] };
         const factor = (1 - (speed / gust)) * 100; 
         if (factor <= 15) return { factor, text: 'Estable', color: ['bg-green-300', 'border-green-500'] }; 
@@ -596,6 +615,18 @@ try {
     }
     
     function getSpotVerdict(speed, gust, degrees) {
+        // ⭐ CONDICIÓN ESPECIAL: E, ESE y SE (vientos del este) con >17 kts = ÉPICO
+        // E = 90° (rango: 68° - 101°)
+        // ESE = 112.5° (rango: 102° - 123°)
+        // SE = 135° (rango: 124° - 146°)
+        // Rango total: 68° - 146° (todos los vientos del este)
+        if (degrees !== null && speed !== null && speed > 17) {
+            if (degrees >= 68 && degrees <= 146) {
+                return ["¡ÉPICO! 👑", ['bg-gradient-to-r', 'from-yellow-400', 'to-amber-500', 'border-yellow-600', 'shadow-xl']];
+            }
+        }
+        
+        // Offshore sigue siendo peligroso
         if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["VIENTO OFFSHORE!", ['bg-red-400', 'border-red-600']];
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
         if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
@@ -611,7 +642,8 @@ try {
         'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
         'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600','bg-cyan-300', 'border-cyan-500',
         'bg-purple-400', 'border-purple-600', 'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
-        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 'bg-cyan-300', 'border-cyan-500'
+        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 'bg-cyan-300', 'border-cyan-500',
+        'bg-gradient-to-r', 'from-yellow-400', 'to-amber-500', 'border-yellow-600', 'shadow-xl'
     ];
 
     function updateCardColors(element, newClasses) {
@@ -782,7 +814,24 @@ try {
                 if (stabilityCardEl) updateCardColors(stabilityCardEl, stability.color);
                 if (stabilityDataEl) stabilityDataEl.textContent = stability.text;
                 
-                showSkeletons(false); 
+                // ⭐ MEJORAS UX: Actualizar barra, tendencia, timestamp
+                if (window.updateUXImprovements) {
+                    window.updateUXImprovements(windSpeedValue, windGustValue, lastUpdateTime);
+                }
+                
+                showSkeletons(false);
+                
+                // ⭐ ANALIZAR CONDICIONES PARA NOTIFICACIONES PUSH
+                // Pasar valores PROMEDIADOS (no instantáneos) para evitar alertas por picos
+                if (window.analyzeAndNotify) {
+                    window.analyzeAndNotify({
+                        wind: {
+                            wind_speed: { value: windSpeedValue },  // Promedio de 4 minutos
+                            wind_gust: { value: windGustValue },     // Máximo de 4 minutos
+                            wind_direction: { value: windDirDegrees }
+                        }
+                    });
+                }
             } else {
                 // Data vacío o inválido - estación sin conexión
                 console.warn('Estación sin datos - posible desconexión');
@@ -911,18 +960,36 @@ try {
         }, 2000);
     }
 
-    // Cerrar modal (aparecerá de nuevo hasta que pasen 4 días)
+    // Cerrar modal y activar notificaciones
     if (btnWelcomeClasificadosClose) {
-        btnWelcomeClasificadosClose.addEventListener('click', () => {
+        btnWelcomeClasificadosClose.addEventListener('click', async () => {
             welcomeClasificadosModal.classList.add('hidden');
+            
+            // Intentar activar notificaciones
+            if (window.pushManager) {
+                const granted = await window.pushManager.requestPermission();
+                if (granted) {
+                    console.log('✅ Notificaciones activadas desde el modal');
+                    // Marcar como no volver a mostrar si activa
+                    localStorage.setItem(WELCOME_CLASIFICADOS_DISABLED, 'true');
+                    
+                    // Scroll al panel de notificaciones para mostrar la configuración
+                    setTimeout(() => {
+                        const notificationsCard = document.getElementById('notifications-card');
+                        if (notificationsCard) {
+                            notificationsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 500);
+                }
+            }
         });
     }
 
-    // No volver a mostrar - deshabilitar permanentemente
+    // Recordarme después - no deshabilitar, solo cerrar
     if (btnWelcomeClasificadosNever) {
         btnWelcomeClasificadosNever.addEventListener('click', () => {
             welcomeClasificadosModal.classList.add('hidden');
-            localStorage.setItem(WELCOME_CLASIFICADOS_DISABLED, 'true');
+            // NO marcamos como disabled, así vuelve a aparecer
         });
     }
 
@@ -1445,6 +1512,44 @@ try {
 
     // Iniciar carga de clasificados
     loadClassifieds();
+
+    // ============================================
+    // SCROLL AUTOMÁTICO AL VENIR DE NOTIFICACIÓN
+    // ============================================
+    
+    // Detectar si viene de una notificación
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromNotification = urlParams.get('from_notification');
+    
+    if (fromNotification === 'true') {
+        console.log('🔔 Usuario viene de notificación - Haciendo scroll al panel de viento');
+        
+        // Esperar a que la página cargue completamente
+        setTimeout(() => {
+            const windPanel = document.getElementById('wind-highlight-card');
+            
+            if (windPanel) {
+                // Hacer scroll suave al panel de viento
+                windPanel.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                // Agregar highlight temporal (animación de atención)
+                windPanel.classList.add('ring-4', 'ring-blue-500', 'ring-opacity-75');
+                
+                // Quitar highlight después de 3 segundos
+                setTimeout(() => {
+                    windPanel.classList.remove('ring-4', 'ring-blue-500', 'ring-opacity-75');
+                }, 3000);
+                
+                console.log('✅ Scroll completado y panel resaltado');
+            }
+            
+            // Limpiar URL (quitar parámetro)
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 1000); // 1 segundo para que todo cargue
+    }
 });
 } catch (e) {
     console.error("❌ Error inicializando Firebase:", e);
