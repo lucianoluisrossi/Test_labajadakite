@@ -1,8 +1,8 @@
 // notifications-integration.js
 // Código para integrar el sistema de notificaciones con app.js existente
-// Agregar este código al final de app.js (antes del cierre de DOMContentLoaded)
 
-import { pushManager } from './notifications.js';
+// NOTA: pushManager se inicializa en app.js y está disponible como window.pushManager
+// Este archivo se ejecuta DESPUÉS de que app.js inicialice pushManager
 
 // ==========================================
 // INICIALIZACIÓN DE NOTIFICACIONES
@@ -10,8 +10,18 @@ import { pushManager } from './notifications.js';
 
 console.log('🔔 Inicializando sistema de notificaciones...');
 
-// Cargar preferencias guardadas
-pushManager.loadPreferences();
+// Esperar a que pushManager esté disponible
+function initializeNotificationsUI() {
+    if (!window.pushManager) {
+        console.log('⏳ Esperando a que pushManager esté disponible...');
+        setTimeout(initializeNotificationsUI, 100);
+        return;
+    }
+    
+    console.log('✅ pushManager disponible, inicializando UI...');
+    
+    // Cargar preferencias guardadas
+    window.window.pushManager.loadPreferences();
 
 // Elementos del DOM
 const notificationsCard = document.getElementById('notifications-card');
@@ -35,7 +45,7 @@ const maxWindValue = document.getElementById('max-wind-value');
 // ==========================================
 
 function updateNotificationsUI() {
-    const status = pushManager.getStatus();
+    const status = window.pushManager.getStatus();
     
     if (status.enabled) {
         // Notificaciones activadas
@@ -103,10 +113,10 @@ if (notificationsExpandBtn && notificationsContent) {
 // Activar notificaciones
 if (enableNotificationsBtn) {
     enableNotificationsBtn.addEventListener('click', async () => {
-        const granted = await pushManager.requestPermission();
+        const granted = await window.pushManager.requestPermission();
         if (granted) {
             updateNotificationsUI();
-            pushManager.savePreferences();
+            window.pushManager.savePreferences();
         } else {
             alert('No se pudo activar las notificaciones. Verifica los permisos del navegador.');
         }
@@ -117,12 +127,12 @@ if (enableNotificationsBtn) {
 // Notificación de prueba
 if (testNotificationBtn) {
     testNotificationBtn.addEventListener('click', () => {
-        if (pushManager.permission !== 'granted') {
+        if (window.pushManager.permission !== 'granted') {
             alert('Primero debes activar las notificaciones');
             return;
         }
         
-        pushManager.sendNotification({
+        window.pushManager.sendNotification({
             title: '🪁 Notificación de Prueba',
             body: 'Todo funciona correctamente. Te avisaremos cuando haya viento!',
             tag: 'test-notification',
@@ -152,8 +162,8 @@ if (saveConfigBtn) {
             maxGoodWind: parseInt(maxWindSlider.value)
         };
         
-        pushManager.setConfig(newConfig);
-        pushManager.savePreferences();
+        window.pushManager.setConfig(newConfig);
+        window.pushManager.savePreferences();
         
         // Feedback visual
         saveConfigBtn.textContent = '✓ Guardado';
@@ -168,7 +178,7 @@ if (saveConfigBtn) {
 
 // Cargar configuración guardada en los sliders
 const loadSavedConfig = () => {
-    const config = pushManager.config;
+    const config = window.pushManager.config;
     if (minWindSlider) minWindSlider.value = config.minNavigableWind || 12;
     if (minWindValue) minWindValue.textContent = config.minNavigableWind || 12;
     if (maxWindSlider) maxWindSlider.value = config.maxGoodWind;
@@ -184,7 +194,7 @@ const loadSavedConfig = () => {
 
 function analyzeAndNotify(weatherData) {
     // Verificar que las notificaciones estén activadas
-    if (pushManager.permission !== 'granted') return;
+    if (window.pushManager.permission !== 'granted') return;
     
     // Extraer datos de viento
     const windSpeed = weatherData.wind?.wind_speed?.value || null;
@@ -200,7 +210,7 @@ function analyzeAndNotify(weatherData) {
     const cardinal = convertDegreesToCardinal(windDirection);
     
     // Analizar condiciones y enviar notificaciones si corresponde
-    pushManager.analyzeWindConditions({
+    window.pushManager.analyzeWindConditions({
         speed: windSpeed,
         gust: windGust,
         direction: windDirection,
@@ -241,4 +251,13 @@ function convertDegreesToCardinal(degrees) {
     const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
     const index = Math.round(degrees / 22.5) % 16;
     return directions[index];
+}
+
+} // Cierre de initializeNotificationsUI
+
+// Llamar la inicialización cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeNotificationsUI);
+} else {
+    initializeNotificationsUI();
 }
