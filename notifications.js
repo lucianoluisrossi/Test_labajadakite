@@ -21,6 +21,7 @@ export class PushNotificationManager {
             goodConditions: false,
             windIncreased: false,
             dangerous: false,
+            epicEast: false,
             lastReset: Date.now()
         };
         
@@ -99,6 +100,10 @@ export class PushNotificationManager {
         // Determinar si es offshore (peligroso)
         const isOffshore = this.isOffshoreWind(direction);
         
+        // ⭐ CONDICIÓN ÉPICA: E, ESE y SE (vientos del este) >17 kts
+        const isEastWind = direction >= 68 && direction <= 146; // E, ESE, SE
+        const isEpicEast = isEastWind && speed > 17;
+        
         // Determinar estado de navegabilidad
         const isNavigable = speed >= this.config.minNavigableWind;
         const isGoodConditions = speed >= this.config.minNavigableWind && 
@@ -106,7 +111,19 @@ export class PushNotificationManager {
                                   !isOffshore;
         const isDangerous = speed > 27 || gust >= this.config.dangerousWind;
 
-        // 1. CONDICIONES EXTREMAS (viento >27 kts O rachas peligrosas)
+        // 1. ⭐ CONDICIÓN ÉPICA (prioridad máxima, antes que todo)
+        if (isEpicEast && !this.sentNotifications.epicEast && !isDangerous) {
+            this.sendNotification({
+                title: '👑 ¡ÉPICO!',
+                body: `${speed} kts ${cardinal}`,
+                tag: 'epic-east',
+                requireInteraction: true,
+                vibrate: [200, 100, 200, 100, 200]
+            });
+            this.sentNotifications.epicEast = true;
+        }
+
+        // 2. CONDICIONES EXTREMAS (viento >27 kts O rachas peligrosas)
         if (isDangerous && !this.sentNotifications.dangerous) {
             let message = '';
             if (speed > 27 && gust >= this.config.dangerousWind) {
@@ -127,8 +144,8 @@ export class PushNotificationManager {
             this.sentNotifications.dangerous = true;
         }
 
-        // 2. CONDICIONES IDEALES (respeta configuración del usuario)
-        if (isGoodConditions && !this.sentNotifications.goodConditions && !isDangerous) {
+        // 3. CONDICIONES IDEALES (respeta configuración del usuario)
+        if (isGoodConditions && !this.sentNotifications.goodConditions && !isDangerous && !isEpicEast) {
             this.sendNotification({
                 title: '🪁 ¡Condiciones ideales!',
                 body: `${speed} kts ${cardinal}`,
@@ -138,7 +155,7 @@ export class PushNotificationManager {
             this.sentNotifications.goodConditions = true;
         }
 
-        // 3. VIENTO SUBIÓ (solo si antes no era navegable y ahora sí)
+        // 4. VIENTO SUBIÓ (solo si antes no era navegable y ahora sí)
         if (this.lastWindConditions && this.lastWindConditions.speed < this.config.minNavigableWind && isNavigable && !this.sentNotifications.windIncreased) {
             this.sendNotification({
                 title: '📈 El viento subió',
@@ -211,6 +228,7 @@ export class PushNotificationManager {
                 goodConditions: false,
                 windIncreased: false,
                 dangerous: false,
+                epicEast: false,
                 lastReset: now
             };
         }

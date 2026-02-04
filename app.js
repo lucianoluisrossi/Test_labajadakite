@@ -585,6 +585,18 @@ try {
     }
     
     function getSpotVerdict(speed, gust, degrees) {
+        // ⭐ CONDICIÓN ESPECIAL: E, ESE y SE (vientos del este) con >17 kts = ÉPICO
+        // E = 90° (rango: 68° - 101°)
+        // ESE = 112.5° (rango: 102° - 123°)
+        // SE = 135° (rango: 124° - 146°)
+        // Rango total: 68° - 146° (todos los vientos del este)
+        if (degrees !== null && speed !== null && speed > 17) {
+            if (degrees >= 68 && degrees <= 146) {
+                return ["¡ÉPICO! 👑", ['bg-gradient-to-r', 'from-yellow-400', 'to-amber-500', 'border-yellow-600', 'shadow-xl']];
+            }
+        }
+        
+        // Offshore sigue siendo peligroso
         if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["VIENTO OFFSHORE!", ['bg-red-400', 'border-red-600']];
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
         if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
@@ -600,7 +612,8 @@ try {
         'bg-gray-100', 'border-gray-300', 'bg-blue-200', 'border-blue-400', 'bg-green-300', 'border-green-500',
         'bg-yellow-300', 'border-yellow-500', 'bg-orange-300', 'border-orange-500', 'bg-red-400', 'border-red-600','bg-cyan-300', 'border-cyan-500',
         'bg-purple-400', 'border-purple-600', 'text-red-600', 'text-green-600', 'text-yellow-600', 'text-gray-900',
-        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 'bg-cyan-300', 'border-cyan-500'
+        'bg-green-400', 'border-green-600', 'bg-gray-50', 'bg-white/30', 'bg-cyan-300', 'border-cyan-500',
+        'bg-gradient-to-r', 'from-yellow-400', 'to-amber-500', 'border-yellow-600', 'shadow-xl'
     ];
 
     function updateCardColors(element, newClasses) {
