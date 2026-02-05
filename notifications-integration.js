@@ -21,7 +21,7 @@ function initializeNotificationsUI() {
     console.log('✅ pushManager disponible, inicializando UI...');
     
     // Cargar preferencias guardadas
-    window.window.pushManager.loadPreferences();
+    window.pushManager.loadPreferences();
 
 // Elementos del DOM
 const notificationsCard = document.getElementById('notifications-card');
@@ -226,16 +226,7 @@ function analyzeAndNotify(weatherData) {
 updateNotificationsUI();
 loadSavedConfig();
 
-// Registrar Service Worker con soporte para push
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw-push.js')
-        .then(registration => {
-            console.log('✅ Service Worker con Push registrado:', registration);
-        })
-        .catch(error => {
-            console.error('❌ Error registrando Service Worker:', error);
-        });
-}
+// Service Worker se registra desde app.js (sw.js) - no duplicar registro aquí
 
 // Exportar función para llamar desde fetchWeatherData
 window.analyzeAndNotify = analyzeAndNotify;
