@@ -7,14 +7,13 @@ const CACHE_NAME = `labajada-cache-${CACHE_VERSION}`;
 // Instalación del Service Worker
 self.addEventListener('install', (event) => {
     console.log('🔧 Service Worker: Instalando...');
-    self.skipWaiting(); // Activar inmediatamente
+    self.skipWaiting();
 });
 
 // Activación del Service Worker
 self.addEventListener('activate', (event) => {
     console.log('✅ Service Worker: Activado');
     event.waitUntil(
-        // Limpiar cachés viejos si existen
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cache => {
@@ -28,12 +27,20 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Manejo de peticiones (fetch)
+// Manejo de peticiones (fetch) - FIX: manejar undefined de caches.match
 self.addEventListener('fetch', (event) => {
+    // No interceptar requests a APIs externas ni a Firestore
+    const url = new URL(event.request.url);
+    if (url.origin !== self.location.origin) {
+        return;
+    }
+
     event.respondWith(
         fetch(event.request).catch(() => {
-            // Si falla la red, intentar servir desde caché
-            return caches.match(event.request);
+            return caches.match(event.request).then(response => {
+                // Si no hay match en cache, devolver un Response vacío en vez de undefined
+                return response || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+            });
         })
     );
 });
@@ -42,7 +49,6 @@ self.addEventListener('fetch', (event) => {
 // NOTIFICACIONES PUSH
 // ==========================================
 
-// Escuchar eventos de push desde Firebase Cloud Messaging (FCM)
 self.addEventListener('push', (event) => {
     console.log('📬 Push recibido:', event);
     
@@ -58,7 +64,6 @@ self.addEventListener('push', (event) => {
         }
     };
 
-    // Si el push viene con datos
     if (event.data) {
         try {
             const data = event.data.json();
@@ -100,22 +105,18 @@ self.addEventListener('notificationclick', (event) => {
     
     event.notification.close();
 
-    // Agregar parámetro para detectar que viene de notificación
     const urlToOpen = '/?from_notification=true';
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then(windowClients => {
-                // Si hay una ventana ya abierta, enfocarla
                 for (let client of windowClients) {
                     if (client.url.includes(self.location.origin) && 'focus' in client) {
                         return client.focus().then(client => {
-                            // Navegar con el parámetro para hacer scroll
                             return client.navigate(urlToOpen);
                         });
                     }
                 }
-                // Si no hay ventana abierta, abrir una nueva
                 if (clients.openWindow) {
                     return clients.openWindow(urlToOpen);
                 }
@@ -123,7 +124,6 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-// Manejo de cierre de notificaciones
 self.addEventListener('notificationclose', (event) => {
     console.log('❌ Notificación cerrada:', event.notification.tag);
 });
