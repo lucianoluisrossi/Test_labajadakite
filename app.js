@@ -622,18 +622,21 @@ try {
     }
     
     function getSpotVerdict(speed, gust, degrees) {
-        // ⭐ CONDICIÓN ESPECIAL: E, ESE y SE (vientos del este) con >17 kts = ÉPICO
-        // E = 90° (rango: 68° - 101°)
-        // ESE = 112.5° (rango: 102° - 123°)
-        // SE = 135° (rango: 124° - 146°)
-        // Rango total: 68° - 146° (todos los vientos del este)
-        if (degrees !== null && speed !== null && speed > 17) {
-            if (degrees >= 68 && degrees <= 146) {
-                return ["¡ÉPICO! 👑", ['bg-gradient-to-r', 'from-yellow-400', 'to-amber-500', 'border-yellow-600', 'shadow-xl']];
-            }
+        // Actualizar tracker de condición épica
+        updateEpicTracker(speed, degrees);
+
+        // ⭐ ÉPICO: E/ESE/SE (68°-146°), >=17 y <25 kts, sostenido 10+ minutos
+        if (epicSustained) {
+            return ["¡ÉPICO! 👑", ['bg-gradient-to-r', 'from-yellow-400', 'to-amber-500', 'border-yellow-600', 'shadow-xl']];
         }
-        
-        // Offshore sigue siendo peligroso
+
+        // Si está en condición épica pero aún no sostenida, mostrar que se está formando
+        if (isEpicCondition(speed, degrees) && epicConsecutiveCount > 0) {
+            const minutesLeft = Math.ceil((EPIC_SUSTAINED_READINGS - epicConsecutiveCount) * 30 / 60);
+            return ["ÉPICO en " + minutesLeft + "min...", ['bg-gradient-to-r', 'from-yellow-200', 'to-amber-300', 'border-yellow-400']];
+        }
+
+        // Offshore siempre peligroso
         if (degrees !== null && (degrees > 292.5 || degrees <= 67.5)) return ["VIENTO OFFSHORE!", ['bg-red-400', 'border-red-600']];
         if (speed === null) return ["Calculando...", ['bg-gray-100', 'border-gray-300']];
         if (speed <= 14) return ["FLOJO...", ['bg-blue-200', 'border-blue-400']];
@@ -714,6 +717,29 @@ try {
     const WIND_BUFFER_SIZE = 8;
     const windSpeedBuffer = [];
     const windGustBuffer = [];
+
+    // ⭐ Tracker de condición ÉPICA sostenida (requiere 10 min = 20 lecturas a 30seg)
+    const EPIC_SUSTAINED_READINGS = 20;
+    let epicConsecutiveCount = 0;
+    let epicSustained = false;
+
+    function isEpicCondition(speed, degrees) {
+        return degrees !== null && speed !== null &&
+               speed >= 17 && speed < 25 &&
+               degrees >= 68 && degrees <= 146;
+    }
+
+    function updateEpicTracker(speed, degrees) {
+        if (isEpicCondition(speed, degrees)) {
+            epicConsecutiveCount++;
+            if (epicConsecutiveCount >= EPIC_SUSTAINED_READINGS) {
+                epicSustained = true;
+            }
+        } else {
+            epicConsecutiveCount = 0;
+            epicSustained = false;
+        }
+    }
     
     function addToBuffer(buffer, value, maxSize) {
         if (value === null) return;

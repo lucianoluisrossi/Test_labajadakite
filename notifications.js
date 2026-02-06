@@ -9,16 +9,16 @@ export class PushNotificationManager {
     constructor(firebaseApp = null) {
         this.isSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
         this.permission = this.isSupported ? Notification.permission : 'denied';
-        this.pushSubscription = null; // Suscripción Web Push activa
+        this.pushSubscription = null;
         this.lastWindConditions = null;
         
-        // Configuración de umbrales para notificaciones
         const savedMinWind = localStorage.getItem('notif_min_wind');
         
         this.config = {
             minNavigableWind: savedMinWind ? parseInt(savedMinWind) : 15,
             maxGoodWind: 27,
-            dangerousWind: 35,
+            dangerousWind: 35,       // rachas peligrosas
+            dangerousSpeed: 30,      // velocidad sostenida peligrosa
             offshoreAngles: [315, 67.5],
             checkInterval: 5 * 60 * 1000,
         };
@@ -36,11 +36,33 @@ export class PushNotificationManager {
             lastReset: Date.now()
         };
         
+        // ⭐ Tracker de condición épica sostenida (10 min = 20 lecturas a 30seg)
+        this.epicConsecutiveCount = 0;
+        this.epicSustained = false;
+        
         // Resetear estado cada 2 horas
         setInterval(() => this.resetNotificationState(), 2 * 60 * 60 * 1000);
 
-        // Verificar si ya hay una suscripción push activa
         this._checkExistingSubscription();
+    }
+
+    // --- Épico sostenido ---
+    _isEpicCondition(speed, direction) {
+        return speed !== null && direction !== null &&
+               speed >= 17 && speed < 25 &&
+               direction >= 68 && direction <= 146;
+    }
+
+    _updateEpicTracker(speed, direction) {
+        if (this._isEpicCondition(speed, direction)) {
+            this.epicConsecutiveCount++;
+            if (this.epicConsecutiveCount >= 20) { // 20 x 30seg = 10 min
+                this.epicSustained = true;
+            }
+        } else {
+            this.epicConsecutiveCount = 0;
+            this.epicSustained = false;
+        }
     }
 
     // Verificar suscripción push existente al cargar
@@ -70,7 +92,6 @@ export class PushNotificationManager {
         return true;
     }
 
-    // Solicitar permiso Y suscribir a Web Push
     async requestPermission() {
         if (!this.checkSupport()) return false;
 
@@ -85,7 +106,6 @@ export class PushNotificationManager {
         }
 
         try {
-            // 1. Pedir permiso al usuario
             const permission = await Notification.requestPermission();
             this.permission = permission;
             
@@ -96,15 +116,12 @@ export class PushNotificationManager {
 
             console.log('✅ Permiso concedido, suscribiendo a Web Push...');
             
-            // 2. Suscribir a Web Push
             const subscribed = await this._subscribeToPush();
             
             if (subscribed) {
                 this.showTestNotification();
                 return true;
             } else {
-                // Permiso concedido pero falló la suscripción push
-                // Aun así funciona con notificaciones locales
                 console.warn('⚠️ Push subscription falló, usando notificaciones locales');
                 this.showTestNotification();
                 return true;
@@ -115,15 +132,11 @@ export class PushNotificationManager {
         }
     }
 
-    // Suscribir al navegador a Web Push y guardar en servidor
     async _subscribeToPush() {
         try {
             const registration = await navigator.serviceWorker.ready;
-
-            // Convertir VAPID key de base64url a Uint8Array
             const applicationServerKey = this._urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 
-            // Crear suscripción push
             const subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: applicationServerKey,
@@ -132,7 +145,6 @@ export class PushNotificationManager {
             this.pushSubscription = subscription;
             console.log('✅ Suscripción Web Push creada');
 
-            // Guardar en el servidor
             const saved = await this._saveSubscriptionToServer(subscription);
             
             if (saved) {
@@ -147,7 +159,6 @@ export class PushNotificationManager {
         }
     }
 
-    // Guardar suscripción en el servidor (Firestore via API)
     async _saveSubscriptionToServer(subscription) {
         try {
             const response = await fetch('/api/push-subscribe', {
@@ -170,7 +181,6 @@ export class PushNotificationManager {
         }
     }
 
-    // Eliminar suscripción del servidor
     async _removeSubscriptionFromServer() {
         if (!this.pushSubscription) return;
 
@@ -187,7 +197,6 @@ export class PushNotificationManager {
         }
     }
 
-    // Desuscribir de Web Push
     async unsubscribe() {
         try {
             if (this.pushSubscription) {
@@ -204,7 +213,6 @@ export class PushNotificationManager {
         }
     }
 
-    // Convertir VAPID key de base64url a Uint8Array
     _urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
         const base64 = (base64String + padding)
@@ -245,8 +253,7 @@ export class PushNotificationManager {
         }
     }
 
-    // Analizar condiciones de viento y enviar notificaciones LOCALES
-    // (Las push reales las maneja el servidor via push-alert.js)
+    // Analizar condiciones y enviar notificaciones LOCALES
     analyzeWindConditions(windData) {
         if (this.permission !== 'granted') return;
         
@@ -254,17 +261,19 @@ export class PushNotificationManager {
         
         if (speed === null || direction === null) return;
 
+        // Actualizar tracker épico
+        this._updateEpicTracker(speed, direction);
+
         const isOffshore = this.isOffshoreWind(direction);
-        const isEastWind = direction >= 68 && direction <= 146;
-        const isEpicEast = isEastWind && speed > 17;
         const isNavigable = speed >= this.config.minNavigableWind;
         const isGoodConditions = speed >= this.config.minNavigableWind && speed < 27 && !isOffshore;
-        const isDangerous = speed > 27 || gust >= this.config.dangerousWind;
+        const isDangerous = speed > this.config.dangerousSpeed || gust >= this.config.dangerousWind;
 
-        if (isEpicEast && !this.sentNotifications.epicEast && !isDangerous) {
+        // 1. ÉPICO sostenido (10+ min, 17-25kts, E/ESE/SE)
+        if (this.epicSustained && !this.sentNotifications.epicEast && !isDangerous) {
             this.sendLocalNotification({
                 title: '👑 ¡ÉPICO!',
-                body: `${speed} kts ${cardinal}`,
+                body: `${speed} kts ${cardinal} — Sostenido 10+ min`,
                 tag: 'epic-east',
                 requireInteraction: true,
                 vibrate: [200, 100, 200, 100, 200],
@@ -272,9 +281,10 @@ export class PushNotificationManager {
             this.sentNotifications.epicEast = true;
         }
 
+        // 2. PELIGROSO (>30 kts o rachas >=35 kts)
         if (isDangerous && !this.sentNotifications.dangerous) {
-            let message = speed > 27 ? `Viento ${speed} kts` : `Rachas de ${gust} kts`;
-            if (speed > 27 && gust >= this.config.dangerousWind) {
+            let message = speed > this.config.dangerousSpeed ? `Viento ${speed} kts` : `Rachas de ${gust} kts`;
+            if (speed > this.config.dangerousSpeed && gust >= this.config.dangerousWind) {
                 message = `Viento ${speed} kts, Rachas ${gust} kts`;
             }
             this.sendLocalNotification({
@@ -286,7 +296,8 @@ export class PushNotificationManager {
             this.sentNotifications.dangerous = true;
         }
 
-        if (isGoodConditions && !this.sentNotifications.goodConditions && !isDangerous && !isEpicEast) {
+        // 3. CONDICIONES IDEALES
+        if (isGoodConditions && !this.sentNotifications.goodConditions && !isDangerous && !this.epicSustained) {
             this.sendLocalNotification({
                 title: '🪁 ¡Condiciones ideales!',
                 body: `${speed} kts ${cardinal}`,
@@ -295,6 +306,7 @@ export class PushNotificationManager {
             this.sentNotifications.goodConditions = true;
         }
 
+        // 4. VIENTO SUBIÓ
         if (this.lastWindConditions && this.lastWindConditions.speed < this.config.minNavigableWind && isNavigable && !this.sentNotifications.windIncreased) {
             this.sendLocalNotification({
                 title: '📈 El viento subió',
@@ -311,7 +323,6 @@ export class PushNotificationManager {
         return degrees >= this.config.offshoreAngles[0] || degrees <= this.config.offshoreAngles[1];
     }
 
-    // Enviar notificación LOCAL (cuando la app está abierta)
     sendLocalNotification(options) {
         if (this.permission !== 'granted') return;
 
@@ -338,7 +349,7 @@ export class PushNotificationManager {
         }
     }
 
-    // Alias para compatibilidad con notifications-integration.js
+    // Alias para compatibilidad
     sendNotification(options) {
         this.sendLocalNotification(options);
     }
@@ -364,7 +375,6 @@ export class PushNotificationManager {
         console.log('⚙️ Configuración actualizada:', this.config);
     }
 
-    // Actualizar config en el servidor también
     async syncConfigToServer() {
         if (!this.pushSubscription) return;
         
@@ -385,13 +395,17 @@ export class PushNotificationManager {
             config: this.config,
             lastWindConditions: this.lastWindConditions,
             sentNotifications: this.sentNotifications,
+            epicTracker: {
+                consecutiveCount: this.epicConsecutiveCount,
+                sustained: this.epicSustained,
+                minutesTracked: Math.round(this.epicConsecutiveCount * 30 / 60),
+            },
         };
     }
 
     savePreferences() {
         localStorage.setItem('notificationConfig', JSON.stringify(this.config));
         localStorage.setItem('notificationsEnabled', this.permission === 'granted');
-        // Sincronizar con servidor para que el cron use los umbrales actualizados
         this.syncConfigToServer();
     }
 
