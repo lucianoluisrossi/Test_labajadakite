@@ -45,7 +45,7 @@ function initializeNotificationsUI() {
             statusIndicator.classList.add('bg-green-500');
             statusText.textContent = status.pushSubscribed 
                 ? 'Push activadas ✓ (alertas con la app cerrada)' 
-                : 'Notificaciones activadas ✓ (solo con la app abierta)';
+                : 'Notificaciones activadas ✓';
             statusText.classList.remove('text-gray-600');
             statusText.classList.add('text-green-700', 'font-semibold');
             
