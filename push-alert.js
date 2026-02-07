@@ -1,26 +1,39 @@
 // Función Serverless para enviar Web Push notifications
 // Se ejecuta via cron de Vercel cada 15 minutos
-// Consulta Ecowitt, evalúa condiciones, y envía push a suscriptores activos
 //
-// ÉPICO requiere condición sostenida 10+ min. Como el cron corre cada 15 min,
-// usamos una colección epic_tracker en Firestore para persistir el estado entre ejecuciones.
+// TODAS las alertas requieren condición SOSTENIDA para evitar falsos positivos.
+// Como el cron corre cada 15 min, usamos Firestore para persistir timestamps
+// de cuando empezó cada condición. Si entre dos ejecuciones la condición se
+// mantiene y el tiempo supera el umbral, se confirma como sostenida.
+//
+// Tiempos sostenidos:
+//   ÉPICO:      10 min
+//   IDEALES:     5 min
+//   EXTREMAS:    3 min
+//   OFFSHORE:    5 min
 
 import { initFirebase } from './_firebase.js';
 import admin from 'firebase-admin';
 
 const PUSH_COLLECTION = 'push_subscriptions';
 const PUSH_LOG_COLLECTION = 'push_alert_log';
-const EPIC_TRACKER_DOC = 'epic_tracker/current';
+const CONDITION_TRACKER_COLLECTION = 'condition_tracker';
 
-// Configuración de alertas
+// Tiempos sostenidos en minutos
+const SUSTAINED_MINUTES = {
+    epic: 10,
+    good: 5,
+    dangerous: 3,
+    offshore: 5,
+};
+
 const GLOBAL_CONFIG = {
-    dangerousSpeed: 30,         // kts - velocidad sostenida peligrosa
-    dangerousGust: 35,          // kts - rachas peligrosas
-    epicMinWind: 17,            // kts - mínimo para épico
-    epicMaxWind: 25,            // kts - máximo para épico (exclusivo)
-    epicMinDeg: 68,             // grados - inicio rango E/ESE/SE
-    epicMaxDeg: 146,            // grados - fin rango E/ESE/SE
-    epicSustainedMinutes: 10,   // minutos que debe mantenerse la condición
+    dangerousSpeed: 30,
+    dangerousGust: 35,
+    epicMinWind: 17,
+    epicMaxWind: 25,
+    epicMinDeg: 68,
+    epicMaxDeg: 146,
     offshoreStart: 292.5,
     offshoreEnd: 67.5,
     cooldownMinutes: 120,
@@ -58,102 +71,101 @@ function degreesToCardinal(degrees) {
     return directions[index];
 }
 
-function isOffshore(degrees) {
-    return degrees >= GLOBAL_CONFIG.offshoreStart || degrees <= GLOBAL_CONFIG.offshoreEnd;
-}
-
-function isEpicConditionNow(speed, direction) {
+// --- Evaluadores de condición (idénticos a notifications.js) ---
+function isEpicNow(speed, direction) {
     return speed >= GLOBAL_CONFIG.epicMinWind &&
            speed < GLOBAL_CONFIG.epicMaxWind &&
            direction >= GLOBAL_CONFIG.epicMinDeg &&
            direction <= GLOBAL_CONFIG.epicMaxDeg;
 }
 
-// --- Tracker épico persistido en Firestore ---
-async function getEpicTracker(db) {
-    try {
-        const doc = await db.doc(EPIC_TRACKER_DOC).get();
-        if (doc.exists) {
-            return doc.data();
-        }
-    } catch (e) {
-        console.log('No hay tracker épico previo');
-    }
-    return { startedAt: null, sustained: false };
+function isDangerousNow(speed, gust) {
+    return speed > GLOBAL_CONFIG.dangerousSpeed || gust >= GLOBAL_CONFIG.dangerousGust;
 }
 
-async function updateEpicTracker(db, windData) {
-    const isEpic = isEpicConditionNow(windData.speed, windData.direction);
-    const tracker = await getEpicTracker(db);
-    const now = Date.now();
+function isOffshoreNow(speed, direction) {
+    const offshore = direction >= GLOBAL_CONFIG.offshoreStart || direction <= GLOBAL_CONFIG.offshoreEnd;
+    return offshore && speed >= 12; // umbral mínimo genérico para offshore
+}
 
-    if (isEpic) {
-        if (!tracker.startedAt) {
-            // Primera lectura en condición épica
-            await db.doc(EPIC_TRACKER_DOC).set({
-                startedAt: now,
-                sustained: false,
-                lastCheck: now,
-                speed: windData.speed,
-                direction: windData.direction,
-            });
-            return { sustained: false, minutesActive: 0 };
+function isGoodNow(speed, direction, minWind) {
+    const offshore = direction >= GLOBAL_CONFIG.offshoreStart || direction <= GLOBAL_CONFIG.offshoreEnd;
+    return speed >= minWind && speed <= 27 && !offshore;
+}
+
+// --- Tracker persistido en Firestore ---
+// Cada condición tiene un doc en condition_tracker/{type}
+// con { startedAt: timestamp, lastSeen: timestamp }
+// Si condición sigue activa → actualizar lastSeen
+// Si condición dejó de cumplirse → borrar startedAt
+// Sostenida = (now - startedAt) >= umbral
+
+async function getTrackerState(db) {
+    const state = {};
+    try {
+        const snapshot = await db.collection(CONDITION_TRACKER_COLLECTION).get();
+        snapshot.docs.forEach(doc => {
+            state[doc.id] = doc.data();
+        });
+    } catch (e) {
+        console.log('Sin tracker previo:', e.message);
+    }
+    return state;
+}
+
+async function updateTracker(db, type, conditionMet) {
+    const now = Date.now();
+    const docRef = db.collection(CONDITION_TRACKER_COLLECTION).doc(type);
+
+    if (conditionMet) {
+        const doc = await docRef.get();
+        const existing = doc.exists ? doc.data() : null;
+
+        if (existing && existing.startedAt) {
+            // Condición ya estaba activa, actualizar lastSeen
+            await docRef.update({ lastSeen: now });
+            const minutesActive = (now - existing.startedAt) / (1000 * 60);
+            const sustained = minutesActive >= (SUSTAINED_MINUTES[type] || 5);
+            return { sustained, minutesActive: Math.round(minutesActive), startedAt: existing.startedAt };
         } else {
-            // Ya estaba en condición épica, verificar tiempo
-            const minutesActive = (now - tracker.startedAt) / (1000 * 60);
-            const sustained = minutesActive >= GLOBAL_CONFIG.epicSustainedMinutes;
-            
-            await db.doc(EPIC_TRACKER_DOC).set({
-                startedAt: tracker.startedAt,
-                sustained: sustained,
-                lastCheck: now,
-                speed: windData.speed,
-                direction: windData.direction,
-            });
-            return { sustained, minutesActive: Math.round(minutesActive) };
+            // Primera vez que se detecta esta condición
+            await docRef.set({ startedAt: now, lastSeen: now });
+            return { sustained: false, minutesActive: 0, startedAt: now };
         }
     } else {
-        // Se rompió la condición épica - resetear
-        if (tracker.startedAt) {
-            await db.doc(EPIC_TRACKER_DOC).set({
-                startedAt: null,
-                sustained: false,
-                lastCheck: now,
-                brokenAt: now,
-            });
-        }
-        return { sustained: false, minutesActive: 0 };
+        // Condición no se cumple, resetear
+        await docRef.set({ startedAt: null, lastSeen: now, brokenAt: now });
+        return { sustained: false, minutesActive: 0, startedAt: null };
     }
 }
 
-// --- Evaluar qué tipo de alerta corresponde ---
-function evaluateAlert(windData, subscriberConfig, epicStatus) {
+// --- Evaluar qué alerta enviar (la de mayor prioridad) ---
+function pickAlert(windData, subscriberConfig, trackerResults) {
     const { speed, gust, direction } = windData;
     const cardinal = degreesToCardinal(direction);
-    const minWind = subscriberConfig?.minNavigableWind || 15;
 
-    // 1. ÉPICO sostenido (E/ESE/SE, 17-25 kts, 10+ min)
-    if (epicStatus.sustained) {
+    // 1. ÉPICO sostenido
+    if (trackerResults.epic.sustained) {
         return {
             type: 'epic',
             title: '👑 ¡ÉPICO!',
-            body: `${speed.toFixed(0)} kts del ${cardinal} — Sostenido ${epicStatus.minutesActive}+ min`,
+            body: `${speed.toFixed(0)} kts del ${cardinal} — Sostenido ${trackerResults.epic.minutesActive}+ min`,
             priority: 1,
         };
     }
 
-    // 2. PELIGROSO (>30 kts o rachas >=35 kts)
-    if (speed > GLOBAL_CONFIG.dangerousSpeed || gust >= GLOBAL_CONFIG.dangerousGust) {
+    // 2. PELIGROSO sostenido
+    if (trackerResults.dangerous.sustained) {
         return {
             type: 'dangerous',
             title: '⚠️ Condiciones extremas',
-            body: `${speed.toFixed(0)} kts, rachas ${gust.toFixed(0)} kts — Precaución`,
+            body: `${speed.toFixed(0)} kts, rachas ${gust.toFixed(0)} kts — Sostenido 3+ min`,
             priority: 2,
         };
     }
 
-    // 3. OFFSHORE
-    if (isOffshore(direction) && speed >= minWind) {
+    // 3. OFFSHORE sostenido
+    if (trackerResults.offshore.sustained) {
         return {
             type: 'offshore',
             title: '🚨 Viento Offshore',
@@ -162,12 +174,12 @@ function evaluateAlert(windData, subscriberConfig, epicStatus) {
         };
     }
 
-    // 4. CONDICIONES IDEALES
-    if (speed >= minWind && speed <= 27 && !isOffshore(direction)) {
+    // 4. CONDICIONES IDEALES sostenidas
+    if (trackerResults.good.sustained) {
         return {
             type: 'good',
             title: '🪁 ¡Hay viento!',
-            body: `${speed.toFixed(0)} kts del ${cardinal} — ¡A preparar el equipo!`,
+            body: `${speed.toFixed(0)} kts del ${cardinal} — Sostenido 5+ min`,
             priority: 4,
         };
     }
@@ -189,21 +201,11 @@ async function sendWebPush(subscription, payload) {
     try {
         const webpush = await import('web-push');
         
-        webpush.default.setVapidDetails(
-            vapidEmail,
-            vapidPublicKey,
-            vapidPrivateKey
-        );
-
-        await webpush.default.sendNotification(
-            subscription,
-            JSON.stringify(payload)
-        );
-
+        webpush.default.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+        await webpush.default.sendNotification(subscription, JSON.stringify(payload));
         return true;
     } catch (error) {
         if (error.statusCode === 410 || error.statusCode === 404) {
-            console.log('Suscripción expirada, marcando como inactiva');
             return 'expired';
         }
         console.error('Error enviando push:', error.message);
@@ -228,7 +230,7 @@ export default async function handler(req, res) {
         }
 
         const cardinal = degreesToCardinal(windData.direction);
-        console.log(`🌬️ Viento actual: ${windData.speed.toFixed(1)} kts ${cardinal}, rachas ${windData.gust.toFixed(1)} kts`);
+        console.log(`🌬️ Viento: ${windData.speed.toFixed(1)} kts ${cardinal}, rachas ${windData.gust.toFixed(1)} kts`);
 
         // 2. Firebase
         const db = initFirebase();
@@ -236,9 +238,15 @@ export default async function handler(req, res) {
             return res.status(500).json({ ok: false, error: 'Firebase no disponible' });
         }
 
-        // 3. Actualizar tracker épico persistido
-        const epicStatus = await updateEpicTracker(db, windData);
-        console.log(`⭐ Epic tracker: sustained=${epicStatus.sustained}, minutes=${epicStatus.minutesActive}`);
+        // 3. Actualizar TODOS los trackers de condición
+        const trackerResults = {
+            epic:      await updateTracker(db, 'epic',      isEpicNow(windData.speed, windData.direction)),
+            dangerous: await updateTracker(db, 'dangerous', isDangerousNow(windData.speed, windData.gust)),
+            offshore:  await updateTracker(db, 'offshore',  isOffshoreNow(windData.speed, windData.direction)),
+            good:      await updateTracker(db, 'good',      isGoodNow(windData.speed, windData.direction, 15)),
+        };
+
+        console.log('📊 Trackers:', JSON.stringify(trackerResults, null, 2));
 
         // 4. Obtener suscriptores activos
         const snapshot = await db.collection(PUSH_COLLECTION)
@@ -247,16 +255,12 @@ export default async function handler(req, res) {
 
         if (snapshot.empty) {
             return res.status(200).json({ 
-                ok: true, 
-                wind: windData,
-                epic: epicStatus,
-                subscribers: 0, 
-                sent: 0,
-                message: 'Sin suscriptores activos' 
+                ok: true, wind: windData, trackers: trackerResults,
+                subscribers: 0, sent: 0, message: 'Sin suscriptores activos' 
             });
         }
 
-        // 5. Verificar cooldown
+        // 5. Verificar cooldown (no repetir mismo tipo en 2h)
         const cooldownMs = GLOBAL_CONFIG.cooldownMinutes * 60 * 1000;
         const cooldownTime = new Date(Date.now() - cooldownMs);
         
@@ -275,29 +279,22 @@ export default async function handler(req, res) {
                 }
             }
         } catch (e) {
-            console.log('No hay logs previos o error leyendo:', e.message);
+            console.log('Sin logs previos:', e.message);
         }
 
-        // 6. Evaluar y enviar a cada suscriptor
+        // 6. Evaluar y enviar
         let sent = 0;
         let skipped = 0;
         let expired = 0;
         let alertType = null;
 
-        const results = await Promise.allSettled(
+        await Promise.allSettled(
             snapshot.docs.map(async (doc) => {
                 const data = doc.data();
-                const alert = evaluateAlert(windData, data.config, epicStatus);
+                const alert = pickAlert(windData, data.config, trackerResults);
 
-                if (!alert) {
-                    skipped++;
-                    return 'skipped';
-                }
-
-                if (lastAlertType === alert.type) {
-                    skipped++;
-                    return 'cooldown';
-                }
+                if (!alert) { skipped++; return; }
+                if (lastAlertType === alert.type) { skipped++; return; }
 
                 alertType = alert.type;
 
@@ -317,30 +314,23 @@ export default async function handler(req, res) {
                 if (result === 'expired') {
                     await db.collection(PUSH_COLLECTION).doc(doc.id).update({ active: false });
                     expired++;
-                    return 'expired';
-                }
-
-                if (result) {
+                } else if (result) {
                     sent++;
-                    return 'sent';
-                }
-
-                return 'failed';
+                } 
             })
         );
 
-        // 7. Loguear alerta enviada
+        // 7. Loguear
         if (sent > 0 && alertType) {
             try {
                 await db.collection(PUSH_LOG_COLLECTION).add({
                     timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                    alertType: alertType,
+                    alertType,
                     windSpeed: windData.speed,
                     windGust: windData.gust,
                     windDirection: windData.direction,
-                    cardinal: cardinal,
-                    epicSustained: epicStatus.sustained,
-                    epicMinutes: epicStatus.minutesActive,
+                    cardinal,
+                    trackers: trackerResults,
                     subscribersSent: sent,
                     subscribersSkipped: skipped,
                     subscribersExpired: expired,
@@ -350,25 +340,13 @@ export default async function handler(req, res) {
             }
         }
 
-        // 8. Responder
         return res.status(200).json({
             ok: true,
-            wind: {
-                speed: windData.speed.toFixed(1),
-                gust: windData.gust.toFixed(1),
-                direction: cardinal,
-                degrees: windData.direction,
-                temp: windData.temp.toFixed(1),
-            },
-            epic: epicStatus,
+            wind: { speed: windData.speed.toFixed(1), gust: windData.gust.toFixed(1), direction: cardinal, degrees: windData.direction },
+            trackers: trackerResults,
             alert: alertType ? { type: alertType } : null,
-            subscribers: {
-                total: snapshot.size,
-                sent,
-                skipped,
-                expired,
-            },
-            cooldown: lastAlertType ? { lastType: lastAlertType, withinCooldown: true } : null,
+            subscribers: { total: snapshot.size, sent, skipped, expired },
+            cooldown: lastAlertType ? { lastType: lastAlertType } : null,
         });
 
     } catch (error) {
