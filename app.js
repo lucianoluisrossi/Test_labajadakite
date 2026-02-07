@@ -553,6 +553,46 @@ try {
     const highlightWindSpeedEl = document.getElementById('highlight-wind-speed-data');
     const highlightGustEl = document.getElementById('highlight-gust-data');
     const windArrowEl = document.getElementById('wind-arrow'); 
+    const windViewToggle = document.getElementById('wind-view-toggle');
+
+    // --- Toggle vista flecha de viento ---
+    // "map" = norte arriba (estándar meteorológico, como Windguru)
+    // "cam" = relativo a la cámara del spot (la cámara apunta ~160° aprox SSE)
+    const CAMERA_HEADING = 160; // grados hacia donde apunta la cámara
+    let windViewMode = localStorage.getItem('windViewMode') || 'map';
+
+    function getWindArrowRotation(degrees) {
+        if (windViewMode === 'cam') {
+            // Rotar para que "arriba" sea la dirección de la cámara
+            return (degrees - CAMERA_HEADING + 360) % 360;
+        }
+        return degrees; // Vista mapa: norte = arriba
+    }
+
+    function updateWindViewToggle() {
+        if (!windViewToggle) return;
+        if (windViewMode === 'map') {
+            windViewToggle.textContent = '🧭 Vista mapa';
+            windViewToggle.title = 'N=arriba (estándar Windguru). Toca para cambiar a vista cámara';
+        } else {
+            windViewToggle.textContent = '📷 Vista cámara';
+            windViewToggle.title = 'Relativo a la livecam. Toca para cambiar a vista mapa';
+        }
+    }
+
+    if (windViewToggle) {
+        updateWindViewToggle();
+        windViewToggle.addEventListener('click', () => {
+            windViewMode = windViewMode === 'map' ? 'cam' : 'map';
+            localStorage.setItem('windViewMode', windViewMode);
+            updateWindViewToggle();
+            // Redibujar flecha inmediatamente con la última dirección conocida
+            if (windArrowEl && windArrowEl.dataset.degrees) {
+                const deg = parseFloat(windArrowEl.dataset.degrees);
+                windArrowEl.style.transform = 'rotate(' + getWindArrowRotation(deg) + 'deg)';
+            }
+        });
+    }
     const gustInfoContainer = document.getElementById('gust-info-container');
     const verdictCardEl = document.getElementById('verdict-card');
     const verdictDataEl = document.getElementById('verdict-data');
@@ -816,7 +856,8 @@ try {
                 verdictDataEl.textContent = verdictText;
                 
                 if (windArrowEl && windDirDegrees !== null) {
-                    windArrowEl.style.transform = `rotate(${windDirDegrees}deg)`;
+                    windArrowEl.dataset.degrees = windDirDegrees;
+                    windArrowEl.style.transform = `rotate(${getWindArrowRotation(windDirDegrees)}deg)`;
                     const isOffshore = (windDirDegrees > 292.5 || windDirDegrees <= 67.5);
                     const isCross = (windDirDegrees > 67.5 && windDirDegrees <= 112.5) || (windDirDegrees > 247.5 && windDirDegrees <= 292.5);
                     const isOnshore = !isOffshore && !isCross;
