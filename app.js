@@ -559,7 +559,7 @@ try {
     // "map" = norte arriba (estándar meteorológico, como Windguru)
     // "cam" = relativo a la cámara del spot (la cámara apunta ~160° aprox SSE)
     const CAMERA_HEADING = 160; // grados hacia donde apunta la cámara
-    let windViewMode = localStorage.getItem('windViewMode') || 'map';
+    let windViewMode = localStorage.getItem('windViewMode') || 'cam';
 
     function getWindArrowRotation(degrees) {
         if (windViewMode === 'cam') {
