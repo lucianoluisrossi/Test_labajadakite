@@ -10,6 +10,22 @@ import './notifications-integration.js';
 // ⭐ MEJORAS UX/UI
 import './ux-improvements.js';
 
+
+// ⭐ DETECCIÓN iOS - Desactivar notificaciones push en iOS/iPadOS
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (isIOS) {
+    console.log('📱 iOS detectado: notificaciones push desactivadas');
+    // Ocultar toda la UI de notificaciones cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', () => {
+        const notifCard = document.getElementById('notifications-card');
+        const notifBtn = document.getElementById('notifications-settings-btn');
+        const welcomeModal = document.getElementById('welcome-clasificados-modal');
+        if (notifCard) notifCard.style.display = 'none';
+        if (notifBtn) notifBtn.style.display = 'none';
+        if (welcomeModal) welcomeModal.style.display = 'none';
+    });
+}
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
@@ -40,12 +56,17 @@ try {
     galleryCollection = collection(db, "daily_gallery_meta");
     classifiedsCollection = collection(db, "classifieds");
 
-    // Inicializar pushManager con Firebase app para logging
-    pushManager = new PushNotificationManager(app);
-    window.pushManager = pushManager; // Exponerlo globalmente
+    // Inicializar pushManager (desactivado en iOS)
+    if (!isIOS) {
+        pushManager = new PushNotificationManager(app);
+        window.pushManager = pushManager;
+        console.log("✅ PushManager inicializado.");
+    } else {
+        window.pushManager = null;
+        console.log("📱 PushManager no inicializado (iOS)");
+    }
 
     console.log("✅ Firebase inicializado.");
-    console.log("✅ PushManager inicializado con logging a Firestore.");
 
     // --- FUNCIONES DE LOGIN/LOGOUT ---
     async function loginWithGoogle() {
@@ -149,7 +170,7 @@ try {
     });
     console.log("🚀 App iniciada.");
 
-    if ('serviceWorker' in navigator) {
+    if (!isIOS && 'serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(console.error);
         });
@@ -1027,7 +1048,7 @@ try {
     }
 
     // Mostrar modal durante el período de 4 días
-    if (welcomeClasificadosModal && shouldShowWelcomeModal()) {
+    if (!isIOS && welcomeClasificadosModal && shouldShowWelcomeModal()) {
         // Mostrar después de 2 segundos para no interrumpir la carga inicial
         setTimeout(() => {
             welcomeClasificadosModal.classList.remove('hidden');

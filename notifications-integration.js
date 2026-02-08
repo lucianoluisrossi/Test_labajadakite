@@ -4,9 +4,24 @@
 
 console.log('🔔 Inicializando sistema de notificaciones...');
 
+// Detectar iOS (mismo check que app.js)
+const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+if (_isIOS) {
+    console.log('📱 iOS detectado: sistema de notificaciones desactivado');
+} else {
+
+let _initRetries = 0;
+const _maxRetries = 50; // 5 segundos máximo de espera
+
 function initializeNotificationsUI() {
     if (!window.pushManager) {
-        console.log('⏳ Esperando a que pushManager este disponible...');
+        _initRetries++;
+        if (_initRetries > _maxRetries) {
+            console.warn('⚠️ pushManager no disponible tras 5s, abortando init notificaciones');
+            return;
+        }
         setTimeout(initializeNotificationsUI, 100);
         return;
     }
@@ -95,7 +110,7 @@ function initializeNotificationsUI() {
         });
     }
 
-    // Activar notificaciones (ahora suscribe a Web Push real)
+    // Activar notificaciones (suscribe a Web Push real)
     if (enableNotificationsBtn) {
         enableNotificationsBtn.addEventListener('click', async () => {
             enableNotificationsBtn.disabled = true;
@@ -143,7 +158,7 @@ function initializeNotificationsUI() {
         });
     }
 
-    // Guardar configuracion (ahora sincroniza con servidor)
+    // Guardar configuracion (sincroniza con servidor)
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', () => {
             const newConfig = {
@@ -152,7 +167,7 @@ function initializeNotificationsUI() {
             };
             
             window.pushManager.setConfig(newConfig);
-            window.pushManager.savePreferences(); // Guarda local + sincroniza servidor
+            window.pushManager.savePreferences();
             
             saveConfigBtn.textContent = '✓ Guardado';
             saveConfigBtn.classList.add('bg-green-500', 'text-white');
@@ -178,7 +193,7 @@ function initializeNotificationsUI() {
     // ==========================================
 
     function analyzeAndNotify(weatherData) {
-        if (window.pushManager.permission !== 'granted') return;
+        if (!window.pushManager || window.pushManager.permission !== 'granted') return;
         
         const windSpeed = weatherData.wind?.wind_speed?.value || null;
         const windGust = weatherData.wind?.wind_gust?.value || null;
@@ -209,8 +224,6 @@ function initializeNotificationsUI() {
     // Actualizar UI despues de que la suscripcion push se verifique (es async)
     setTimeout(() => updateNotificationsUI(), 2000);
 
-    // Service Worker se registra desde app.js (sw.js) - no duplicar registro aqui
-
     // Exportar funcion para llamar desde fetchWeatherData
     window.analyzeAndNotify = analyzeAndNotify;
 
@@ -235,3 +248,5 @@ if (document.readyState === 'loading') {
 } else {
     initializeNotificationsUI();
 }
+
+} // Cierre del else de !_isIOS
