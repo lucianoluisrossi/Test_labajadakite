@@ -572,11 +572,11 @@ try {
     function updateWindViewToggle() {
         if (!windViewToggle) return;
         if (windViewMode === 'map') {
-            windViewToggle.textContent = '🧭 Vista mapa';
-            windViewToggle.title = 'N=arriba (estándar Windguru). Toca para cambiar a vista cámara';
-        } else {
             windViewToggle.textContent = '📷 Vista cámara';
             windViewToggle.title = 'Relativo a la livecam. Toca para cambiar a vista mapa';
+        } else {
+            windViewToggle.textContent = '🧭 Vista mapa';
+            windViewToggle.title = 'N=arriba (estándar Windguru). Toca para cambiar a vista cámara';
         }
     }
 
