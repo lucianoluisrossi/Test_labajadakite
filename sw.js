@@ -56,7 +56,7 @@ self.addEventListener('push', (event) => {
         title: 'La Bajada Kite',
         body: 'Nueva actualización disponible',
         icon: '/icon-192.png',
-        badge: '/icon-192.png',
+        badge: '/badge-wind.png',
         tag: 'labajada-notification',
         requireInteraction: false,
         data: {

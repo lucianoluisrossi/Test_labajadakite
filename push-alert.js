@@ -302,7 +302,7 @@ export default async function handler(req, res) {
                     title: alert.title,
                     body: alert.body,
                     icon: '/icon-192.png',
-                    badge: '/icon-192.png',
+                    badge: '/badge-wind.png',
                     tag: `wind-alert-${alert.type}`,
                     vibrate: alert.priority <= 2 ? [300, 100, 300, 100, 300] : [200, 100, 200],
                     requireInteraction: alert.priority <= 2,

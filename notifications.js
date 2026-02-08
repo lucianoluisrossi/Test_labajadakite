@@ -291,7 +291,7 @@ export class PushNotificationManager {
                         ? 'Recibirás alertas aunque la app esté cerrada' 
                         : 'Te avisaremos cuando haya buenas condiciones',
                     icon: '/icon-192.png',
-                    badge: '/icon-192.png',
+                    badge: '/badge-wind.png',
                     tag: 'test-notification',
                     requireInteraction: false,
                 });
@@ -300,7 +300,7 @@ export class PushNotificationManager {
             new Notification('¡Notificaciones activadas! 🪁', {
                 body: 'Te avisaremos cuando haya buenas condiciones de viento',
                 icon: '/icon-192.png',
-                badge: '/icon-192.png',
+                badge: '/badge-wind.png',
                 tag: 'test-notification',
             });
         }
@@ -404,7 +404,7 @@ export class PushNotificationManager {
 
         const defaults = {
             icon: '/icon-192.png',
-            badge: '/icon-192.png',
+            badge: '/badge-wind.png',
             vibrate: [200, 100, 200],
             data: { url: '/' },
         };
