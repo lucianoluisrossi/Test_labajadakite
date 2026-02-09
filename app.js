@@ -3,20 +3,25 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, signInAnonymously, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// ⭐ SISTEMA DE NOTIFICACIONES PUSH
-import { PushNotificationManager } from './notifications.js';
-import './notifications-integration.js';
-
 // ⭐ MEJORAS UX/UI
 import './ux-improvements.js';
 
-
-// ⭐ DETECCIÓN iOS - Desactivar notificaciones push en iOS/iPadOS
+// ⭐ DETECCIÓN iOS - Desactivar notificaciones push completas en iOS/iPadOS
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-if (isIOS) {
+
+// En iOS: NO importar módulos de notificaciones, NO registrar SW, ocultar UI
+let PushNotificationManager = null;
+if (!isIOS) {
+    try {
+        const notifModule = await import('./notifications.js');
+        PushNotificationManager = notifModule.PushNotificationManager;
+        await import('./notifications-integration.js');
+    } catch (e) {
+        console.warn('⚠️ Error cargando módulos de notificaciones:', e.message);
+    }
+} else {
     console.log('📱 iOS detectado: notificaciones push desactivadas');
-    // Ocultar toda la UI de notificaciones cuando el DOM esté listo
     document.addEventListener('DOMContentLoaded', () => {
         const notifCard = document.getElementById('notifications-card');
         const notifBtn = document.getElementById('notifications-settings-btn');
@@ -26,7 +31,6 @@ if (isIOS) {
         if (welcomeModal) welcomeModal.style.display = 'none';
     });
 }
-// --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
   authDomain: "labajadakite.firebaseapp.com",
