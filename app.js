@@ -910,17 +910,6 @@ try {
                 
                 showSkeletons(false);
                 
-                // ⭐ ANALIZAR CONDICIONES PARA NOTIFICACIONES PUSH
-                // Pasar valores PROMEDIADOS (no instantáneos) para evitar alertas por picos
-                if (window.analyzeAndNotify) {
-                    window.analyzeAndNotify({
-                        wind: {
-                            wind_speed: { value: windSpeedValue },  // Promedio de 4 minutos
-                            wind_gust: { value: windGustValue },     // Máximo de 4 minutos
-                            wind_direction: { value: windDirDegrees }
-                        }
-                    });
-                }
             } else {
                 // Data vacío o inválido - estación sin conexión
                 console.warn('Estación sin datos - posible desconexión');

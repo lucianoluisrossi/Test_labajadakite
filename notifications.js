@@ -1,124 +1,30 @@
 // notifications.js
-// Sistema de Notificaciones Push para La Bajada Kite App
-// Todas las alertas requieren condición SOSTENIDA para evitar falsos positivos
-//
-// Tiempos sostenidos (lecturas cada 30seg):
-//   ÉPICO:      10 min = 20 lecturas
-//   IDEALES:     5 min = 10 lecturas
-//   VIENTO SUBIÓ: 5 min = 10 lecturas
-//   EXTREMAS:    3 min =  6 lecturas
-//   OFFSHORE:    5 min = 10 lecturas
+// Gestión de suscripción Web Push para La Bajada Kite App
+// Las alertas las envía el servidor via push-alert.js (cron cada 15 min)
+// Este módulo solo maneja: suscripción, permisos, config y sincronización
 
 const VAPID_PUBLIC_KEY = 'BI1RtHhc98w4g4etDGUfArV2SQ3Jhi0PRVKk66mQvNbMHcU8JlDKp18FqyLxDKIlCFNgxGOXVUvqFi0lLB0qjDQ';
-
-// Lecturas consecutivas requeridas (a 30seg cada una)
-const SUSTAINED = {
-    epic: 20,       // 10 min
-    good: 10,       //  5 min
-    windUp: 10,     //  5 min
-    dangerous: 6,   //  3 min
-    offshore: 10,   //  5 min
-};
 
 export class PushNotificationManager {
     constructor(firebaseApp = null) {
         this.isSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
         this.permission = this.isSupported ? Notification.permission : 'denied';
         this.pushSubscription = null;
-        this.lastWindConditions = null;
         
         const savedMinWind = localStorage.getItem('notif_min_wind');
         
         this.config = {
             minNavigableWind: savedMinWind ? parseInt(savedMinWind) : 15,
             maxGoodWind: 27,
-            dangerousWind: 35,       // rachas peligrosas
-            dangerousSpeed: 30,      // velocidad sostenida peligrosa
-            offshoreAngles: [315, 67.5],
-            checkInterval: 5 * 60 * 1000,
         };
         
         console.log('⚙️ Configuración de notificaciones cargada:', {
             minNavigableWind: this.config.minNavigableWind
         });
-        
-        // Estado de notificaciones ya enviadas (anti-spam, reset cada 2h)
-        this.sentNotifications = {
-            goodConditions: false,
-            windIncreased: false,
-            dangerous: false,
-            epicEast: false,
-            offshore: false,
-            lastReset: Date.now()
-        };
-        
-        // Trackers de condición sostenida (contadores de lecturas consecutivas)
-        this.trackers = {
-            epic:      { count: 0, sustained: false },
-            good:      { count: 0, sustained: false },
-            windUp:    { count: 0, sustained: false },
-            dangerous: { count: 0, sustained: false },
-            offshore:  { count: 0, sustained: false },
-        };
-        
-        // Resetear estado cada 2 horas
-        setInterval(() => this.resetNotificationState(), 2 * 60 * 60 * 1000);
 
         this._checkExistingSubscription();
     }
 
-    // --- Tracker genérico de condición sostenida ---
-    _updateTracker(name, conditionMet) {
-        const tracker = this.trackers[name];
-        const required = SUSTAINED[name];
-        
-        if (conditionMet) {
-            tracker.count++;
-            if (tracker.count >= required && !tracker.sustained) {
-                tracker.sustained = true;
-                console.log(`✅ Condición "${name}" sostenida (${Math.round(required * 30 / 60)} min)`);
-            }
-        } else {
-            if (tracker.count > 0) {
-                console.log(`🔄 Condición "${name}" perdida tras ${tracker.count} lecturas`);
-            }
-            tracker.count = 0;
-            tracker.sustained = false;
-        }
-    }
-
-    // --- Evaluadores de condición ---
-    _isEpicCondition(speed, direction) {
-        return speed !== null && direction !== null &&
-               speed >= 17 && speed < 25 &&
-               direction >= 68 && direction <= 146;
-    }
-
-    _isGoodCondition(speed, direction) {
-        return speed >= this.config.minNavigableWind &&
-               speed < 27 &&
-               !this.isOffshoreWind(direction);
-    }
-
-    _isDangerousCondition(speed, gust) {
-        return speed > this.config.dangerousSpeed || gust >= this.config.dangerousWind;
-    }
-
-    _isOffshoreCondition(speed, direction) {
-        return speed >= this.config.minNavigableWind && this.isOffshoreWind(direction);
-    }
-
-    _isWindUpCondition(speed) {
-        return this.lastWindConditions &&
-               this.lastWindConditions.speed < this.config.minNavigableWind &&
-               speed >= this.config.minNavigableWind;
-    }
-
-    isOffshoreWind(degrees) {
-        return degrees >= this.config.offshoreAngles[0] || degrees <= this.config.offshoreAngles[1];
-    }
-
-    // Verificar suscripción push existente al cargar
     async _checkExistingSubscription() {
         if (!this.isSupported) return;
         
@@ -172,12 +78,11 @@ export class PushNotificationManager {
             const subscribed = await this._subscribeToPush();
             
             if (subscribed) {
-                this.showTestNotification();
+                this._showTestNotification();
                 return true;
             } else {
-                console.warn('⚠️ Push subscription falló, usando notificaciones locales');
-                this.showTestNotification();
-                return true;
+                console.warn('⚠️ Push subscription falló');
+                return false;
             }
         } catch (error) {
             console.error('Error en requestPermission:', error);
@@ -281,169 +186,36 @@ export class PushNotificationManager {
         return outputArray;
     }
 
-    showTestNotification() {
+    _showTestNotification() {
         if (this.permission !== 'granted') return;
         
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
             navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification('¡Notificaciones activadas! 🪁', {
-                    body: this.pushSubscription 
-                        ? 'Recibirás alertas aunque la app esté cerrada' 
-                        : 'Te avisaremos cuando haya buenas condiciones',
+                registration.showNotification('¡Push activadas! 🪁', {
+                    body: 'Recibirás alertas de viento aunque la app esté cerrada',
                     icon: '/icon-192.png',
                     badge: '/badge-wind.png',
                     tag: 'test-notification',
                     requireInteraction: false,
                 });
             });
-        } else {
-            new Notification('¡Notificaciones activadas! 🪁', {
-                body: 'Te avisaremos cuando haya buenas condiciones de viento',
-                icon: '/icon-192.png',
-                badge: '/badge-wind.png',
-                tag: 'test-notification',
-            });
         }
     }
 
-    // ==========================================
-    // ANÁLISIS DE CONDICIONES (llamado cada 30seg)
-    // ==========================================
-    analyzeWindConditions(windData) {
-        if (this.permission !== 'granted') return;
-        
-        const { speed, gust, direction, cardinal } = windData;
-        
-        if (speed === null || direction === null) return;
-
-        // Actualizar TODOS los trackers
-        this._updateTracker('epic',      this._isEpicCondition(speed, direction));
-        this._updateTracker('good',      this._isGoodCondition(speed, direction));
-        this._updateTracker('dangerous', this._isDangerousCondition(speed, gust));
-        this._updateTracker('offshore',  this._isOffshoreCondition(speed, direction));
-        // windUp se evalúa diferente: necesita que la lectura ANTERIOR fuera baja
-        const windUpNow = speed >= this.config.minNavigableWind;
-        const wasBelowBefore = this.lastWindConditions && this.lastWindConditions.speed < this.config.minNavigableWind;
-        // Si ya estamos trackeando windUp, seguir mientras se mantenga navegable
-        // Si no, empezar solo cuando se detecta el cruce de umbral
-        if (this.trackers.windUp.count > 0) {
-            this._updateTracker('windUp', windUpNow);
-        } else {
-            this._updateTracker('windUp', wasBelowBefore && windUpNow);
-        }
-
-        const isDangerous = this.trackers.dangerous.sustained;
-
-        // 1. ÉPICO sostenido (10 min)
-        if (this.trackers.epic.sustained && !this.sentNotifications.epicEast && !isDangerous) {
-            this.sendLocalNotification({
-                title: '👑 ¡ÉPICO!',
-                body: `${speed} kts ${cardinal} — Sostenido 10+ min`,
-                tag: 'epic-east',
-                requireInteraction: true,
-                vibrate: [200, 100, 200, 100, 200],
-            });
-            this.sentNotifications.epicEast = true;
-        }
-
-        // 2. PELIGROSO sostenido (3 min)
-        if (isDangerous && !this.sentNotifications.dangerous) {
-            let message = speed > this.config.dangerousSpeed ? `Viento ${speed} kts` : `Rachas de ${gust} kts`;
-            if (speed > this.config.dangerousSpeed && gust >= this.config.dangerousWind) {
-                message = `Viento ${speed} kts, Rachas ${gust} kts`;
-            }
-            this.sendLocalNotification({
-                title: '⚠️ Condiciones extremas',
-                body: `${message} — Sostenido 3+ min`,
-                tag: 'dangerous-conditions',
-                vibrate: [300, 100, 300],
-            });
-            this.sentNotifications.dangerous = true;
-        }
-
-        // 3. OFFSHORE sostenido (5 min)
-        if (this.trackers.offshore.sustained && !this.sentNotifications.offshore && !isDangerous) {
-            this.sendLocalNotification({
-                title: '🚨 Viento Offshore',
-                body: `${speed} kts ${cardinal} — ¡No navegar!`,
-                tag: 'offshore-conditions',
-                vibrate: [300, 100, 300],
-            });
-            this.sentNotifications.offshore = true;
-        }
-
-        // 4. CONDICIONES IDEALES sostenidas (5 min)
-        if (this.trackers.good.sustained && !this.sentNotifications.goodConditions && !isDangerous && !this.trackers.epic.sustained) {
-            this.sendLocalNotification({
-                title: '🪁 ¡Condiciones ideales!',
-                body: `${speed} kts ${cardinal} — Sostenido 5+ min`,
-                tag: 'good-conditions',
-            });
-            this.sentNotifications.goodConditions = true;
-        }
-
-        // 5. VIENTO SUBIÓ sostenido (5 min)
-        if (this.trackers.windUp.sustained && !this.sentNotifications.windIncreased) {
-            this.sendLocalNotification({
-                title: '📈 El viento subió',
-                body: `Ahora ${speed} kts ${cardinal} — Sostenido 5+ min`,
-                tag: 'wind-increased',
-            });
-            this.sentNotifications.windIncreased = true;
-        }
-
-        // Guardar lectura actual para comparar en la siguiente
-        this.lastWindConditions = { speed, gust, direction, cardinal };
-    }
-
-    // ==========================================
-    // ENVÍO DE NOTIFICACIONES LOCALES
-    // ==========================================
-    sendLocalNotification(options) {
-        if (this.permission !== 'granted') return;
-
-        const defaults = {
-            icon: '/icon-192.png',
-            badge: '/badge-wind.png',
-            vibrate: [200, 100, 200],
-            data: { url: '/' },
-        };
-
-        const notifOptions = { ...defaults, ...options };
-
-        try {
-            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.ready.then(registration => {
-                    registration.showNotification(notifOptions.title, notifOptions);
-                });
-            } else {
-                new Notification(notifOptions.title, notifOptions);
-            }
-            console.log('📬 Notificación local enviada:', notifOptions.title);
-        } catch (error) {
-            console.error('Error enviando notificación local:', error);
-        }
-    }
-
-    // Alias para compatibilidad
+    // Enviar notificación de prueba (botón manual)
     sendNotification(options) {
-        this.sendLocalNotification(options);
-    }
-
-    resetNotificationState() {
-        const now = Date.now();
-        const timeSinceLastReset = now - this.sentNotifications.lastReset;
+        if (this.permission !== 'granted') return;
         
-        if (timeSinceLastReset >= 2 * 60 * 60 * 1000) {
-            console.log('🔄 Reseteando estado de notificaciones');
-            this.sentNotifications = {
-                goodConditions: false,
-                windIncreased: false,
-                dangerous: false,
-                epicEast: false,
-                offshore: false,
-                lastReset: now,
-            };
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(options.title || 'La Bajada Kite', {
+                    body: options.body || '',
+                    icon: '/icon-192.png',
+                    badge: '/badge-wind.png',
+                    tag: options.tag || 'test',
+                    vibrate: options.vibrate || [200, 100, 200],
+                });
+            });
         }
     }
 
@@ -470,20 +242,12 @@ export class PushNotificationManager {
             enabled: this.permission === 'granted',
             pushSubscribed: !!this.pushSubscription,
             config: this.config,
-            lastWindConditions: this.lastWindConditions,
-            sentNotifications: this.sentNotifications,
-            trackers: {
-                epic:      { count: this.trackers.epic.count, sustained: this.trackers.epic.sustained, required: SUSTAINED.epic },
-                good:      { count: this.trackers.good.count, sustained: this.trackers.good.sustained, required: SUSTAINED.good },
-                dangerous: { count: this.trackers.dangerous.count, sustained: this.trackers.dangerous.sustained, required: SUSTAINED.dangerous },
-                offshore:  { count: this.trackers.offshore.count, sustained: this.trackers.offshore.sustained, required: SUSTAINED.offshore },
-                windUp:    { count: this.trackers.windUp.count, sustained: this.trackers.windUp.sustained, required: SUSTAINED.windUp },
-            },
         };
     }
 
     savePreferences() {
         localStorage.setItem('notificationConfig', JSON.stringify(this.config));
+        localStorage.setItem('notif_min_wind', this.config.minNavigableWind.toString());
         localStorage.setItem('notificationsEnabled', this.permission === 'granted');
         this.syncConfigToServer();
     }
@@ -493,7 +257,6 @@ export class PushNotificationManager {
         if (savedConfig) {
             try {
                 this.config = { ...this.config, ...JSON.parse(savedConfig) };
-                console.log('✅ Preferencias de notificaciones cargadas');
             } catch (e) {
                 console.error('Error cargando preferencias:', e);
             }

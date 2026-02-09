@@ -1,10 +1,10 @@
 // notifications-integration.js
-// Integra el sistema de notificaciones con app.js existente
-// pushManager se inicializa en app.js y esta disponible como window.pushManager
+// Integra UI de configuración de push con el PushNotificationManager
+// No hay notificaciones locales - todo se maneja via push del servidor
 
 console.log('🔔 Inicializando sistema de notificaciones...');
 
-// Detectar iOS (mismo check que app.js)
+// Detectar iOS
 const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -13,13 +13,13 @@ if (_isIOS) {
 } else {
 
 let _initRetries = 0;
-const _maxRetries = 50; // 5 segundos máximo de espera
+const _maxRetries = 50;
 
 function initializeNotificationsUI() {
     if (!window.pushManager) {
         _initRetries++;
         if (_initRetries > _maxRetries) {
-            console.warn('⚠️ pushManager no disponible tras 5s, abortando init notificaciones');
+            console.warn('⚠️ pushManager no disponible tras 5s, abortando');
             return;
         }
         setTimeout(initializeNotificationsUI, 100);
@@ -28,39 +28,29 @@ function initializeNotificationsUI() {
     
     console.log('✅ pushManager disponible, inicializando UI...');
     
-    // Cargar preferencias guardadas
     window.pushManager.loadPreferences();
 
-    // Elementos del DOM
-    const notificationsCard = document.getElementById('notifications-card');
-    const notificationsExpandBtn = document.getElementById('notifications-expand-btn');
-    const notificationsContent = document.getElementById('notifications-content');
-    const expandIcon = document.getElementById('expand-icon');
     const statusIndicator = document.getElementById('status-indicator');
     const statusText = document.getElementById('status-text');
     const enableNotificationsBtn = document.getElementById('enable-notifications-btn');
     const testNotificationBtn = document.getElementById('test-notification-btn');
     const saveConfigBtn = document.getElementById('save-config-btn');
+    const notificationsExpandBtn = document.getElementById('notifications-expand-btn');
+    const notificationsContent = document.getElementById('notifications-content');
+    const expandIcon = document.getElementById('expand-icon');
 
-    // Sliders de configuracion
     const minWindSlider = document.getElementById('min-wind-slider');
     const minWindValue = document.getElementById('min-wind-value');
     const maxWindSlider = document.getElementById('max-wind-slider');
     const maxWindValue = document.getElementById('max-wind-value');
 
-    // ==========================================
-    // ACTUALIZAR UI SEGUN ESTADO
-    // ==========================================
-
     function updateNotificationsUI() {
         const status = window.pushManager.getStatus();
         
-        if (status.enabled) {
+        if (status.enabled && status.pushSubscribed) {
             statusIndicator.classList.remove('bg-gray-400', 'bg-yellow-400');
             statusIndicator.classList.add('bg-green-500');
-            statusText.textContent = status.pushSubscribed 
-                ? 'Push activadas ✓ (alertas con la app cerrada)' 
-                : 'Notificaciones activadas ✓';
+            statusText.textContent = 'Push activadas ✓ (alertas con la app cerrada)';
             statusText.classList.remove('text-gray-600');
             statusText.classList.add('text-green-700', 'font-semibold');
             
@@ -69,22 +59,28 @@ function initializeNotificationsUI() {
             enableNotificationsBtn.classList.add('bg-green-600', 'hover:bg-green-700', 'cursor-default');
             enableNotificationsBtn.disabled = true;
             
+        } else if (status.enabled && !status.pushSubscribed) {
+            // Permiso dado pero no suscripto a push - reintentamos
+            statusIndicator.classList.remove('bg-green-500', 'bg-gray-400');
+            statusIndicator.classList.add('bg-yellow-400');
+            statusText.textContent = 'Permiso OK pero falta suscripción push';
+            statusText.classList.remove('text-green-700', 'font-semibold');
+            statusText.classList.add('text-gray-600');
+            
+            enableNotificationsBtn.disabled = false;
+            enableNotificationsBtn.innerHTML = '<span>Reintentar Suscripción</span>';
+            
         } else if (!status.supported) {
             statusIndicator.classList.remove('bg-green-500', 'bg-yellow-400');
             statusIndicator.classList.add('bg-gray-400');
             statusText.textContent = 'No soportadas en este navegador';
-            statusText.classList.remove('text-green-700', 'font-semibold');
-            statusText.classList.add('text-gray-600');
-            
             enableNotificationsBtn.disabled = true;
             enableNotificationsBtn.classList.add('opacity-50', 'cursor-not-allowed');
             
         } else if (status.permission === 'denied') {
             statusIndicator.classList.remove('bg-green-500', 'bg-gray-400');
             statusIndicator.classList.add('bg-yellow-400');
-            statusText.textContent = 'Permisos denegados';
-            statusText.classList.remove('text-green-700', 'font-semibold');
-            statusText.classList.add('text-gray-600');
+            statusText.textContent = 'Permisos denegados — revisa config del navegador';
             
         } else {
             statusIndicator.classList.remove('bg-green-500', 'bg-yellow-400');
@@ -99,18 +95,15 @@ function initializeNotificationsUI() {
         }
     }
 
-    // ==========================================
-    // EVENT LISTENERS
-    // ==========================================
+    // --- EVENT LISTENERS ---
 
     if (notificationsExpandBtn && notificationsContent) {
         notificationsExpandBtn.addEventListener('click', () => {
             notificationsContent.classList.toggle('hidden');
-            expandIcon.classList.toggle('rotate-180');
+            if (expandIcon) expandIcon.classList.toggle('rotate-180');
         });
     }
 
-    // Activar notificaciones (suscribe a Web Push real)
     if (enableNotificationsBtn) {
         enableNotificationsBtn.addEventListener('click', async () => {
             enableNotificationsBtn.disabled = true;
@@ -128,24 +121,20 @@ function initializeNotificationsUI() {
         });
     }
 
-    // Notificacion de prueba
     if (testNotificationBtn) {
         testNotificationBtn.addEventListener('click', () => {
             if (window.pushManager.permission !== 'granted') {
                 alert('Primero debes activar las notificaciones');
                 return;
             }
-            
             window.pushManager.sendNotification({
-                title: '🪁 Notificacion de Prueba',
+                title: '🪁 Notificación de Prueba',
                 body: 'Todo funciona correctamente. Te avisaremos cuando haya viento!',
                 tag: 'test-notification',
-                vibrate: [200, 100, 200]
             });
         });
     }
 
-    // Sliders en tiempo real
     if (minWindSlider && minWindValue) {
         minWindSlider.addEventListener('input', (e) => {
             minWindValue.textContent = e.target.value;
@@ -158,7 +147,6 @@ function initializeNotificationsUI() {
         });
     }
 
-    // Guardar configuracion (sincroniza con servidor)
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', () => {
             const newConfig = {
@@ -173,76 +161,25 @@ function initializeNotificationsUI() {
             saveConfigBtn.classList.add('bg-green-500', 'text-white');
             
             setTimeout(() => {
-                saveConfigBtn.textContent = 'Guardar Configuracion';
+                saveConfigBtn.textContent = 'Guardar Configuración';
                 saveConfigBtn.classList.remove('bg-green-500', 'text-white');
             }, 2000);
         });
     }
 
-    // Cargar config guardada en sliders
-    const loadSavedConfig = () => {
-        const config = window.pushManager.config;
-        if (minWindSlider) minWindSlider.value = config.minNavigableWind || 12;
-        if (minWindValue) minWindValue.textContent = config.minNavigableWind || 12;
-        if (maxWindSlider) maxWindSlider.value = config.maxGoodWind;
-        if (maxWindValue) maxWindValue.textContent = config.maxGoodWind;
-    };
-
-    // ==========================================
-    // INTEGRACION CON fetchWeatherData()
-    // ==========================================
-
-    function analyzeAndNotify(weatherData) {
-        if (!window.pushManager || window.pushManager.permission !== 'granted') return;
-        
-        const windSpeed = weatherData.wind?.wind_speed?.value || null;
-        const windGust = weatherData.wind?.wind_gust?.value || null;
-        const windDirection = weatherData.wind?.wind_direction?.value || null;
-        
-        if (windSpeed === null || windDirection === null) {
-            console.log('⚠️ Datos incompletos para notificaciones');
-            return;
-        }
-        
-        const cardinal = convertDegreesToCardinal(windDirection);
-        
-        window.pushManager.analyzeWindConditions({
-            speed: windSpeed,
-            gust: windGust,
-            direction: windDirection,
-            cardinal: cardinal
-        });
-    }
-
-    // ==========================================
-    // INICIALIZACION
-    // ==========================================
+    // Cargar config en sliders
+    const config = window.pushManager.config;
+    if (minWindSlider) minWindSlider.value = config.minNavigableWind || 15;
+    if (minWindValue) minWindValue.textContent = config.minNavigableWind || 15;
+    if (maxWindSlider) maxWindSlider.value = config.maxGoodWind || 27;
+    if (maxWindValue) maxWindValue.textContent = config.maxGoodWind || 27;
 
     updateNotificationsUI();
-    loadSavedConfig();
-
-    // Actualizar UI despues de que la suscripcion push se verifique (es async)
     setTimeout(() => updateNotificationsUI(), 2000);
 
-    // Exportar funcion para llamar desde fetchWeatherData
-    window.analyzeAndNotify = analyzeAndNotify;
-
     console.log('✅ Sistema de notificaciones inicializado');
+}
 
-    // ==========================================
-    // HELPER: Convertir grados a cardinal
-    // ==========================================
-
-    function convertDegreesToCardinal(degrees) {
-        if (degrees === null) return 'N/A';
-        const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
-        const index = Math.round(degrees / 22.5) % 16;
-        return directions[index];
-    }
-
-} // Cierre de initializeNotificationsUI
-
-// Llamar la inicializacion cuando el DOM este listo
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeNotificationsUI);
 } else {
