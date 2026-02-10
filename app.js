@@ -14,6 +14,15 @@ import './ux-improvements.js';
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+// En iOS: desregistrar cualquier Service Worker existente que pueda estar rompiendo fetch
+if (isIOS && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(reg => {
+            reg.unregister().then(() => console.log('📱 SW desregistrado en iOS'));
+        });
+    });
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
   authDomain: "labajadakite.firebaseapp.com",
