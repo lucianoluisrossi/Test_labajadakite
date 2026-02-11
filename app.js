@@ -139,13 +139,6 @@ try {
             if (notifLoginRequired) notifLoginRequired.classList.add('hidden');
             if (notifSettingsLogged) notifSettingsLogged.classList.remove('hidden');
             
-            // Inicializar slider de viento mínimo después de mostrarlo
-            setTimeout(() => {
-                if (typeof window.initializeMinWindSlider === 'function') {
-                    window.initializeMinWindSlider();
-                }
-            }, 100);
-            
             console.log("✅ Usuario logueado:", user.displayName);
         } else {
             // Usuario no logueado

@@ -876,59 +876,5 @@
     
     <script src="/_vercel/insights/script.js"></script>
     <script type="module" src="app.js"></script>
-    
-    <!-- Script de control de modal ELIMINADO - la lógica está en notifications-integration.js -->
-    <!-- Script para guardado automático de configuración de notificaciones -->
-    <script>
-        // Función global para inicializar slider (se llama cuando se muestra)
-        window.initializeMinWindSlider = function() {
-            const minWindSlider = document.getElementById('min-wind-slider');
-            const minWindValue = document.getElementById('min-wind-value');
-            
-            if (!minWindSlider) {
-                console.log('⚠️ Slider aún no disponible');
-                return false;
-            }
-            
-            console.log('🎚️ Inicializando slider de viento mínimo...');
-            
-            // Cargar valor guardado
-            const savedMinWind = localStorage.getItem('notif_min_wind');
-            
-            if (savedMinWind) {
-                minWindSlider.value = savedMinWind;
-                minWindValue.textContent = savedMinWind;
-                console.log('📥 Viento mínimo cargado desde localStorage:', savedMinWind, 'kts');
-            } else {
-                console.log('ℹ️ Usando valor por defecto: 15 kts');
-            }
-            
-            // Remover listeners previos (por si acaso)
-            const newSlider = minWindSlider.cloneNode(true);
-            minWindSlider.parentNode.replaceChild(newSlider, minWindSlider);
-            
-            // Agregar listener al nuevo slider
-            newSlider.addEventListener('input', (e) => {
-                const value = e.target.value;
-                minWindValue.textContent = value;
-                localStorage.setItem('notif_min_wind', value);
-                
-                // Actualizar en pushManager
-                if (window.pushManager) {
-                    window.pushManager.config.minNavigableWind = parseInt(value);
-                    console.log('✅ Viento mínimo actualizado:', value, 'kts');
-                } else {
-                    console.log('⚠️ pushManager no disponible, solo guardado en localStorage');
-                }
-            });
-            
-            console.log('✅ Slider inicializado correctamente');
-            return true;
-        };
-        
-        // NO ejecutar automáticamente en DOMContentLoaded
-        // Se ejecutará cuando el usuario haga login y se muestre el slider
-        console.log('⚙️ initializeMinWindSlider() disponible globalmente');
-    </script>
 </body>
 </html>
