@@ -22,7 +22,7 @@ export class PushNotificationManager {
             minNavigableWind: this.config.minNavigableWind
         });
 
-        this._checkExistingSubscription();
+        this._ready = this._checkExistingSubscription();
     }
 
     async _checkExistingSubscription() {
@@ -119,6 +119,7 @@ export class PushNotificationManager {
 
     async _saveSubscriptionToServer(subscription) {
         try {
+            console.log('📤 Enviando config al servidor:', JSON.stringify(this.config));
             const response = await fetch('/api/push-subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -132,6 +133,7 @@ export class PushNotificationManager {
             });
 
             const data = await response.json();
+            console.log('📥 Respuesta del servidor:', JSON.stringify(data));
             return data.ok === true;
         } catch (error) {
             console.error('Error guardando suscripción en servidor:', error);
@@ -225,7 +227,13 @@ export class PushNotificationManager {
     }
 
     async syncConfigToServer() {
-        if (!this.pushSubscription) return;
+        console.log('🔄 syncConfigToServer: esperando _ready...');
+        await this._ready;
+        console.log('🔄 syncConfigToServer: pushSubscription =', this.pushSubscription ? 'EXISTS' : 'NULL');
+        if (!this.pushSubscription) {
+            console.warn('⚠️ syncConfigToServer: no hay suscripción, no se puede sincronizar');
+            return;
+        }
         
         try {
             await this._saveSubscriptionToServer(this.pushSubscription);
