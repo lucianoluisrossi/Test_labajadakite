@@ -139,11 +139,19 @@ function initializeNotificationsUI() {
         minWindSlider.addEventListener('input', (e) => {
             minWindValue.textContent = e.target.value;
         });
+        minWindSlider.addEventListener('change', (e) => {
+            window.pushManager.setConfig({ minNavigableWind: parseInt(e.target.value) });
+            window.pushManager.savePreferences();
+        });
     }
 
     if (maxWindSlider && maxWindValue) {
         maxWindSlider.addEventListener('input', (e) => {
             maxWindValue.textContent = e.target.value;
+        });
+        maxWindSlider.addEventListener('change', (e) => {
+            window.pushManager.setConfig({ maxGoodWind: parseInt(e.target.value) });
+            window.pushManager.savePreferences();
         });
     }
 
