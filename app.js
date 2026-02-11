@@ -583,7 +583,7 @@ try {
     // "map" = norte arriba (estándar meteorológico, como Windguru)
     // "cam" = relativo a la cámara del spot (la cámara apunta ~160° aprox SSE)
     const CAMERA_HEADING = 160; // grados hacia donde apunta la cámara
-    let windViewMode = localStorage.getItem('windViewMode') || 'cam';
+    let windViewMode = localStorage.getItem('windViewMode') || 'map';
 
     function getWindArrowRotation(degrees) {
         if (windViewMode === 'cam') {
@@ -599,7 +599,7 @@ try {
             windViewToggle.textContent = '📷 Vista cámara';
             windViewToggle.title = 'Relativo a la livecam. Toca para cambiar a vista mapa';
         } else {
-            windViewToggle.textContent = '🧭 Vista mapa';
+            windViewToggle.textContent = '🧭 Vista Windguru';
             windViewToggle.title = 'N=arriba (estándar Windguru). Toca para cambiar a vista cámara';
         }
     }
