@@ -281,7 +281,7 @@ export default async function handler(req, res) {
         if (sent > 0) {
             for (const type of alertTypesSent) {
                 try {
-                    await db.collection(PUSH_LOG_COLLECTION).add({
+                    const logData = {
                         timestamp: admin.firestore.FieldValue.serverTimestamp(),
                         alertType: type,
                         windSpeed: wind.speed,
@@ -291,9 +291,24 @@ export default async function handler(req, res) {
                         subscribersSent: sent,
                         subscribersSkipped: skipped,
                         subscribersExpired: expired,
-                    });
+                        createdAt: new Date().toISOString(),
+                    };
+                    const logRef = await db.collection(PUSH_LOG_COLLECTION).add(logData);
+                    console.log('📝 Log guardado:', logRef.id, type);
                 } catch (e) {
-                    console.error('Error guardando log:', e.message);
+                    console.error('❌ Error guardando log:', e.message, e.stack);
+                    // Fallback: intentar sin serverTimestamp
+                    try {
+                        await db.collection(PUSH_LOG_COLLECTION).add({
+                            timestamp: new Date(),
+                            alertType: type,
+                            windSpeed: wind.speed,
+                            createdAt: new Date().toISOString(),
+                        });
+                        console.log('📝 Log guardado (fallback)');
+                    } catch (e2) {
+                        console.error('❌ Fallback también falló:', e2.message);
+                    }
                 }
             }
         }
