@@ -184,6 +184,7 @@ export default async function handler(req, res) {
         // 6. Evaluar y enviar POR SUSCRIPTOR
         let sent = 0, skipped = 0, expired = 0;
         let alertTypesSent = new Set();
+        let subscriberDebug = [];
 
         await Promise.allSettled(
             snapshot.docs.map(async (subDoc) => {
@@ -192,12 +193,23 @@ export default async function handler(req, res) {
                 const subId = subDoc.id;
 
                 // Tracker "good" POR SUSCRIPTOR (cada uno tiene su minWind)
+                const goodCondition = isGoodNow(wind.speed, wind.direction, subMinWind);
                 const goodTracker = await updateTracker(
                     db,
                     `${TRACKER_COLLECTION}/good_${subId}`,
-                    isGoodNow(wind.speed, wind.direction, subMinWind),
+                    goodCondition,
                     SUSTAINED_MINUTES.good
                 );
+
+                subscriberDebug.push({
+                    id: subId,
+                    minWind: subMinWind,
+                    goodCondition,
+                    goodTracker,
+                    windSpeed: wind.speed,
+                    windDir: wind.direction,
+                    isOffshore: wind.direction >= CONFIG.offshoreStart || wind.direction <= CONFIG.offshoreEnd,
+                });
 
                 // Elegir alerta (prioridad: epic > dangerous > offshore > good)
                 let alert = null;
@@ -291,7 +303,7 @@ export default async function handler(req, res) {
             wind: { speed: wind.speed.toFixed(1), gust: wind.gust.toFixed(1), direction: cardinal, degrees: wind.direction },
             trackers: globalTrackers,
             alert: alertTypesSent.size > 0 ? { types: [...alertTypesSent] } : null,
-            subscribers: { total: snapshot.size, sent, skipped, expired },
+            subscribers: { total: snapshot.size, sent, skipped, expired, debug: subscriberDebug },
             cooldown: { recentTypes: [...recentAlertTypes] },
         });
 
