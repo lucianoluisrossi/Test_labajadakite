@@ -33,7 +33,7 @@ const CONFIG = {
     epicMaxDeg: 146,
     offshoreStart: 292.5,
     offshoreEnd: 67.5,
-    cooldownMinutes: 120,
+    cooldownMinutes: 15,
 };
 
 // --- Ecowitt ---
