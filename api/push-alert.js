@@ -238,7 +238,7 @@ export default async function handler(req, res) {
                 } else if (goodTracker.sustained) {
                     alert = {
                         type: 'good',
-                        title: '🪁 ¡Hay viento en La Bajada!',
+                        title: '🪁 ¡Está soplando en Claromecó!',
                         body: `${wind.speed.toFixed(0)} kts del ${cardinal} — Sostenido ${goodTracker.minutesActive}+ min`,
                         priority: 4,
                     };
