@@ -14,13 +14,27 @@ import './ux-improvements.js';
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-// En iOS: desregistrar cualquier Service Worker existente que pueda estar rompiendo fetch
-if (isIOS && 'serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-        registrations.forEach(reg => {
-            reg.unregister().then(() => console.log('📱 SW desregistrado en iOS'));
-        });
+// ========================================
+// FIX iOS: REGISTRAR Service Worker en TODOS los navegadores
+// ========================================
+// iOS Safari SÍ soporta Service Workers desde iOS 11.3+ (2018)
+// Solo Web Push no está soportado en iOS Safari, pero el SW es esencial para PWA y cache
+// Registramos el SW normalmente en TODOS los navegadores incluyendo iOS
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('✅ Service Worker registrado:', registration.scope);
+                if (isIOS) {
+                    console.log('📱 iOS: Service Worker activo, Web Push no disponible en navegador');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error registrando Service Worker:', error);
+            });
     });
+} else {
+    console.warn('⚠️ Service Workers no soportados en este navegador');
 }
 
 const firebaseConfig = {
@@ -52,21 +66,35 @@ try {
     galleryCollection = collection(db, "daily_gallery_meta");
     classifiedsCollection = collection(db, "classifieds");
 
-    // Inicializar pushManager (desactivado en iOS)
-    if (!isIOS) {
+    // ========================================
+    // INICIALIZAR PUSH MANAGER CON DETECCIÓN PRECISA
+    // ========================================
+    // Solo desactivar Push Manager si REALMENTE no está soportado
+    // iOS Safari NO soporta Web Push API en el navegador (solo en PWA iOS 16.4+)
+    const hasPushSupport = 'Notification' in window && 
+                          'serviceWorker' in navigator && 
+                          'PushManager' in window;
+    
+    if (hasPushSupport && !isIOS) {
+        // Android, Desktop Chrome/Firefox/Edge - Push disponible
         pushManager = new PushNotificationManager(app);
         window.pushManager = pushManager;
-        console.log("✅ PushManager inicializado.");
+        console.log("✅ PushManager inicializado - Web Push disponible");
     } else {
+        // iOS Safari - Web Push no disponible en navegador
         window.pushManager = null;
-        console.log("📱 PushManager no inicializado (iOS)");
-        // Ocultar UI de notificaciones
-        const notifCard = document.getElementById('notifications-card');
-        const notifBtn = document.getElementById('notifications-settings-btn');
-        const welcomeModal = document.getElementById('welcome-clasificados-modal');
-        if (notifCard) notifCard.style.display = 'none';
-        if (notifBtn) notifBtn.style.display = 'none';
-        if (welcomeModal) welcomeModal.style.display = 'none';
+        console.log("📱 PushManager no disponible en este navegador");
+        
+        // Solo ocultar UI de notificaciones en iOS
+        if (isIOS) {
+            const notifCard = document.getElementById('notifications-card');
+            const notifBtn = document.getElementById('notifications-settings-btn');
+            const welcomeModal = document.getElementById('welcome-clasificados-modal');
+            if (notifCard) notifCard.style.display = 'none';
+            if (notifBtn) notifBtn.style.display = 'none';
+            if (welcomeModal) welcomeModal.style.display = 'none';
+            console.log("📱 iOS Safari: UI de notificaciones push oculta");
+        }
     }
 
     console.log("✅ Firebase inicializado.");
@@ -165,12 +193,6 @@ try {
         updateAuthUI(user);
     });
     console.log("🚀 App iniciada.");
-
-    if (!isIOS && 'serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').catch(console.error);
-        });
-    }
 
     // --- ELEMENTOS DE NAVEGACIÓN ---
     const viewDashboard = document.getElementById('view-dashboard');
