@@ -80,6 +80,13 @@ self.addEventListener('activate', (event) => {
 // ESTRATEGIA DE FETCH - COMPATIBLE iOS
 // ==========================================
 self.addEventListener('fetch', (event) => {
+    // ========================================
+    // FIX CRÍTICO: NO cachear POST requests
+    // ========================================
+    if (event.request.method !== 'GET') {
+        return; // Solo cachear GET requests
+    }
+    
     const url = new URL(event.request.url);
     
     // ========================================

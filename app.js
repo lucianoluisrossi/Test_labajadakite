@@ -87,6 +87,33 @@ try {
     }
 
     console.log("✅ Firebase inicializado.");
+
+    // --- FUNCIONES DE LOGIN/LOGOUT ---
+    async function loginWithGoogle() {
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            console.log("✅ Login exitoso:", result.user.displayName);
+        } catch (error) {
+            console.error("❌ Error en login:", error);
+            if (error.code === 'auth/popup-blocked') {
+                alert('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para esta página.');
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                // Usuario cerró el popup, no hacer nada
+            } else {
+                alert('Error al iniciar sesión: ' + error.message);
+            }
+        }
+    }
+
+    async function logout() {
+        try {
+            await signOut(auth);
+            console.log("✅ Sesión cerrada");
+        } catch (error) {
+            console.error("❌ Error al cerrar sesión:", error);
+        }
+    }
+
     // Exponer funciones globalmente para uso en eventos
     window.loginWithGoogle = loginWithGoogle;
     window.logout = logout;
@@ -155,12 +182,6 @@ try {
         updateAuthUI(user);
     });
     console.log("🚀 App iniciada.");
-
-    if (!isIOS && 'serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').catch(console.error);
-        });
-    }
 
     // --- ELEMENTOS DE NAVEGACIÓN ---
     const viewDashboard = document.getElementById('view-dashboard');
