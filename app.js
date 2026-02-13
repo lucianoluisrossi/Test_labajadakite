@@ -15,26 +15,29 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // ========================================
-// FIX iOS: REGISTRAR Service Worker en TODOS los navegadores
+// SOLUCIÓN DEFINITIVA: Service Worker SOLO en Android/Desktop
 // ========================================
-// iOS Safari SÍ soporta Service Workers desde iOS 11.3+ (2018)
-// Solo Web Push no está soportado en iOS Safari, pero el SW es esencial para PWA y cache
-// Registramos el SW normalmente en TODOS los navegadores incluyendo iOS
-if ('serviceWorker' in navigator) {
+// iOS Safari tiene problemas con SW interceptando fetch
+// Solución: SW activo en Android/Desktop, desactivado en iOS
+if (!isIOS && 'serviceWorker' in navigator) {
+    // Registrar SW solo en Android/Desktop (NO en iOS)
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .then(registration => {
-                console.log('✅ Service Worker registrado:', registration.scope);
-                if (isIOS) {
-                    console.log('📱 iOS: Service Worker activo, Web Push no disponible en navegador');
-                }
+                console.log('✅ Service Worker registrado (Android/Desktop):', registration.scope);
             })
             .catch(error => {
                 console.error('❌ Error registrando Service Worker:', error);
             });
     });
-} else {
-    console.warn('⚠️ Service Workers no soportados en este navegador');
+} else if (isIOS && 'serviceWorker' in navigator) {
+    // En iOS: desregistrar cualquier SW que pueda estar activo
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(reg => {
+            reg.unregister();
+        });
+    });
+    console.log('📱 iOS: Service Worker desactivado (no compatible)');
 }
 
 const firebaseConfig = {
@@ -54,7 +57,7 @@ let messagesCollection;
 let galleryCollection;
 let classifiedsCollection;
 let currentUser = null;
-let pushManager; // Se inicializará después de Firebase
+let pushManager;
 const googleProvider = new GoogleAuthProvider();
 
 try {
@@ -66,65 +69,24 @@ try {
     galleryCollection = collection(db, "daily_gallery_meta");
     classifiedsCollection = collection(db, "classifieds");
 
-    // ========================================
-    // INICIALIZAR PUSH MANAGER CON DETECCIÓN PRECISA
-    // ========================================
-    // Solo desactivar Push Manager si REALMENTE no está soportado
-    // iOS Safari NO soporta Web Push API en el navegador (solo en PWA iOS 16.4+)
-    const hasPushSupport = 'Notification' in window && 
-                          'serviceWorker' in navigator && 
-                          'PushManager' in window;
-    
-    if (hasPushSupport && !isIOS) {
-        // Android, Desktop Chrome/Firefox/Edge - Push disponible
+    // Inicializar pushManager (desactivado en iOS)
+    if (!isIOS) {
         pushManager = new PushNotificationManager(app);
         window.pushManager = pushManager;
-        console.log("✅ PushManager inicializado - Web Push disponible");
+        console.log("✅ PushManager inicializado (Android/Desktop)");
     } else {
-        // iOS Safari - Web Push no disponible en navegador
         window.pushManager = null;
-        console.log("📱 PushManager no disponible en este navegador");
-        
-        // Solo ocultar UI de notificaciones en iOS
-        if (isIOS) {
-            const notifCard = document.getElementById('notifications-card');
-            const notifBtn = document.getElementById('notifications-settings-btn');
-            const welcomeModal = document.getElementById('welcome-clasificados-modal');
-            if (notifCard) notifCard.style.display = 'none';
-            if (notifBtn) notifBtn.style.display = 'none';
-            if (welcomeModal) welcomeModal.style.display = 'none';
-            console.log("📱 iOS Safari: UI de notificaciones push oculta");
-        }
+        console.log("📱 PushManager no inicializado (iOS)");
+        // Ocultar UI de notificaciones en iOS
+        const notifCard = document.getElementById('notifications-card');
+        const notifBtn = document.getElementById('notifications-settings-btn');
+        const welcomeModal = document.getElementById('welcome-clasificados-modal');
+        if (notifCard) notifCard.style.display = 'none';
+        if (notifBtn) notifBtn.style.display = 'none';
+        if (welcomeModal) welcomeModal.style.display = 'none';
     }
 
     console.log("✅ Firebase inicializado.");
-
-    // --- FUNCIONES DE LOGIN/LOGOUT ---
-    async function loginWithGoogle() {
-        try {
-            const result = await signInWithPopup(auth, googleProvider);
-            console.log("✅ Login exitoso:", result.user.displayName);
-        } catch (error) {
-            console.error("❌ Error en login:", error);
-            if (error.code === 'auth/popup-blocked') {
-                alert('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para esta página.');
-            } else if (error.code === 'auth/cancelled-popup-request') {
-                // Usuario cerró el popup, no hacer nada
-            } else {
-                alert('Error al iniciar sesión: ' + error.message);
-            }
-        }
-    }
-
-    async function logout() {
-        try {
-            await signOut(auth);
-            console.log("✅ Sesión cerrada");
-        } catch (error) {
-            console.error("❌ Error al cerrar sesión:", error);
-        }
-    }
-
     // Exponer funciones globalmente para uso en eventos
     window.loginWithGoogle = loginWithGoogle;
     window.logout = logout;
@@ -193,6 +155,12 @@ try {
         updateAuthUI(user);
     });
     console.log("🚀 App iniciada.");
+
+    if (!isIOS && 'serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(console.error);
+        });
+    }
 
     // --- ELEMENTOS DE NAVEGACIÓN ---
     const viewDashboard = document.getElementById('view-dashboard');
