@@ -15,17 +15,38 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // ========================================
-// FIX TEMPORAL: DESACTIVAR SERVICE WORKER
+// FIX iOS: REGISTRAR Service Worker en TODOS los navegadores
 // ========================================
+// iOS Safari SÍ soporta Service Workers desde iOS 11.3+ (2018)
+// Solo Web Push no está soportado en iOS Safari, pero el SW es esencial para PWA y cache
+// Registramos el SW normalmente en TODOS los navegadores incluyendo iOS
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-        registrations.forEach(reg => {
-            reg.unregister();
-            console.log('🗑️ SW desregistrado');
-        });
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('✅ Service Worker registrado:', registration.scope);
+                if (isIOS) {
+                    console.log('📱 iOS: Service Worker activo, Web Push no disponible en navegador');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error registrando Service Worker:', error);
+            });
     });
+} else {
+    console.warn('⚠️ Service Workers no soportados en este navegador');
 }
-// ========================================
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDitwwF3Z5F9KCm9mP0LsXWDuflGtXCFcw",
+  authDomain: "labajadakite.firebaseapp.com",
+  projectId: "labajadakite",
+  storageBucket: "labajadakite.firebasestorage.app", 
+  messagingSenderId: "982938582037",
+  appId: "1:982938582037:web:7141082f9ca601e9aa221c",
+  measurementId: "G-R926P5WBWW"
+};
+
 // Variables globales
 let db;
 let auth; 
